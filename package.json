@@ -1,0 +1,19 @@
+{
+  "name": "gmes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Manufacturing core of the ecosystem (with Mizan accounting and Space Planner): kernel, eco contracts and the Mizan link.",
+  "workspaces": [
+    "packages/eco-contracts",
+    "apps/mes-server",
+    "apps/link-mizan"
+  ],
+  "scripts": {
+    "test": "npm test -w packages/eco-contracts && npm test -w apps/mes-server && npm test -w apps/link-mizan",
+    "typecheck": "npm run typecheck -w packages/eco-contracts && npm run typecheck -w apps/mes-server && npm run typecheck -w apps/link-mizan",
+    "schemas": "npm run schemas -w packages/eco-contracts"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

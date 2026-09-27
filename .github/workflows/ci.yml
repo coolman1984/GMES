@@ -1,0 +1,25 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      # The pinned, real Mizan the end-to-end tests talk to over HTTP.
+      - run: sh scripts/fetch-mizan.sh
+      - run: npm test
+        env:
+          ECO_E2E_REQUIRED: '1'
+          MIZAN_DIR: ${{ github.workspace }}/.cache/mizan
+      # Every planted bug must be caught (a green suite proves nothing until it has been made to fail).
+      - run: node scripts/mutations.mjs
+        env:
+          MIZAN_DIR: ${{ github.workspace }}/.cache/mizan
