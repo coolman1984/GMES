@@ -11,6 +11,7 @@ export * from './envelope.js';
 export * from './master.js';
 export * from './mes.js';
 export * from './ack.js';
+export * from './canonical.js';
 
 /** Every contract, by its versioned type name. The JSON Schemas in schemas/ are generated from this map. */
 export const CONTRACTS = {

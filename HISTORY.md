@@ -61,3 +61,21 @@
 - **Found in HR, pinned not fixed:** re-uploading the same attendance bytes with new employee/roster/leave files is
   treated as a duplicate and the new files are ignored; HR's `.gitignore` did not exclude `data/` (fixed: safety only).
 
+## Phase E3 — Ecosystem infrastructure foundation (BAMS studied) + HR registry connected (2026-09-27)
+- **Study:** BAMS (`Mr.Ayman-HR` @`5f5b3ce`, read only; 33 fast tests pass) documented as the infrastructure reference:
+  capability matrix, pattern map, BAMS-vs-GMES comparison, gaps, common foundation and migration plan
+  (`docs/ecosystem/08-infrastructure-foundation.md`, ADR-024..028).
+- **Convergence, first step:** one canonical JSON + journal-hash format for the whole ecosystem (BAMS's, plus a
+  domain prefix), with shared vectors generated in Python that the TypeScript implementation and HR-System both pass.
+  **Lesson:** "both sort keys and drop spaces" was an assumption until vectors proved it; JS sorts keys by UTF-16
+  unit and Python by code point, so the TS implementation sorts by code point explicitly.
+- **Proof, not opinion:** `offline-merge-proof.test.ts` shows counter merging counts one serial twice and completes
+  10 of a 5-unit order, LWW erases a fact, while the authoritative model refuses both. BAMS itself documents the same
+  limit (two PCs restoring one backup apply a quantity difference twice).
+- **Found in BAMS (not fixed there, never modified):** backups are integrity-checked but there is no periodic
+  automated restore test — a gap for every app (ADR-028).
+- **HR registry → manufacturing:** HR-System @`89e4d96` publishes employees from its own registry (department,
+  position, site). The real end-to-end test shows the switch changes no identity and duplicates nobody.
+  **Known seam:** three employees the registry rejects (termination before hire in the synthetic master) stay in
+  manufacturing's mirror as last published by the attendance-derived path — absence is never deletion; HR must fix them.
+

@@ -17,6 +17,8 @@ const MUTATIONS = [
   { name: 'completion may exceed the open quantity', file: 'apps/mes-server/src/modules/exe/index.ts', from: 'if (qty > room) {', to: 'if (qty > room && false) {', suite: 'apps/mes-server' },
   { name: 'ledger hash ignores the quantity', file: 'apps/mes-server/src/modules/exe/ledger.ts', from: "'warehouse_id', 'qty',", to: "'warehouse_id',", suite: 'apps/mes-server' },
   { name: 'inbox forgets duplicates', file: 'apps/mes-server/src/modules/eco/index.ts', from: "return 'duplicate';", to: "void 0;", suite: 'apps/mes-server' },
+  { name: 'canonical JSON writes floats instead of refusing them', file: 'packages/eco-contracts/src/canonical.ts', from: 'if (!Number.isSafeInteger(value)) throw', to: 'if (false) throw', suite: 'packages/eco-contracts' },
+  { name: 'journal hash drops the domain separation', file: 'packages/eco-contracts/src/canonical.ts', from: ".update(domain + '\\n' + canonicalJson(line), 'utf8')", to: ".update(canonicalJson(line), 'utf8')", suite: 'packages/eco-contracts' },
   { name: 'the HR person check is skipped', file: 'apps/mes-server/src/modules/mdm/index.ts', from: "if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;", to: 'if (true) return ref;', suite: 'apps/mes-server' },
   { name: 'employee snapshots accepted from any app', file: 'apps/mes-server/src/modules/mdm/index.ts', from: "if (s.origin.app !== 'hr') fail(", to: "if (false) fail(", suite: 'apps/mes-server' },
   { name: 'link posts without looking for its reference first', file: 'apps/link-mizan/src/link.ts', from: 'if (found) return found;', to: 'void found;', suite: 'apps/link-mizan' },

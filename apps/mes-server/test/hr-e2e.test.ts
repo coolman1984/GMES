@@ -65,6 +65,9 @@ describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-S
     for (const f of readdirSync(join(HR!, 'eco_schemas')).filter((n) => n.endsWith('.schema.json'))) {
       assert.equal(readFileSync(join(HR!, 'eco_schemas', f), 'utf8'), readFileSync(join(generated, f), 'utf8'), `${f} drifted`);
     }
+    // the canonical JSON / journal-hash vectors (ADR-026) are the same file in both repositories
+    assert.equal(readFileSync(join(HR!, 'eco_schemas', 'canonical-v1.json'), 'utf8'),
+      readFileSync(resolve(here, '../../../packages/eco-contracts/vectors/canonical-v1.json'), 'utf8'), 'canonical vectors drifted');
   });
 
   test('HR publishes; manufacturing mirrors every confirmed employee under the shared id', async () => {
@@ -85,6 +88,23 @@ describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-S
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     const nobody = await call('POST', `/api/work-orders/${wo}/complete`, { commandId: 'hr-e2e-done-2', qty: '1', person: { id: hrId(company, 'employee', 'E999999'), code: 'E999999' } }, opKey);
     assert.equal(nobody.body.error.code, 'person.unknown');
+  });
+
+  test('once HR has its own registry, manufacturing receives employees with their organisation, without duplicates', async () => {
+    const c = 'inputs/hr-factory-synthetic-dataset/01_CLEAN_BASELINE/';
+    hr(`import sys; sys.argv = ['x']; import hr_registry, os; os.environ['ECO_COMPANY_ID'] = '${company}'; ` +
+      `sys.exit(hr_registry.main(['import', '${c}01_Organization_Factory.xlsx', '${c}02_Employee_Master.xlsx', '--actor', 'e2e']))`);
+    const r = await publish();
+    assert.equal(r.stopped_by, undefined);
+    assert.ok(r.delivered >= 197, JSON.stringify(r));
+    const employees = (await call('GET', '/api/employees')).body;
+    assert.equal(employees.length, 200, 'same people, same ids: nobody duplicated by the switch to the registry');
+    const e1 = employees.find((e: any) => e.code === 'E000001');
+    assert.equal(e1.id, hrId(company, 'employee', 'E000001'));
+    assert.match(e1.department_code, /^DEP-/);
+    assert.equal(e1.position_code, 'POS-0001');
+    assert.equal(e1.display_name, 'Ahmed');
+    assert.equal((await publish()).sent, 0);
   });
 
   test('manufacturing down while HR works: HR keeps its outbox, then delivers once, without duplicates', async () => {

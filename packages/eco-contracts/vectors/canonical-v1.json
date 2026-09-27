@@ -1,0 +1,85 @@
+{
+ "spec": "eco canonical JSON v1: UTF-8, keys sorted by code point, no whitespace, integers only (no floats), JSON escapes as in RFC 8259 (\\uXXXX lower-case for other control characters), non-ASCII characters written as themselves. Journal line hash = SHA-256(domain + LF + canonical(line)), where line carries 'prev' (hex hash of the previous line, genesis = 64 zeros).",
+ "domain": "ECO-JOURNAL1",
+ "vectors": [
+  {
+   "name": "empty object",
+   "value": {},
+   "canonical": "{}",
+   "canonical_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+   "line_prev": "0000000000000000000000000000000000000000000000000000000000000000",
+   "line_hash": "98dc90f2c8a50cec8e9b51a25e3ddf27567bd9a18ad48462677b601d22ad1ab2"
+  },
+  {
+   "name": "sorted keys, nested",
+   "value": {
+    "b": 1,
+    "a": {
+     "z": [
+      3,
+      2,
+      1
+     ],
+     "y": null,
+     "x": true
+    }
+   },
+   "canonical": "{\"a\":{\"x\":true,\"y\":null,\"z\":[3,2,1]},\"b\":1}",
+   "canonical_sha256": "29fdcee6d8d5626faa8efd9e7aae283567a1fe65cdf25283f1f38431c9c6fb2e",
+   "line_prev": "98dc90f2c8a50cec8e9b51a25e3ddf27567bd9a18ad48462677b601d22ad1ab2",
+   "line_hash": "7aba040bf39c236d7430c08dc8ba5e667f52da2dee81f298a1bb9295a732282b"
+  },
+  {
+   "name": "arabic and emoji untouched",
+   "value": {
+    "name": "أحمد إبراهيم",
+    "note": "✓ done 🏭"
+   },
+   "canonical": "{\"name\":\"أحمد إبراهيم\",\"note\":\"✓ done 🏭\"}",
+   "canonical_sha256": "1515f143081236c57e57e0bbfe3172a84c7f576438178362e7d2c6cb52e9d87e",
+   "line_prev": "7aba040bf39c236d7430c08dc8ba5e667f52da2dee81f298a1bb9295a732282b",
+   "line_hash": "0482123d4a7901dab8f7885cd601eeb66637256dca4309f666af578a7c95eff8"
+  },
+  {
+   "name": "escapes",
+   "value": {
+    "s": "quote\" backslash\\ tab\t newline\n cr\r ctrl\u0001 del"
+   },
+   "canonical": "{\"s\":\"quote\\\" backslash\\\\ tab\\t newline\\n cr\\r ctrl\\u0001 del\"}",
+   "canonical_sha256": "a6347f5d342c04e49675a3a331d98ad379ba4ab88a22318180c6a9360d6c1581",
+   "line_prev": "0482123d4a7901dab8f7885cd601eeb66637256dca4309f666af578a7c95eff8",
+   "line_hash": "3342bf2aa7927d91222c3af6261c8d11b2d8439eaa9b1862756cd68316faf036"
+  },
+  {
+   "name": "large safe integer and negatives",
+   "value": {
+    "n": 9007199254740991,
+    "m": -42,
+    "z": 0
+   },
+   "canonical": "{\"m\":-42,\"n\":9007199254740991,\"z\":0}",
+   "canonical_sha256": "1e0a13cd589958354817ce13545f23e0c89ca2820b087cd66b2c7c2d4e434527",
+   "line_prev": "3342bf2aa7927d91222c3af6261c8d11b2d8439eaa9b1862756cd68316faf036",
+   "line_hash": "0a1e93048128cc5cfaecc696e656c0eac37cb87fd55a5cbfb9618246811b7d58"
+  },
+  {
+   "name": "employee snapshot",
+   "value": {
+    "id": "ad793f13-3ba3-5304-92f6-7bc2f8c8d5c8",
+    "code": "E000001",
+    "employment_status": "Active",
+    "active": true,
+    "version": 1,
+    "origin": {
+     "app": "hr",
+     "type": "employee",
+     "key": "E000001"
+    }
+   },
+   "canonical": "{\"active\":true,\"code\":\"E000001\",\"employment_status\":\"Active\",\"id\":\"ad793f13-3ba3-5304-92f6-7bc2f8c8d5c8\",\"origin\":{\"app\":\"hr\",\"key\":\"E000001\",\"type\":\"employee\"},\"version\":1}",
+   "canonical_sha256": "13464931e08ee34cf7d2f14ac8c7b38ec11880f666e3c796e200acb973b3d8bc",
+   "line_prev": "0a1e93048128cc5cfaecc696e656c0eac37cb87fd55a5cbfb9618246811b7d58",
+   "line_hash": "5f9bf086a60b8aa93e4437c572705f8cd7e2be7edc31d9b257ae552830b37f86"
+  }
+ ]
+}
