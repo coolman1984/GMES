@@ -1,0 +1,57 @@
+{
+  "$id": "https://eco.local/contracts/eco.ack.v1.schema.json",
+  "title": "eco.ack.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "consumer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "parked",
+        "skipped"
+      ]
+    },
+    "detail": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "target_ref": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "figures": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "event_id",
+    "consumer",
+    "status"
+  ]
+}

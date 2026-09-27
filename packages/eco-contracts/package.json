@@ -1,0 +1,23 @@
+{
+  "name": "@eco/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared, versioned data contracts of the ecosystem (manufacturing, accounting, space planning). Source of truth for the JSON Schemas in schemas/.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --import tsx --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "schemas": "node --import tsx scripts/gen-schemas.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,34 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      # The pinned, real Mizan the end-to-end tests talk to over HTTP.
+      - run: sh scripts/fetch-mizan.sh
+      # The pinned, real HR-System (Python, standard library) the HR <-> manufacturing test runs.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sh scripts/fetch-hr.sh
+      - run: npm test
+        env:
+          ECO_E2E_REQUIRED: '1'
+          MIZAN_DIR: ${{ github.workspace }}/.cache/mizan
+          HR_DIR: ${{ github.workspace }}/.cache/hr-system
+          PYTHON: python
+      # Every planted bug must be caught (a green suite proves nothing until it has been made to fail).
+      - run: node scripts/mutations.mjs
+        env:
+          MIZAN_DIR: ${{ github.workspace }}/.cache/mizan
+          HR_DIR: ${{ github.workspace }}/.cache/hr-system
+          PYTHON: python
