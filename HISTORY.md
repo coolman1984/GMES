@@ -79,3 +79,25 @@
   **Known seam:** three employees the registry rejects (termination before hire in the synthetic master) stay in
   manufacturing's mirror as last published by the attendance-derived path — absence is never deletion; HR must fix them.
 
+
+## Phase F2 — HR-System security and recovery; the foundation takes its first shape (2026-09-27)
+- **What:** HR-System @`8dcfe4f` (phase 2) has users, profiles and server-side permissions, device identity with
+  clone detection, an Ed25519-signed append-only journal and audit in the ecosystem format (ADR-026), verified signed
+  backups with an automatic restore rehearsal, compensating restore, and recovery of any one lost database file.
+  `scripts/fetch-hr.sh` is pinned to it; `hr-e2e` passes unchanged (the registry's journal lines are now signed by
+  the HR installation's device; nothing it publishes changed).
+- **Symptom (plan was wrong):** E8.7 F2 said HR would sign "in Python with no external library, adopting BAMS's
+  `ed25519.py`". The owner required the standard library first. **Cause:** the plan assumed bundling `cryptography`
+  was impossible; it is possible with an embedded runtime (one `cryptography` + one `cffi` per architecture) and
+  not with the customer's own Python (a `cffi` build per version × architecture). **Fix:** HR uses `cryptography`
+  when it imports and passes the RFC 8032 vector, BAMS's file byte-for-byte (hash-pinned) otherwise; both are
+  cross-checked with each other and with the OpenSSL command line (HR `docs/HR_SECURITY.md`, ADR-HR-002).
+- **Discovery:** a broken `cryptography` (missing `cffi`) does not raise `ImportError`: it panics in Rust
+  (`PanicException`, a `BaseException`). **Lesson:** "optional native dependency" code must survive a crash on
+  import, and prove the backend with a known answer before trusting it. GMES's signed ledger (F3) must do the same.
+- **Discovery:** a store that remembers only the NUMBER of the last journal line it applied cannot tell that the
+  journal was replaced by an older backup (a new line re-grows the number). HR stores the line's hash too.
+  **Lesson for F3:** GMES projections must record the hash of the last ledger line they folded.
+- **Foundation, not yet extracted:** HR's `signing.py`, `canonical.py`, `Backups.verify`/`rehearse` and `Device` are
+  the candidates for the shared foundation (E8.6). They stay in HR until GMES (F3) is their second user — extracting
+  from one user fixes the wrong seams.
