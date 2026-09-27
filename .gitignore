@@ -1,0 +1,15 @@
+# Runtime data — never commit production data, databases or backups
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+backups/
+logs/
+*.csv
+*.xlsx
+*.png
+!docs/**/*.png
+.env
+__pycache__/
+node_modules/
+dist/
