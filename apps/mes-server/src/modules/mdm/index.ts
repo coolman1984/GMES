@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { ItemV1, WarehouseV1 } from '@eco/contracts';
-import type { MdmService, MirrorItem, MirrorWarehouse, SnapshotResult } from '../../contracts/services.js';
+import type { AttendanceDayV1, EmployeeV1, ItemV1, WarehouseV1 } from '@eco/contracts';
+import type { MdmService, MirrorEmployee, MirrorItem, MirrorWarehouse, SnapshotResult } from '../../contracts/services.js';
 import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
@@ -64,6 +64,36 @@ export const mdmModule: AppModule = {
         );
       `,
     },
+    {
+      id: '002_workforce_mirrors',
+      up: `
+        -- Read-only mirrors of the HR system (the owner). Never written by a manufacturing screen.
+        CREATE TABLE mdm_employee (
+          id                TEXT PRIMARY KEY,         -- HR's global id (UUIDv5 of the employee number)
+          code              TEXT NOT NULL,            -- HR employee number
+          display_name      TEXT,
+          employment_status TEXT NOT NULL,
+          active            INTEGER NOT NULL,
+          department_code   TEXT,
+          position_code     TEXT,
+          version           INTEGER NOT NULL,
+          origin_key        TEXT NOT NULL,
+          mirrored_at       TEXT NOT NULL
+        );
+        CREATE INDEX mdm_employee_code ON mdm_employee(code);
+        CREATE TABLE mdm_attendance_day (
+          id              TEXT PRIMARY KEY,
+          code            TEXT NOT NULL,
+          employee_id     TEXT NOT NULL,
+          work_date       TEXT NOT NULL,
+          status          TEXT NOT NULL,
+          shift_code      TEXT,
+          version         INTEGER NOT NULL,
+          mirrored_at     TEXT NOT NULL
+        );
+        CREATE INDEX mdm_attendance_emp_day ON mdm_attendance_day(employee_id, work_date);
+      `,
+    },
   ],
 
   setup(ctx) {
@@ -78,6 +108,16 @@ export const mdmModule: AppModule = {
       },
       applyItem: (t, s) => apply(ctx, t, 'item', s),
       applyWarehouse: (t, s) => apply(ctx, t, 'warehouse', s),
+      applyEmployee: (t, s) => applyWorkforce(ctx, t, 'employee', s),
+      applyAttendanceDay: (t, s) => applyWorkforce(ctx, t, 'attendance_day', s),
+      async resolvePerson(t, ref) {
+        if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;
+        const e = await t.get<MirrorEmployee>('SELECT * FROM mdm_employee WHERE id = ?', [ref.id]);
+        if (!e) return fail('person.unknown', `employee ${ref.code} is not known to manufacturing yet (HR has not published it, or the id is wrong)`);
+        if (!e.active) return conflict('person.inactive', `employee ${e.code} is ${e.employment_status} in HR and cannot be booked on production`);
+        // HR's code wins over whatever the client sent next to the id.
+        return { id: e.id, code: e.code };
+      },
     };
     ctx.services.provide('mdm', service);
   },
@@ -86,6 +126,10 @@ export const mdmModule: AppModule = {
     http.get('/api/items', async (req) => {
       require(req, 'mdm.items.read');
       return ctx.db.all('SELECT * FROM mdm_item ORDER BY code');
+    });
+    http.get('/api/employees', async (req) => {
+      require(req, 'mdm.items.read');
+      return ctx.db.all('SELECT id, code, display_name, employment_status, active, department_code, position_code, version, mirrored_at FROM mdm_employee ORDER BY code');
     });
     http.get('/api/warehouses', async (req) => {
       require(req, 'mdm.items.read');
@@ -132,6 +176,36 @@ export const mdmModule: AppModule = {
     return [{ id: 'ownership', ok: foreign!.n === 0, details: { rowsWithAnotherOwner: foreign!.n } }];
   },
 };
+
+/** HR mirrors: accepted only when HR owns people here, only from HR, and only when the version is newer. */
+async function applyWorkforce(ctx: Ctx, t: Db, kind: 'employee' | 'attendance_day', s: EmployeeV1 | AttendanceDayV1): Promise<SnapshotResult> {
+  if ((ctx.config.ownership.person ?? 'none') !== 'hr') fail('mdm.not_mirror', 'this installation has no HR owner configured (ownership.person = none)');
+  if (s.origin.app !== 'hr') fail('mdm.wrong_owner', `${kind} snapshot from ${s.origin.app}, but people are owned by hr`);
+  const table = kind === 'employee' ? 'mdm_employee' : 'mdm_attendance_day';
+  const cur = await t.get<{ version: number }>(`SELECT version FROM ${table} WHERE id = ?`, [s.id]);
+  if (cur && cur.version >= s.version) return cur.version === s.version ? 'unchanged' : 'stale';
+  const now = ctx.clock.now().toISOString();
+  if (kind === 'employee') {
+    const e = s as EmployeeV1;
+    await t.run(
+      `INSERT INTO mdm_employee (id, code, display_name, employment_status, active, department_code, position_code, version, origin_key, mirrored_at)
+       VALUES (:id, :code, :name, :status, :active, :dept, :pos, :v, :key, :now)
+       ON CONFLICT(id) DO UPDATE SET code = :code, display_name = :name, employment_status = :status, active = :active,
+         department_code = :dept, position_code = :pos, version = :v, mirrored_at = :now`,
+      { id: e.id, code: e.code, name: e.display_name ?? null, status: e.employment_status, active: e.active ? 1 : 0, dept: e.department_code ?? null,
+        pos: e.position_code ?? null, v: e.version, key: e.origin.key, now },
+    );
+  } else {
+    const a = s as AttendanceDayV1;
+    await t.run(
+      `INSERT INTO mdm_attendance_day (id, code, employee_id, work_date, status, shift_code, version, mirrored_at)
+       VALUES (:id, :code, :emp, :day, :status, :shift, :v, :now)
+       ON CONFLICT(id) DO UPDATE SET employee_id = :emp, work_date = :day, status = :status, shift_code = :shift, version = :v, mirrored_at = :now`,
+      { id: a.id, code: a.code, emp: a.employee.id, day: a.work_date, status: a.status, shift: a.scheduled_shift_code ?? a.roster?.shift_code ?? null, v: a.version, now },
+    );
+  }
+  return 'applied';
+}
 
 async function apply(ctx: Ctx, t: Db, kind: 'item' | 'warehouse', s: ItemV1 | WarehouseV1): Promise<SnapshotResult> {
   const owner = kind === 'item' ? ctx.config.ownership.item : ctx.config.ownership.warehouse;

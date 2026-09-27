@@ -41,7 +41,9 @@
 | عنصر مرسوم | `(layout_id, item_id)` من الثري دي | الثري دي | التصنيع يحفظ `spatial_ref` | — |
 | أمر الإنتاج | v7 من التصنيع | التصنيع | ميزان: `stock_docs.reference = "eco:<event-id>"` + المذكرة تحمل كود الأمر | كود الأمر |
 | الحدث | v7 من المنتج (`id` في الظرف) | Feed المنتج | Inbox المستهلك `(source,id)`؛ ميزان: `reference` | — |
-| الشخص | v7 من تطبيق الأفراد (أو التصنيع كبديل) | — | التصنيع `performed_by.person` | رقم الموظف / البادج |
+| الموظف | **UUIDv5(company, `hr:employee:<Employee_ID>`)** — نفس القيمة في Python (`uuid.uuid5`) وTypeScript (`hrId`)، مختبرة | HR-System (`E000001`) | التصنيع `mdm_employee.id` + `performed_by.person`؛ ميزان/الثري دي لاحقًا | رقم الموظف |
+| يوم الحضور | UUIDv5(company, `hr:attendance:<Attendance_ID>`) | HR-System | التصنيع `mdm_attendance_day` | Attendance_ID |
+| مركز العمل/المحطة عند HR | كود نصي (`Work_Center_ID`, `Line_ID`) | HR-System (للجدولة فقط) | يُطابق بكود المحطة في التصنيع (مالك هوية المحطة) | الكود |
 | المستخدم | **غير عالمي** — لكل تطبيق حساباته | — | يُرسل كنص للعرض فقط `performed_by.user` | — |
 | اللوت | (item_id, lot_no) طبيعي | ميزان للموردة / التصنيع للمنتجة | الطرف الآخر ينشئ نفس `lot_no` | lot_no |
 | G-MES سامسونج (استيراد مستقبلي) | — | G-MES | `origin = {app:'samsung-gmes', type:'plan', key:'PPM0219/…'}` | كود الأمر في G-MES |

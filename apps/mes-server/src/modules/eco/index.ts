@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sourceOf, validateEvent, zAckV1, type Envelope, type ItemV1, type WarehouseV1, companyOfSource } from '@eco/contracts';
+import { sourceOf, validateEvent, zAckV1, type AttendanceDayV1, type EmployeeV1, type Envelope, type ItemV1, type WarehouseV1, companyOfSource } from '@eco/contracts';
 import type { EcoService } from '../../contracts/services.js';
 import { AppError } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
@@ -144,6 +144,8 @@ export const ecoModule: AppModule = {
             let r: string;
             if (env.type === 'eco.item.v1') r = await mdm.applyItem(t, env.data as ItemV1);
             else if (env.type === 'eco.warehouse.v1') r = await mdm.applyWarehouse(t, env.data as WarehouseV1);
+            else if (env.type === 'eco.employee.v1') r = await mdm.applyEmployee(t, env.data as EmployeeV1);
+            else if (env.type === 'eco.attendance_day.v1') r = await mdm.applyAttendanceDay(t, env.data as AttendanceDayV1);
             else throw new AppError(400, 'eco.not_accepted', `manufacturing does not consume ${env.type}`);
             await t.run('INSERT INTO eco_inbox (source, event_id, type, result, received_at) VALUES (?, ?, ?, ?, ?)', [
               env.source, env.id, env.type, r, ctx.clock.now().toISOString(),

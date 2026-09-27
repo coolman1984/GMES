@@ -58,3 +58,7 @@ export const newUuidv7 = (): string => uuidv7(Date.now(), randomBytes(10));
 /** Global id of an entity owned by Mizan (integer keys). */
 export const mizanId = (companyId: string, type: 'item' | 'warehouse' | 'lot' | 'party' | 'account', localId: number): string =>
   uuidv5(companyId, `mizan:${type}:${localId}`);
+
+/** Global id of an entity owned by the HR system, whose own keys are stable text codes (E000001, TIM02-00001). */
+export const hrId = (companyId: string, type: 'employee' | 'attendance' | 'shift' | 'org_unit', code: string): string =>
+  uuidv5(companyId, `hr:${type}:${code}`);

@@ -25,7 +25,7 @@
 ## التصنيع داخل المنظومة (أضيف 2026-09-27)
 
 النظام قطعة التصنيع في منظومة أعمال واحدة: **ميزان** (المحاسبة)، **مخطط المساحات** (الثري دي)،
-تطبيق الأفراد (مستقبلًا)، ومكتبة خبرة **أتمتة G-MES**. كل قطعة تشتغل لوحدها، وتتكلم مع الباقي بعقود.
+**HR-System** (الموظفين والورديات والحضور)، ومكتبة خبرة **أتمتة G-MES**. كل قطعة تشتغل لوحدها، وتتكلم مع الباقي بعقود.
 
 | # | الوثيقة | بتجاوب على إيه |
 |---|---|---|
@@ -51,9 +51,10 @@
 ```bash
 npm ci
 npm run typecheck
-sh scripts/fetch-mizan.sh                       # ميزان الحقيقي (إصدار مثبت) للاختبارات من البداية للنهاية
-MIZAN_DIR=.cache/mizan ECO_E2E_REQUIRED=1 npm test
-MIZAN_DIR=.cache/mizan node scripts/mutations.mjs   # كل خطأ مزروع لازم يتمسك
+sh scripts/fetch-mizan.sh                       # ميزان الحقيقي (إصدار مثبت)
+sh scripts/fetch-hr.sh                          # HR-System الحقيقي (إصدار مثبت، يحتاج Python)
+MIZAN_DIR=.cache/mizan HR_DIR=.cache/hr-system ECO_E2E_REQUIRED=1 npm test
+MIZAN_DIR=.cache/mizan HR_DIR=.cache/hr-system node scripts/mutations.mjs   # كل خطأ مزروع لازم يتمسك
 ```
 
 تشغيل يدوي: `apps/mes-server` (`GMES_COMPANY_ID=<uuid> npm start -w apps/mes-server`، المنفذ 4700) و

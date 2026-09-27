@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
 import {
-  EVENT_TYPES, formatQty, isUuid, mizanId, parseQty, QuantityError, sourceOf, uuidv5, uuidv7, validateEvent, zItemV1,
+  EVENT_TYPES, formatQty, hrId, isUuid, zAttendanceDayV1, zEmployeeV1, mizanId, parseQty, QuantityError, sourceOf, uuidv5, uuidv7, validateEvent, zItemV1,
 } from '../src/index.js';
 import { renderSchemas } from '../src/schemas.js';
 
@@ -95,6 +95,30 @@ describe('envelope and event contracts', () => {
     assert.ok(zItemV1.safeParse(item).success);
     assert.ok(!zItemV1.safeParse({ ...item, version: 0 }).success);
     assert.ok(!zItemV1.safeParse({ ...item, name: { en: 'Steel' } }).success);
+  });
+});
+
+describe('workforce contracts owned by HR-System', () => {
+  test('an employee id is the same in TypeScript and in the Python HR system (uuid.uuid5)', () => {
+    // python3 -c "import uuid; print(uuid.uuid5(uuid.UUID(COMPANY), 'hr:employee:E000001'))"
+    assert.equal(hrId(COMPANY, 'employee', 'E000001'), 'ad793f13-3ba3-5304-92f6-7bc2f8c8d5c8');
+  });
+
+  test('an employee snapshot carries no personal data and needs the owner version', () => {
+    const e = { id: hrId(COMPANY, 'employee', 'E000001'), code: 'E000001', employment_status: 'Active', active: true, hire_date: '2015-05-08',
+      version: 1, origin: { app: 'hr', type: 'employee', key: 'E000001' } };
+    assert.ok(zEmployeeV1.safeParse(e).success);
+    const parsed = zEmployeeV1.parse({ ...e, date_of_birth: '1990-01-01', national_id: 'x', base_pay: '9000' });
+    assert.equal('date_of_birth' in parsed || 'national_id' in parsed || 'base_pay' in parsed, false, 'unknown (personal) fields are dropped, never carried');
+    assert.ok(!zEmployeeV1.safeParse({ ...e, active: 'yes' }).success);
+  });
+
+  test('an attendance day references its employee by the shared id', () => {
+    const a = { id: hrId(COMPANY, 'attendance', 'TIM02-00001'), code: 'TIM02-00001', employee: { id: hrId(COMPANY, 'employee', 'E000001'), code: 'E000001' },
+      work_date: '2026-06-17', status: 'Leave', scheduled_shift_code: 'S4', leave: { type: 'Annual' }, worked_minutes: 376, version: 1,
+      origin: { app: 'hr', type: 'attendance', key: 'TIM02-00001' } };
+    assert.ok(zAttendanceDayV1.safeParse(a).success);
+    assert.ok(!zAttendanceDayV1.safeParse({ ...a, worked_minutes: 3.5 }).success);
   });
 });
 

@@ -40,3 +40,24 @@
   test only broke Mizan before the feed was read; S4b now drops the network in the middle of the feed.
 - **Lesson:** green is not evidence until a planted bug turns it red; and an outage test must cut the line at
   the step that matters, not just at the first call.
+
+## Phase E2 — HR-System becomes the owner of the workforce; manufacturing connected (2026-09-27)
+- **Correction:** `Mr.Ayman-HR` is BAMS, not HR. The owner's real HR system was located by scanning 32 repositories:
+  `coolman1984/Department-automation` ("HR Attendance Control"). It was migrated WITH its history into
+  `coolman1984/HR-System` (main = source branch `58a2298`, a strict +5/-0 fast-forward of its main). Source untouched.
+- **Proof of equivalence:** a golden file produced from the ORIGINAL checkout; the migrated tree gives 0 differences
+  over five scenarios. All original tests pass (four need `PYTHONPATH=vendor.zip`, as the author had openpyxl installed).
+- **Contracts:** `eco.employee.v1` (no personal data) and `eco.attendance_day.v1`; identity UUIDv5 of the HR code, equal
+  in Python and TypeScript (tested). Drafts `eco.person.v1`/`eco.shift_pattern.v1` superseded before ever being built.
+- **Boundary:** manufacturing mirrors HR read-only and checks every person a command names (`ownership.person = 'hr'`);
+  `'none'` keeps the old unchecked behaviour as the rollback switch. There was no worker master table to replace —
+  only an unchecked `person` reference; nothing was deleted.
+- **Bug found in the test harness:** the first HR end-to-end run timed out because the HR publisher was started with
+  a SYNCHRONOUS child process while the manufacturing server lived in the same Node process — the server could not
+  answer. Fixed by starting it asynchronously. **Lesson:** never block the event loop that serves the system under test.
+- **Discovery (mutation testing, HR side):** "event id no longer derived from (type, entity, version)" survived — the
+  no-duplicate guarantee comes from resending the STORED envelope, not from the id formula. Replaced by the real
+  danger ("a resend rebuilds the envelope with a fresh id"), which is caught; the code comment now states the true reason.
+- **Found in HR, pinned not fixed:** re-uploading the same attendance bytes with new employee/roster/leave files is
+  treated as a duplicate and the new files are ignored; HR's `.gitignore` did not exclude `data/` (fixed: safety only).
+

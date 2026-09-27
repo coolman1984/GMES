@@ -47,8 +47,11 @@
 |---|---|---|---|
 | `eco.company.v1` | id, code, name{en,ar}, base_currency, money_scale, fiscal_year_start, version | المحاسبة | مسودة |
 | `eco.site.v1` | id, code, name, timezone, production_day_start, version, active | التصنيع | مسودة |
-| `eco.person.v1` | id, code (رقم الموظف), name, badge_code?, active, version | الأفراد (Fallback: التصنيع) | مسودة |
-| `eco.shift_pattern.v1` | id, code, shifts[{code, start, end, crosses_midnight}], version | الأفراد (Fallback: التصنيع) | مسودة |
+| **`eco.employee.v1`** | id (UUIDv5 من رقم الموظف), code, display_name?, employment_status, active, hire/termination_date?, department/position/plant_code?, version, origin — **بلا بيانات شخصية** | **HR-System** | **مُنفَّذ** (يحل محل مسودة `eco.person.v1` التي لم تُنفَّذ أبدًا) |
+| **`eco.attendance_day.v1`** | id, code (Attendance_ID), employee ref, work_date, status, scheduled_shift_code?, roster?, leave?, worked_minutes?, version, origin | **HR-System** | **مُنفَّذ** |
+| `eco.shift.v1` | id, code, start, end, break_minutes, crosses_midnight, version (من `SCH_01_ShiftDefinitions`) | HR-System | مسودة (تحل محل `eco.shift_pattern.v1`) |
+| `eco.skill.v1` / `eco.employee_skill.v1` | كتالوج المهارات ومستوى كل موظف وصلاحيته (`SKL_*`) | HR-System | مسودة |
+| `hr.payroll_period.v1` | period, إجماليات لكل مركز تكلفة وحساب (رواتب، مساهمات، استقطاعات، صافي مستحق) — **بلا تفاصيل موظف** | HR-System → ميزان | مسودة |
 | **`eco.item.v1`** | id, code (SKU), name{en,ar}, kind (product/service), stock_tracked, tracking (none/lot/serial), base_uom, units[{code, factor}], active, version, origin | المحاسبة | **مُنفَّذ** |
 | **`eco.warehouse.v1`** | id, code, name{en,ar}, active, is_default, version, origin | المحاسبة | **مُنفَّذ** |
 | `eco.storage_location.v1` | id, warehouse_id, address (bay/level/position), layout_ref, version | الثري دي | مسودة |

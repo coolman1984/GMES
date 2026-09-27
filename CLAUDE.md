@@ -2,12 +2,13 @@
 
 This is the **manufacturing piece** of an ecosystem of products sold to small and mid-sized factories:
 Mizan (accounting, `coolman1984/Accounting-sys`), Space Planner (3D layout, `coolman1984/3D-Modeling`),
-a future people/HR app, and the G-MES automation knowledge base (`coolman1984/opening-nerp-tcode`).
+HR-System (people, shifts, attendance, payroll data, `coolman1984/HR-System`), and the G-MES automation knowledge
+base (`coolman1984/opening-nerp-tcode`). BAMS (`coolman1984/Mr.Ayman-HR`) is a separate product, not HR.
 Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/README.md` before any structural change.
 
 ## Never
 - Read or write another application's database. Integration is `@eco/contracts` events over HTTP only.
-- Create master data owned by another app (items, warehouses when Mizan owns them). No "temporary" copies.
+- Create master data owned by another app (items, warehouses when Mizan owns them; employees, shifts, attendance — always HR). No "temporary" copies.
 - Merge production facts from several writers (BAMS-style counters). One plant server owns the ledger (ADR-015).
 - Store or compute a money value in manufacturing. Cost belongs to accounting (a test enforces it).
 - Round a quantity silently. Refuse what cannot be carried exactly (ADR-018).
@@ -22,12 +23,13 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 | `apps/mes-server` | Manufacturing kernel: `kernel/` (db port, commands, clock), `contracts/` (sockets between modules), `modules/` (system, mdm, eco, exe) |
 | `apps/link-mizan` | Mizan's agent: mirrors items/warehouses, applies manufacturing facts through Mizan's existing API |
 | `scripts/fetch-mizan.sh` | The pinned real Mizan the end-to-end tests run against |
+| `scripts/fetch-hr.sh` | The pinned real HR-System (Python) the HR end-to-end test runs against |
 | `scripts/mutations.mjs` | Planted bugs every test run must catch |
 
 A module imports only `kernel/`, `contracts/`, `@eco/contracts` and its own folder (`test/boundaries.test.ts`).
 
 ## Definition of done
-1. `npm run typecheck` and `npm test` pass — with `ECO_E2E_REQUIRED=1` and a Mizan checkout (`sh scripts/fetch-mizan.sh`).
+1. `npm run typecheck` and `npm test` pass — with `ECO_E2E_REQUIRED=1`, a Mizan checkout (`sh scripts/fetch-mizan.sh`) and an HR-System checkout (`sh scripts/fetch-hr.sh`, needs Python 3.10+).
 2. `node scripts/mutations.mjs` reports every planted bug caught; a new rule gets a new mutation.
 3. `HISTORY.md` entry (Symptom / Cause / Fix / Lesson) for every bug or discovery, in the same commit.
 4. An ADR in `docs/adr/README.md` for every structural choice, with the alternatives rejected.

@@ -31,7 +31,16 @@ export interface Config {
   /** Local time at which a production day starts, "HH:MM". */
   productionDayStart: string;
   /** Who owns items and warehouses here: Mizan when installed, else manufacturing itself (fallback owner). */
-  ownership: { item: 'mizan' | 'gmes'; warehouse: 'mizan' | 'gmes' };
+  ownership: {
+    item: 'mizan' | 'gmes';
+    warehouse: 'mizan' | 'gmes';
+    /**
+     * Who owns people. 'hr': the HR system; commands must name a known, active employee from its mirror.
+     * 'none': no owner connected — person references are carried unchecked (the behaviour before HR;
+     * also the rollback switch while the HR boundary is proven). Manufacturing never owns people.
+     */
+    person?: 'hr' | 'none';
+  };
 }
 
 export interface Caller {

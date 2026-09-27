@@ -6,7 +6,8 @@
  *
  * Configuration (environment): GMES_DATA_DIR (./data), GMES_PORT (4700), GMES_HOST (0.0.0.0),
  * GMES_COMPANY_ID (required: the company's ecosystem id), GMES_NODE (plant-1), GMES_TZ (Africa/Cairo),
- * GMES_DAY_START (07:00), GMES_OWNER (mizan | gmes: who owns items and warehouses).
+ * GMES_DAY_START (07:00), GMES_OWNER (mizan | gmes: who owns items and warehouses),
+ * GMES_PERSON_OWNER (hr | none: whether HR-System owns people; default none).
  */
 import { resolve } from 'node:path';
 import { isUuid } from '@eco/contracts';
@@ -20,6 +21,8 @@ if (!isUuid(companyId)) {
   process.exit(2);
 }
 const owner = process.env.GMES_OWNER === 'gmes' ? 'gmes' : 'mizan';
+// People are owned by HR-System when it is connected; 'none' keeps the pre-HR behaviour (and is the rollback switch).
+const person = process.env.GMES_PERSON_OWNER === 'hr' ? 'hr' : 'none';
 const app = await buildApp({
   dbFile: resolve(dataDir, 'gmes.db'),
   logger: process.env.GMES_LOG === '1',
@@ -28,7 +31,7 @@ const app = await buildApp({
     node: process.env.GMES_NODE ?? 'plant-1',
     timeZone: process.env.GMES_TZ ?? 'Africa/Cairo',
     productionDayStart: process.env.GMES_DAY_START ?? '07:00',
-    ownership: { item: owner, warehouse: owner },
+    ownership: { item: owner, warehouse: owner, person },
   },
 });
 

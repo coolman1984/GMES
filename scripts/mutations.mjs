@@ -17,6 +17,8 @@ const MUTATIONS = [
   { name: 'completion may exceed the open quantity', file: 'apps/mes-server/src/modules/exe/index.ts', from: 'if (qty > room) {', to: 'if (qty > room && false) {', suite: 'apps/mes-server' },
   { name: 'ledger hash ignores the quantity', file: 'apps/mes-server/src/modules/exe/ledger.ts', from: "'warehouse_id', 'qty',", to: "'warehouse_id',", suite: 'apps/mes-server' },
   { name: 'inbox forgets duplicates', file: 'apps/mes-server/src/modules/eco/index.ts', from: "return 'duplicate';", to: "void 0;", suite: 'apps/mes-server' },
+  { name: 'the HR person check is skipped', file: 'apps/mes-server/src/modules/mdm/index.ts', from: "if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;", to: 'if (true) return ref;', suite: 'apps/mes-server' },
+  { name: 'employee snapshots accepted from any app', file: 'apps/mes-server/src/modules/mdm/index.ts', from: "if (s.origin.app !== 'hr') fail(", to: "if (false) fail(", suite: 'apps/mes-server' },
   { name: 'link posts without looking for its reference first', file: 'apps/link-mizan/src/link.ts', from: 'if (found) return found;', to: 'void found;', suite: 'apps/link-mizan' },
   { name: 'a parked event no longer holds back its work order', file: 'apps/link-mizan/src/link.ts', from: 'if (held.has(env.ecocorrelation)) {', to: 'if (held.has(env.ecocorrelation) && false) {', suite: 'apps/link-mizan' },
   { name: 'the cost share of a completion ignores scrap', file: 'apps/link-mizan/src/link.ts', from: 'const remaining = planned - completedBefore - scrapped;', to: 'const remaining = planned - completedBefore;', suite: 'apps/link-mizan' },

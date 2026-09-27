@@ -1,13 +1,14 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mizanId, sourceOf, uuidv7 } from '@eco/contracts';
+import { hrId, mizanId, sourceOf, uuidv7 } from '@eco/contracts';
 import { buildApp, type App } from '../src/app.js';
 import type { Clock } from '../src/kernel/clock.js';
 import { addKey } from '../src/modules/system/index.js';
 
 export const COMPANY = '0192f7c4-8a3e-7b21-9c55-3d1f2a4b6c7d';
 export const MIZAN_SOURCE = sourceOf(COMPANY, 'mizan', 'link-mizan');
+export const HR_SOURCE = sourceOf(COMPANY, 'hr', 'hr-main');
 
 /** A clock tests can move; ids stay time-ordered and unique. */
 export function testClock(start = '2026-09-27T08:00:00.000Z'): Clock & { set(iso: string): void } {
@@ -30,12 +31,12 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-export async function server(owner: 'mizan' | 'gmes' = 'mizan'): Promise<TestServer> {
+export async function server(owner: 'mizan' | 'gmes' = 'mizan', person: 'hr' | 'none' = 'none'): Promise<TestServer> {
   const dir = mkdtempSync(join(tmpdir(), 'gmes-test-'));
   const clock = testClock();
   const app = await buildApp({
     dbFile: join(dir, 'gmes.db'), clock,
-    config: { companyId: COMPANY, node: 'plant-1', timeZone: 'Africa/Cairo', productionDayStart: '07:00', ownership: { item: owner, warehouse: owner } },
+    config: { companyId: COMPANY, node: 'plant-1', timeZone: 'Africa/Cairo', productionDayStart: '07:00', ownership: { item: owner, warehouse: owner, person } },
   });
   const keys = {
     admin: await addKey(app.ctx, 'admin', ['*']),
@@ -52,10 +53,10 @@ export async function server(owner: 'mizan' | 'gmes' = 'mizan'): Promise<TestSer
 
 let seq = 0;
 /** A master-data snapshot from Mizan as the link sends it. */
-export function snapshot(type: 'eco.item.v1' | 'eco.warehouse.v1', data: Record<string, unknown>, id?: string) {
+export function snapshot(type: 'eco.item.v1' | 'eco.warehouse.v1' | 'eco.employee.v1' | 'eco.attendance_day.v1', data: Record<string, unknown>, id?: string, source = MIZAN_SOURCE) {
   seq++;
   return {
-    specversion: '1.0', id: id ?? uuidv7(Date.UTC(2026, 8, 27) + seq, new Uint8Array(10).fill(seq & 0xff)), source: MIZAN_SOURCE, type,
+    specversion: '1.0', id: id ?? uuidv7(Date.UTC(2026, 8, 27) + seq, new Uint8Array(10).fill(seq & 0xff)), source, type,
     subject: `${type.split('.')[1]}/${data.id}`, time: '2026-09-27T08:00:00.000Z', datacontenttype: 'application/json', ecoseq: seq,
     ecocorrelation: `${type.split('.')[1]}/${data.id}`, data,
   };
@@ -71,11 +72,17 @@ export const warehouse = (localId: number, code: string, extra: Record<string, u
 });
 
 /** A server with steel (RM), a chair (FG) and the MAIN warehouse mirrored from Mizan. */
-export async function stocked(): Promise<TestServer & { steel: string; chair: string; main: string }> {
-  const s = await server('mizan');
+export async function stocked(person: 'hr' | 'none' = 'none'): Promise<TestServer & { steel: string; chair: string; main: string }> {
+  const s = await server('mizan', person);
   const r = await s.call('POST', '/eco/v1/inbox', {
     events: [snapshot('eco.item.v1', item(1, 'RM-STEEL', { base_uom: 'KG' })), snapshot('eco.item.v1', item(2, 'FG-CHAIR')), snapshot('eco.warehouse.v1', warehouse(1, 'MAIN'))],
   }, s.keys.link);
   if (r.body.results.some((x: any) => x.result !== 'applied')) throw new Error(JSON.stringify(r.body));
   return { ...s, steel: mizanId(COMPANY, 'item', 1), chair: mizanId(COMPANY, 'item', 2), main: mizanId(COMPANY, 'warehouse', 1) };
 }
+
+/** An employee snapshot as the HR system publishes it. */
+export const employee = (code: string, extra: Record<string, unknown> = {}) => ({
+  id: hrId(COMPANY, 'employee', code), code, employment_status: 'Active', active: true, version: 1,
+  origin: { app: 'hr', type: 'employee', key: code }, ...extra,
+});

@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import { zAckV1 } from './ack.js';
 import { zEnvelope } from './envelope.js';
-import { zItemV1, zWarehouseV1 } from './master.js';
+import { zAttendanceDayV1, zEmployeeV1, zItemV1, zWarehouseV1 } from './master.js';
 import { zMaterialConsumedV1, zProductionCompletedV1, zProductionScrappedV1, zWorkOrderClosedV1 } from './mes.js';
 
 export * from './quantity.js';
@@ -18,6 +18,8 @@ export const CONTRACTS = {
   'eco.ack.v1': zAckV1,
   'eco.item.v1': zItemV1,
   'eco.warehouse.v1': zWarehouseV1,
+  'eco.employee.v1': zEmployeeV1,
+  'eco.attendance_day.v1': zAttendanceDayV1,
   'mes.material.consumed.v1': zMaterialConsumedV1,
   'mes.production.completed.v1': zProductionCompletedV1,
   'mes.production.scrapped.v1': zProductionScrappedV1,

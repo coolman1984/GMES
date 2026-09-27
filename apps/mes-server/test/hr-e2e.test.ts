@@ -1,0 +1,108 @@
+/**
+ * End to end, black box: the REAL HR-System (Python, pinned by scripts/fetch-hr.sh) processes the
+ * synthetic workforce files and publishes through its own eco_publisher.py to a real manufacturing
+ * server over HTTP. Covers docs/ecosystem/05 scenario S9 (who worked, and may they work).
+ */
+import assert from 'node:assert/strict';
+import { execFile, execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { after, before, describe, test } from 'node:test';
+import { hrId, newUuidv7 } from '@eco/contracts';
+import { buildApp, type App } from '../src/app.js';
+import { addKey } from '../src/modules/system/index.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const HR = [process.env.HR_DIR, resolve(here, '../../../.cache/hr-system'), resolve(here, '../../../../hr-system')]
+  .find((d) => d && existsSync(join(d, 'eco_publisher.py')));
+const PY = process.env.PYTHON ?? 'python3';
+if (!HR && process.env.ECO_E2E_REQUIRED === '1') throw new Error('ECO_E2E_REQUIRED=1 but no HR-System checkout: run scripts/fetch-hr.sh');
+
+describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-System checkout (run scripts/fetch-hr.sh or set HR_DIR)' }, () => {
+  const company = newUuidv7();
+  const hrData = mkdtempSync(join(tmpdir(), 'hr-e2e-'));
+  const mesDb = join(mkdtempSync(join(tmpdir(), 'gmes-hr-e2e-')), 'gmes.db');
+  let app: App;
+  let port = 0;
+  let hrKey = '';
+  let opKey = '';
+  let adminKey = '';
+
+  const startMes = async () => {
+    app = await buildApp({ dbFile: mesDb, config: { companyId: company, node: 'plant-1', timeZone: 'Africa/Cairo', productionDayStart: '07:00', ownership: { item: 'gmes', warehouse: 'gmes', person: 'hr' } } });
+    await app.http.listen({ port, host: '127.0.0.1' });
+    port = (app.http.server.address() as { port: number }).port;
+  };
+  const hr = (code: string) => execFileSync(PY, ['-c', code], { cwd: HR!, env: { ...process.env, EXCEL_APP_DATA_DIR: hrData, PYTHONPATH: join(HR!, 'vendor.zip') }, encoding: 'utf8' });
+  // Asynchronous on purpose: the manufacturing server lives in THIS process, and a synchronous child
+  // process would freeze the very event loop that must answer the publisher (found the hard way: a timeout).
+  const publish = () =>
+    new Promise<any>((ok, fail) =>
+      execFile(PY, ['eco_publisher.py', '--once'], {
+        cwd: HR!, encoding: 'utf8',
+        env: { ...process.env, EXCEL_APP_DATA_DIR: hrData, PYTHONPATH: join(HR!, 'vendor.zip'), ECO_COMPANY_ID: company, ECO_GMES_URL: `http://127.0.0.1:${port}`, ECO_GMES_KEY: hrKey },
+      }, (err, stdout, stderr) => (err ? fail(new Error(stderr || err.message)) : ok(JSON.parse(stdout.trim().split('\n').at(-1)!)))),
+    );
+  const call = async (method: string, path: string, body?: unknown, key = adminKey) => {
+    const r = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { 'content-type': 'application/json', 'x-eco-key': key }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, body: await r.json() };
+  };
+
+  before(async () => {
+    await startMes();
+    hrKey = await addKey(app.ctx, 'hr-system', ['eco.inbox.write']);
+    opKey = await addKey(app.ctx, 'station-1', ['exe.orders.write', 'exe.orders.read']);
+    adminKey = await addKey(app.ctx, 'admin', ['*']);
+    const c = 'inputs/hr-factory-synthetic-dataset/01_CLEAN_BASELINE/';
+    hr(`import engine; engine.process_file('${c}05_Time_Attendance_Leave.xlsx', auxiliary_paths={'employee': '${c}02_Employee_Master.xlsx', 'roster': '${c}06_Shifts_Overtime.xlsx', 'leave': '${c}05_Time_Attendance_Leave.xlsx'})`);
+  });
+  after(async () => app?.close());
+
+  test('the contract HR validates against is byte for byte the one generated here (no drift)', () => {
+    const generated = resolve(here, '../../../packages/eco-contracts/schemas');
+    for (const f of readdirSync(join(HR!, 'eco_schemas')).filter((n) => n.endsWith('.schema.json'))) {
+      assert.equal(readFileSync(join(HR!, 'eco_schemas', f), 'utf8'), readFileSync(join(generated, f), 'utf8'), `${f} drifted`);
+    }
+  });
+
+  test('HR publishes; manufacturing mirrors every confirmed employee under the shared id', async () => {
+    const r = await publish();
+    assert.equal(r.stopped_by, undefined);
+    assert.equal(r.delivered, 400);
+    const employees = (await call('GET', '/api/employees')).body;
+    assert.equal(employees.length, 200);
+    assert.equal(employees.find((e: any) => e.code === 'E000001').id, hrId(company, 'employee', 'E000001'));
+    assert.equal((await publish()).sent, 0, 'nothing changed, nothing sent');
+  });
+
+  test('production is booked only by employees HR knows; the booked identity is HR\'s', async () => {
+    const item = (await call('POST', '/api/items', { code: 'FG', nameEn: 'FG', nameAr: 'FG' })).body.id;
+    const wh = (await call('POST', '/api/warehouses', { code: 'W', nameEn: 'W', nameAr: 'W' })).body.id;
+    const wo = (await call('POST', '/api/work-orders', { commandId: 'hr-e2e-create', itemId: item, plannedQty: '3', warehouseId: wh }, opKey)).body.id;
+    const ok = await call('POST', `/api/work-orders/${wo}/complete`, { commandId: 'hr-e2e-done-1', qty: '1', person: { id: hrId(company, 'employee', 'E000001'), code: 'E000001' } }, opKey);
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    const nobody = await call('POST', `/api/work-orders/${wo}/complete`, { commandId: 'hr-e2e-done-2', qty: '1', person: { id: hrId(company, 'employee', 'E999999'), code: 'E999999' } }, opKey);
+    assert.equal(nobody.body.error.code, 'person.unknown');
+  });
+
+  test('manufacturing down while HR works: HR keeps its outbox, then delivers once, without duplicates', async () => {
+    await app.close();
+    hr(`import engine; engine.process_file('sample/HR_Attendance_Delta_Demo.xlsx')`); // HR keeps working: a correction + a new day
+    const down = await publish();
+    assert.match(down.stopped_by ?? '', /unreachable/);
+    assert.ok(down.outbox.pending >= 1);
+    await startMes(); // same database, same port
+    const up = await publish();
+    assert.equal(up.stopped_by, undefined);
+    assert.equal(up.outbox.pending ?? 0, 0);
+    assert.equal((await call('GET', '/api/employees')).body.length, 200, 'no employee duplicated');
+    const again = await publish();
+    assert.equal(again.sent, 0);
+    const health = (await call('GET', '/api/system/health')).body;
+    for (const [mod, checks] of Object.entries(health) as [string, { id: string; ok: boolean }[]][]) {
+      for (const c of checks) assert.ok(c.ok || c.id === 'no_parked_events', `${mod}.${c.id}`);
+    }
+  });
+});
