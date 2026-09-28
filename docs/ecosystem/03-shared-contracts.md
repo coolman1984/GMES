@@ -68,9 +68,9 @@
 |---|---|---|---|---|
 | `mes.work_order.released.v1` | work_order{id, code, item_id, planned_qty, line_id}, production_date | التصنيع | المحاسبة (اختياري) | مسودة |
 | **`mes.material.consumed.v1`** | work_order{id, code, item_id, planned_qty}, item{id, code}, qty, warehouse{id, code}, lot_no?, station?, performed_by{user, person?}, production_date, shift?, ledger_seq | التصنيع | المحاسبة → صرف للإنتاج بمتوسط التكلفة (مدين WIP / دائن المخزون) | **مُنفَّذ** |
-| **`mes.production.completed.v1`** | work_order{…, completed_qty_after, is_final}, item, qty, warehouse, lot_no?, performed_by, production_date, shift?, ledger_seq | التصنيع | المحاسبة → استلام منتج تام بتكلفة WIP الفعلية (مدين المخزون / دائن WIP) | **مُنفَّذ** |
-| `mes.production.scrapped.v1` | work_order, qty, reason_code, op_seq | التصنيع | المحاسبة (لاحقًا: تحميل الفاقد) | مُسجَّل في التصنيع، **غير مُرحّل** في v1 (الفاقد الطبيعي يُحمّل على الوحدات الجيدة — ADR-019) |
-| **`mes.work_order.closed.v1`** | work_order{…, completed_qty, scrapped_qty}, performed_by, production_date, ledger_seq | التصنيع | المحاسبة → ما تبقى في WIP للأمر (فاقد متأخر، فروق تقريب) يُرحّل لحساب انحرافات الإنتاج بقيد يومية | **مُنفَّذ** |
+| **`mes.production.completed.v1`** | work_order{…, completed_qty_after, is_final}, item, qty, warehouse, lot_no?, station?, performed_by, production_date, shift?, ledger_seq | التصنيع | المحاسبة → استلام منتج تام بتكلفة WIP الفعلية (مدين المخزون / دائن WIP) | **مُنفَّذ** |
+| `mes.production.scrapped.v1` | work_order, qty, reason_code, op_seq, station? | التصنيع | المحاسبة (لاحقًا: تحميل الفاقد) | مُسجَّل في التصنيع، **غير مُرحّل** في v1 (الفاقد الطبيعي يُحمّل على الوحدات الجيدة — ADR-019) |
+| **`mes.work_order.closed.v1`** | work_order{…, completed_qty, scrapped_qty}, station?, performed_by, production_date, ledger_seq | التصنيع | المحاسبة → ما تبقى في WIP للأمر (فاقد متأخر، فروق تقريب) يُرحّل لحساب انحرافات الإنتاج بقيد يومية | **مُنفَّذ** |
 | `mes.quality.hold.v1` / `.released.v1` | target (unit/lot/wo), reason, disposition | التصنيع | المحاسبة (حجز رصيد)، الثري دي (لون) | مسودة |
 | `mes.equipment.state.v1` | equipment_id, state (run/idle/down/setup/planned), since, reason? | التصنيع | الثري دي (عرض حي) | مسودة |
 | `acc.production.costed.v1` | work_order_id, value_consumed, value_relieved, unit_cost | المحاسبة | التصنيع (عرض) | مسودة |

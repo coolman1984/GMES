@@ -3,6 +3,9 @@ import { after, before, describe, test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { parseQty, validateEvent } from '@eco/contracts';
 import { productionDate } from '../src/kernel/clock.js';
+import { createHash } from 'node:crypto';
+import { stable } from '../src/kernel/commands.js';
+import { GENESIS, lineHash } from '../src/modules/exe/ledger.js';
 import { COMPANY, item, server, snapshot, stocked, warehouse, type TestServer } from './helpers.js';
 
 describe('ownership of master data (docs/ecosystem/02)', () => {
@@ -150,6 +153,18 @@ describe('the ledger is tamper-evident', () => {
     const health = (await s.call('GET', '/api/system/health')).body;
     assert.equal(health.exe.find((c: any) => c.id === 'ledger_chain').ok, false);
     await s.close();
+  });
+});
+
+describe('a field added to the ledger later leaves every older line valid', () => {
+  test('a line without a station hashes exactly as before the station existed; with one, the station is sealed in', () => {
+    const row = { seq: 1, id: 'x', txn_type: 'COMPLETE', command_id: 'c', work_order_id: 'w', item_id: 'i', warehouse_id: 'h', qty: 1000,
+      lot_no: null, reason_code: null, user_name: 'u', person_id: null, production_date: '2026-09-28', shift_code: 'A', occurred_at: 't' };
+    const before = createHash('sha256').update(GENESIS + '|' + stable(row)).digest('hex'); // the formula of the lines already written
+    assert.equal(lineHash(GENESIS, { ...row, station_code: null }), before);
+    const sealed = lineHash(GENESIS, { ...row, station_code: 'ST20' });
+    assert.notEqual(sealed, before);
+    assert.notEqual(lineHash(GENESIS, { ...row, station_code: 'ST21' }), sealed, 'a changed station breaks the chain');
   });
 });
 

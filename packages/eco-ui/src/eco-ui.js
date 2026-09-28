@@ -1468,12 +1468,12 @@ export function createShell(opts) {
     if (!open.has(code)) {
       if (open.size >= o.maxTabs) { toast({ kind: "warn", text: T("too_many_tabs", { n: o.maxTabs }) }); return null; }
       const view = h("section", { class: "eco-view", "data-code": code, hidden: true });
-      const entry = { view, inst: null };
+      const entry = { view, inst: null, ready: false };  // ready: built and shown; only then does activate() call onActivate
       open.set(code, entry);
       views.append(view);
       try { entry.inst = sc.create({ shell: api, params, code }); }
       catch (e) { entry.inst = { el: empty({ icon: "x-octagon", title: String(e.message || e) }) }; }
-      Promise.resolve(entry.inst).then((inst) => { entry.inst = inst; clear(view, inst.el); if (active === code) inst.onActivate && inst.onActivate(params); })
+      Promise.resolve(entry.inst).then((inst) => { entry.inst = inst; entry.ready = true; clear(view, inst.el); if (active === code) inst.onActivate && inst.onActivate(params); })
         .catch((e) => clear(view, empty({ icon: "x-octagon", title: String(e.message || e) })));
       if (code !== o.home) prefs.set(recentKey, [code].concat(prefs.get(recentKey, []).filter((c) => c !== code)).slice(0, 8));
     }
@@ -1484,7 +1484,7 @@ export function createShell(opts) {
     active = code;
     for (const [c, e] of open) e.view.hidden = c !== code;
     const e = open.get(code);
-    if (e && e.inst && e.inst.onActivate) e.inst.onActivate(params);
+    if (e && e.ready && e.inst.onActivate) e.inst.onActivate(params);
     drawTabs(); drawNav();
     if (location.hash !== "#" + code) history.replaceState(null, "", "#" + code);
     document.title = o.screens[code].title + " · " + o.product.name;

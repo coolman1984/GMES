@@ -194,3 +194,20 @@
 - **Discovery:** the kit's light "modern" tokens come after the dark classic ones in the file; with equal specificity the
   light values would win in dark mode. **Fix:** the dark modern block uses one more attribute (`[data-look][data-theme]`) and
   redefines every colour. **Lesson:** in a token file, order is a rule too: write down which block must win and why.
+
+## Follow-up — the station is kept, and a screen hears "activated" once (2026-09-28, review of PR #3)
+- **Symptom (review):** a booking checked the person's qualification at a station, then forgot the station: the ledger
+  line and the published fact did not carry it, so nobody could later see where the work was done or audit the check.
+  **Cause:** `station` was added to the command for the check only. **Fix:** ledger column `station_code` (migration
+  `003_ledger_station`) and an optional `station` in the four production facts (additive: same `v1`). **Lesson:** a value a
+  decision was based on is part of the fact; record it with the fact.
+- **Discovery:** the ledger's hash chain covers a fixed field list; adding a field to it would have changed the hash of
+  every line already written and made `verify()` call the whole history tampered. **Fix:** fields added later join the hash
+  only when set (`LATER_FIELDS` in `exe/ledger.ts`), so a line without a station hashes exactly as before, and a station,
+  once written, is sealed. A test pins the old formula. **Lesson:** a new field in a hash chain must not change old links.
+- **Symptom (review, confirmed in a real browser):** opening a screen called its `onActivate` twice (B: 2 on open, 3 after
+  one return). **Cause:** `activate()` called it right after the build, and so did the promise that shows the built screen.
+  **Fix:** an entry is `ready` only once shown; `activate()` calls `onActivate` only for a ready screen. Now 1, then 2.
+  **Lesson:** when two paths can finish one job, give the job to exactly one of them. HR-System must re-copy the kit.
+- 4 new planted bugs (station in ledger, station in fact, old hashes unchanged, one activation).
+

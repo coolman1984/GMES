@@ -86,6 +86,14 @@ describe('the interface kit and the screens (UX phase, ADR-029)', () => {
     for (const v of ['--eco-app-bg', '--eco-surface', '--eco-text', '--eco-line', '--eco-grid-row-sel', '--eco-top-bg']) assert.match(dark, new RegExp(v + ':'), v);
   });
 
+  test('a screen hears "activated" once when it opens, then once per return to its tab', () => {
+    const kit = read(join(KIT_DIR, 'eco-ui.js'));
+    const from = kit.indexOf('function activate(');
+    const activate = kit.slice(from, kit.indexOf('\n  function ', from + 1));
+    assert.match(activate, /e && e\.ready && e\.inst\.onActivate/, 'activate() waits until the screen is built and shown');
+    assert.match(kit, /entry\.inst = inst; entry\.ready = true;/, 'the first activation comes from the build, once');
+  });
+
   test('the kit knows nothing about manufacturing or people: products build their screens from it', () => {
     const kit = read(join(KIT_DIR, 'eco-ui.js'));
     assert.doesNotMatch(kit, /work.?order|employee|EXE\d|MDM\d|\/api\//i);

@@ -36,6 +36,10 @@ const MUTATIONS = [
   { name: 'an operator is given every permission', file: 'apps/mes-server/src/modules/system/roles.ts', from: "OPERATOR: [...READ, 'exe.orders.write', 'oee.stops.write'],", to: "OPERATOR: ['*'],", suite: 'apps/mes-server' },
   { name: 'a line may be stopped twice at the same time', file: 'apps/mes-server/src/modules/oee/index.ts', from: 'if (same) conflict(', to: 'if (false) conflict(', suite: 'apps/mes-server' },
   { name: 'a work order may run on a line that does not exist', file: 'apps/mes-server/src/modules/exe/index.ts', from: "if (!line || line.type !== 'line') fail('line.unknown'", to: "if (false) fail('line.unknown'", suite: 'apps/mes-server' },
+  { name: 'the ledger forgets the station', file: 'apps/mes-server/src/modules/exe/index.ts', from: 'station_code: input.station ?? null,', to: 'station_code: null,', suite: 'apps/mes-server' },
+  { name: 'the published fact forgets the station', file: 'apps/mes-server/src/modules/exe/index.ts', from: "...(input.station ? { station: input.station } : {}),", to: '', suite: 'apps/mes-server' },
+  { name: 'a later ledger field changes the hash of older lines', file: 'apps/mes-server/src/modules/exe/ledger.ts', from: '...LATER_FIELDS.filter((f) => row[f] != null).map((f) => [f, row[f]]),', to: '...LATER_FIELDS.map((f) => [f, row[f] ?? null]),', suite: 'apps/mes-server' },
+  { name: 'a screen hears "activated" twice when it opens', file: 'packages/eco-ui/src/eco-ui.js', from: 'if (e && e.ready && e.inst.onActivate)', to: 'if (e && e.inst && e.inst.onActivate)', suite: 'apps/mes-server' },
   { name: 'transient failures advance the cursor', file: 'apps/link-mizan/src/link.ts', from: 'if (!(err instanceof BusinessError)) throw err;', to: 'if (!(err instanceof BusinessError) && !(err instanceof TransientError)) throw err;', suite: 'apps/link-mizan' },
 ];
 
