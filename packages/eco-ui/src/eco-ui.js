@@ -42,7 +42,8 @@ const TEXT = {
     from: "From", to: "To", min: "Min", max: "Max", blank: "(Blank)", filters: "Filters",
     group_by: "Group by this column", ungroup: "No grouping", grouped_by: "Grouped by {label}", expand_groups: "Expand all groups", collapse_groups: "Collapse all groups",
     all: "All", what_to_do: "What to do", open: "Open", all_clear: "Nothing needs attention", show_details: "Show details",
-    sev_error: "Must fix", sev_warning: "Check", sev_tip: "Tip",
+    sev_error: "Must fix", sev_warning: "Check", sev_tip: "Tip", fit_columns: "Fit columns to content",
+    next: "Next", back: "Back", done: "Done", skip: "Skip the tour", step_of: "Step {n} of {total}", not_found_step: "This step is not on the screen right now.",
   },
   ar: {
     close: "إغلاق", cancel: "إلغاء", ok: "موافق", save: "حفظ", yes: "نعم", no: "لا", apply: "تطبيق", reset: "إعادة ضبط", delete: "حذف",
@@ -71,7 +72,8 @@ const TEXT = {
     from: "من", to: "إلى", min: "الأدنى", max: "الأعلى", blank: "(فارغ)", filters: "التصفيات",
     group_by: "التجميع حسب هذا العمود", ungroup: "بدون تجميع", grouped_by: "مجمّع حسب {label}", expand_groups: "فتح كل المجموعات", collapse_groups: "طي كل المجموعات",
     all: "الكل", what_to_do: "ما المطلوب", open: "فتح", all_clear: "لا يوجد ما يحتاج انتباهك", show_details: "عرض التفاصيل",
-    sev_error: "يجب إصلاحه", sev_warning: "للمراجعة", sev_tip: "نصيحة",
+    sev_error: "يجب إصلاحه", sev_warning: "للمراجعة", sev_tip: "نصيحة", fit_columns: "ملاءمة الأعمدة للمحتوى",
+    next: "التالي", back: "السابق", done: "تم", skip: "تخطي الجولة", step_of: "الخطوة {n} من {total}", not_found_step: "هذه الخطوة غير ظاهرة على الشاشة الآن.",
   },
 };
 let LANG = "en";
@@ -281,15 +283,16 @@ export function props(pairs, { cols = 1 } = {}) {
 export function section(title, body, { actions, cls } = {}) {
   return h("section", { class: ["eco-section", cls] }, h("header", { class: "eco-section-head" }, h("h3", { text: title }), actions ? h("div", { class: "eco-section-actions" }, actions) : null), body);
 }
-export function card({ title, subtitle, icon: ic, actions, body, cls, footer } = {}) {
+export function card({ title, subtitle, icon: ic, actions, body, cls, footer, tone } = {}) {
   return h("div", { class: ["eco-card", cls] },
-    title ? h("header", { class: "eco-card-head" }, ic ? h("span", { class: "eco-card-icon" }, icon(ic, 16)) : null,
+    title ? h("header", { class: "eco-card-head" }, ic ? h("span", { class: ["eco-card-icon", tone && "eco-tone-" + tone] }, icon(ic, 16)) : null,
       h("div", { class: "eco-card-titles" }, h("h3", { text: title }), subtitle ? h("span", { class: "eco-muted", text: subtitle }) : null),
       actions ? h("div", { class: "eco-card-actions" }, actions) : null) : null,
     h("div", { class: "eco-card-body" }, body), footer ? h("footer", { class: "eco-card-foot" }, footer) : null);
 }
-export function kpi({ label, value, unit, delta, deltaKind, hint, icon: ic, status, spark } = {}) {
-  return h("div", { class: ["eco-kpi", status && "eco-st-" + status] },
+/** tone: 1..5 = the ecosystem's extra colours (purple, blue, pink, amber, teal), for icons that are not a status */
+export function kpi({ label, value, unit, delta, deltaKind, hint, icon: ic, status, spark, tone } = {}) {
+  return h("div", { class: ["eco-kpi", status && "eco-st-" + status, tone && "eco-tone-" + tone] },
     h("div", { class: "eco-kpi-top" }, ic ? h("span", { class: "eco-kpi-icon" }, icon(ic, 15)) : null, h("span", { class: "eco-kpi-label", text: label })),
     h("div", { class: "eco-kpi-value" }, h("bdi", { dir: "ltr", text: value }), unit ? h("span", { class: "eco-kpi-unit", text: unit }) : null),
     h("div", { class: "eco-kpi-foot" }, delta ? h("span", { class: "eco-kpi-delta eco-" + (deltaKind || "neutral"), text: delta }) : null, hint ? h("span", { class: "eco-muted", text: hint }) : null,
@@ -400,6 +403,83 @@ export function advice({ severity = "warning", title, tags = [], body, fix, basi
   box.append(head, detail);
   draw();
   return box;
+}
+
+// ------------------------------------------------------------------ side panel and guided tours (the guide system)
+let DRAWER = null;
+/** A panel that slides in from the reading end (right in English, left in Arabic) beside the work; Esc closes it.
+ *  Only one is open at a time. Returns {el, close, setBody(node), setTitle(text)}. */
+export function drawer({ title, subtitle, icon: ic, body, width = 440, onClose, actions } = {}) {
+  if (DRAWER) DRAWER.close();
+  const titleEl = h("h2", { text: title || "" }), subEl = h("span", { class: "eco-muted", text: subtitle || "" });
+  const bodyEl = h("div", { class: "eco-drawer-body" }, body);
+  const panel = h("aside", { class: "eco-drawer", role: "complementary", "aria-label": title || "", style: { width: `min(${width}px, 100vw)` } },
+    h("header", { class: "eco-drawer-head" }, ic ? h("span", { class: "eco-dialog-icon" }, icon(ic, 18)) : null, h("div", { class: "eco-dialog-titles" }, titleEl, subEl),
+      actions || null, button({ icon: "x", kind: "ghost", title: T("close"), onClick: () => api.close() })), bodyEl);
+  const onKey = (ev) => { if (ev.key === "Escape" && !document.querySelector(".eco-shade")) api.close(); };
+  const api = {
+    el: panel,
+    close() { panel.classList.add("is-leaving"); setTimeout(() => panel.remove(), 160); document.removeEventListener("keydown", onKey); if (DRAWER === api) DRAWER = null; onClose && onClose(); },
+    setBody(node) { clear(bodyEl, node); bodyEl.scrollTop = 0; },
+    setTitle(t, sub) { titleEl.textContent = t || ""; subEl.textContent = sub || ""; },
+  };
+  document.addEventListener("keydown", onKey);
+  layer().append(panel);
+  DRAWER = api;
+  return api;
+}
+export const openDrawer = () => DRAWER;
+
+/**
+ * A guided tour: a spotlight on one element at a time with its explanation, across screens.
+ * steps: [{target: css selector | () => element, title, text, before: async () => {} (open a screen, fill a field)}]
+ * A step whose element does not appear within 4 s says so and lets the person continue.
+ */
+export function tour(steps, { onEnd } = {}) {
+  let i = 0, ended = false;
+  const shade = h("div", { class: "eco-tour-spot" });
+  const card = h("div", { class: "eco-tour-card", role: "dialog", "aria-live": "polite" });
+  const wrap = h("div", { class: "eco-tour" }, shade, card);
+  layer().append(wrap);
+  const find = async (t) => {
+    for (let k = 0; k < 20; k++) {
+      const el = typeof t === "function" ? t() : t ? document.querySelector(t) : null;
+      if (el && el.getClientRects().length) return el;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return null;
+  };
+  function end() { if (ended) return; ended = true; wrap.remove(); document.removeEventListener("keydown", onKey, true); removeEventListener("resize", place); onEnd && onEnd(i >= steps.length - 1); }
+  let current = null;
+  function place() {
+    const r = current ? current.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 3, width: 0, height: 0 };
+    Object.assign(shade.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px", opacity: current ? "1" : "0" });
+    const cw = card.offsetWidth || 340, ch = card.offsetHeight || 160;
+    let top = r.top + r.height + 14, left = isRTL() ? r.left + r.width - cw : r.left;
+    if (top + ch > innerHeight - 10) top = Math.max(10, r.top - ch - 14);
+    left = Math.max(10, Math.min(innerWidth - cw - 10, left));
+    Object.assign(card.style, { top: top + "px", left: left + "px" });
+  }
+  async function show(n) {
+    i = n;
+    const s = steps[i];
+    clear(card, h("div", { class: "eco-tour-step", text: T("step_of", { n: i + 1, total: steps.length }) }), h("strong", { text: s.title || "" }), h("span", { class: "eco-muted", text: T("loading") }));
+    if (s.before) { try { await s.before(); } catch (_) { /* the step still shows its text */ } }
+    current = await find(s.target);
+    if (ended) return;
+    current && current.scrollIntoView({ block: "center", inline: "nearest" });
+    clear(card, h("div", { class: "eco-tour-step", text: T("step_of", { n: i + 1, total: steps.length }) }), h("strong", { text: s.title || "" }),
+      h("p", { text: s.text || "" }), !current && s.target ? h("p", { class: "eco-hint", text: T("not_found_step") }) : null,
+      h("div", { class: "eco-tour-actions" }, button({ label: T("skip"), kind: "ghost", size: "sm", onClick: end }), h("span", { class: "eco-grow" }),
+        i > 0 ? button({ label: T("back"), size: "sm", onClick: () => show(i - 1) }) : null,
+        button({ label: i < steps.length - 1 ? T("next") : T("done"), kind: "primary", size: "sm", onClick: () => (i < steps.length - 1 ? show(i + 1) : end()) })));
+    requestAnimationFrame(place);
+  }
+  const onKey = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); end(); } };
+  document.addEventListener("keydown", onKey, true);
+  addEventListener("resize", place);
+  show(0);
+  return { end, go: show };
 }
 
 // ------------------------------------------------------------------ form controls
@@ -817,7 +897,8 @@ export function grid(columns, opts = {}) {
       c.filter === false ? null : h("button", { type: "button", class: ["eco-gh-filter", filters[c.key] && "is-on"], title: T("filter") + (filters[c.key] ? ": " + filterText(c, filters[c.key]) : ""),
         "aria-label": T("filter"), tabindex: "-1", onclick: (ev) => { ev.stopPropagation(); filterMenu(ev.currentTarget, c); } }, icon("filter", 12)),
       h("button", { type: "button", class: "eco-gh-menu", "aria-label": T("more"), tabindex: "-1", onclick: (ev) => { ev.stopPropagation(); columnMenu(ev.currentTarget, c); } }, icon("chev-down", 12)),
-      h("span", { class: "eco-gh-resize", onpointerdown: (ev) => resize(ev, c), onclick: (ev) => ev.stopPropagation() }));
+      h("span", { class: "eco-gh-resize", onpointerdown: (ev) => resize(ev, c), onclick: (ev) => ev.stopPropagation(),
+        ondblclick: (ev) => { ev.stopPropagation(); fit([c], true); persist(); drawHead(); drawBody(true); } }));
       hc.addEventListener("click", (ev) => { if (ev.target.closest(".eco-gh-menu, .eco-gh-filter, .eco-gh-resize")) return; toggleSort(c.key, ev.shiftKey); });
       hc.addEventListener("contextmenu", (ev) => { ev.preventDefault(); columnMenu({ x: ev.clientX, y: ev.clientY }, c); });
       hc.addEventListener("dragstart", (ev) => { ev.dataTransfer.setData("text/eco-col", c.key); });
@@ -908,7 +989,7 @@ export function grid(columns, opts = {}) {
   }
   function persist() {
     if (!o.layoutKey) return;
-    prefs.set("grid:" + o.layoutKey, { order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.map((c) => [c.key, c.width])),
+    prefs.set("grid:" + o.layoutKey, { order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.filter((c) => c.userWidth).map((c) => [c.key, c.width])),
       frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort, group: groupKey });
   }
   function toggleSort(key, add) {
@@ -917,12 +998,33 @@ export function grid(columns, opts = {}) {
     sort = add ? sort.filter((x) => x.key !== key).concat(next ? [next] : []) : next ? [next] : [];
     persist(); all();
   }
+  // Excel-like auto-fit: a column is as wide as its header and its widest value (sampled), within limits. A width the
+  // person set by dragging is kept (saved layout) unless they ask to fit again (double-click the border, or the menu).
+  let measure = null;
+  function textWidth(t, bold) {
+    measure = measure || document.createElement("canvas").getContext("2d");
+    const cs = getComputedStyle(root.isConnected ? root : document.body);  // a grid not on the page yet measures with the page font
+    measure.font = (bold ? "600 " : "400 ") + cs.fontSize + " " + cs.fontFamily;
+    return measure.measureText(t).width;
+  }
+  function fit(list, force) {
+    const sample = view.length > 400 ? view.filter((_, i) => i % Math.ceil(view.length / 400) === 0) : view;
+    for (const c of list) {
+      if ((c.userWidth && !force) || c.fit === false) continue;
+      const head = textWidth(c.label || "", true) + 40;  // + sort mark, filter and menu buttons
+      let body = 0;
+      for (const r of sample) body = Math.max(body, textWidth(text(c, r), false));
+      const extra = c.type === "status" ? 44 : c.type === "progress" ? 60 : c.render ? 36 : 24;
+      c.width = Math.round(Math.min(c.maxWidth || 420, Math.max(c.minWidth || 56, head, body + extra)));
+      if (force) c.userWidth = true;
+    }
+  }
   function resize(ev, c) {
     ev.preventDefault(); ev.stopPropagation();
     const start = ev.clientX, from = c.width, rtl = isRTL(), el = ev.currentTarget;
     el.setPointerCapture(ev.pointerId);
     const move = (e) => { c.width = Math.max(44, from + (rtl ? start - e.clientX : e.clientX - start)); drawHead(); drawBody(true); };
-    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); persist(); };
+    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); c.userWidth = true; persist(); };
     el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
   }
   function move(fromKey, toKey) {
@@ -941,6 +1043,7 @@ export function grid(columns, opts = {}) {
       { label: c.frozen ? T("unpin") : T("pin"), icon: "pin", onSelect: () => { c.frozen = !c.frozen; if (c.frozen) { cols = cols.filter((x) => x !== c); const k = cols.filter((x) => x.frozen).length; cols.splice(k, 0, c); } persist(); all(); } },
       { label: T("hide"), icon: "eye", disabled: visible().length <= 1, onSelect: () => { c.hidden = true; persist(); all(); } }, "-",
       { label: T("columns") + "…", icon: "columns", onSelect: () => columnsDialog() },
+      { label: T("fit_columns"), icon: "expand", onSelect: () => { fit(visible(), true); persist(); all(); } },
       { label: T("layout_reset"), icon: "refresh", onSelect: () => api.resetLayout() },
     ], { minWidth: 200 });
   }
@@ -1002,6 +1105,7 @@ export function grid(columns, opts = {}) {
     el: root,
     setRows(next, { keepSelection } = {}) {
       rows = next || []; state = "ready"; stateText = "";
+      if (o.autofit !== false) { compute(); fit(cols); }
       if (!keepSelection) { selected = new Set(); cursor = -1; }
       else { const ids = new Set(rows.map((r) => r[o.rowKey])); selected = new Set([...selected].filter((x) => ids.has(x))); }
       all(); o.onSelect && o.onSelect(api.selected());
@@ -1022,7 +1126,7 @@ export function grid(columns, opts = {}) {
     focus: () => scroller.focus(),
     columnsDialog, layout: () => ({ order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.map((c) => [c.key, c.width])), frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort, group: groupKey }),
     applyLayout(l) { cols = applyLayout(base, l); sort = (l && l.sort) || []; groupKey = (l && l.group) || null; persist(); all(); },
-    resetLayout() { cols = base.map((c) => ({ ...c })); sort = []; groupKey = null; folded.clear(); filters = {}; preset = ""; o.layoutKey && prefs.set("grid:" + o.layoutKey, null); all(); },
+    resetLayout() { cols = base.map((c) => ({ ...c })); sort = []; groupKey = null; folded.clear(); filters = {}; preset = ""; o.layoutKey && prefs.set("grid:" + o.layoutKey, null); if (o.autofit !== false) { compute(); fit(cols); } all(); },
     /** Group the rows by a column (null: no grouping). Remembered with the layout. */
     groupBy(key) { groupKey = key && colOf(key) ? key : null; folded.clear(); cursor = -1; persist(); all(); },
     grouped: () => groupKey, groupLabel: () => (groupKey && colOf(groupKey) ? colOf(groupKey).label : ""),
@@ -1058,7 +1162,7 @@ function applyLayout(base, l) {
   const out = order.concat(rest);
   for (const c of out) {
     if (l.hidden) c.hidden = l.hidden.includes(c.key);
-    if (l.widths && l.widths[c.key]) c.width = l.widths[c.key];
+    if (l.widths && l.widths[c.key]) { c.width = l.widths[c.key]; c.userWidth = true; }
     if (l.frozen) c.frozen = l.frozen.includes(c.key);
   }
   return out.filter((c) => c.frozen).concat(out.filter((c) => !c.frozen));

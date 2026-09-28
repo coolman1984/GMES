@@ -114,6 +114,8 @@
   --eco-radius-lg: 6px;
   --eco-radius-xl: 8px;
   --eco-radius-pill: 3px;
+  /* extra colours for icons and charts that are not a status (Mizan's "graph" accents) */
+  --eco-tone-1: #7c3aed; --eco-tone-2: #2563eb; --eco-tone-3: #db2777; --eco-tone-4: #d97706; --eco-tone-5: #0d9488;
   --eco-card-shadow: none;
   --eco-page-pad: 12px;
   --eco-ease: ease;
@@ -304,6 +306,7 @@
   --eco-warn: #fbbf24; --eco-warn-soft: rgba(245, 158, 11, .13);
   --eco-bad: #f87171;  --eco-bad-soft: rgba(239, 68, 68, .13);
   --eco-info: #22d3ee; --eco-info-soft: rgba(34, 211, 238, .12);
+  --eco-tone-1: #a78bfa; --eco-tone-2: #60a5fa; --eco-tone-3: #f472b6; --eco-tone-4: #fbbf24; --eco-tone-5: #2dd4bf;
   --eco-shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
   --eco-card-shadow: 0 1px 2px rgba(0, 0, 0, .4);
   --eco-shadow-pop: 0 2px 4px rgba(0, 0, 0, .35), 0 12px 32px rgba(0, 0, 0, .4);
