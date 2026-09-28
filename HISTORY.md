@@ -242,3 +242,23 @@
   for maps; exhaustive and partial records are different types.
 - **Discovery:** "finished goods waiting" listed main boards (finished at SMD but components, never shipped on their own).
   **Fix:** only products with a packing specification are finished goods for shipping.
+
+## Phase B4 — OEE, reports, handover, labels, plant board, system screens (2026-09-28)
+- **What:** OEE per ISO 22400 from the facts (ADR-037) with the plant's own stop reasons; `rpt` module (daily production,
+  scrap and rework, shift handover with append-only notes and a signed receipt); `lbl` module (ZPL templates, printers on
+  TCP 9100, print and reprint-with-reason log, browser preview with Code 128); backups with a rehearsal (`ops.ts`); device
+  keys. Screens OEE2010, OEE4010, OEE4020, RPT4010, RPT4020, RPT4030, LBL1010, LBL2010, DSH5020, SYS9020, SYS9030, SYS9040,
+  SYS9060, SYS9070, SYS9090, SYS9100; the line board shows real OEE. 9 tests, 10 planted bugs.
+- **Symptom:** the first OEE of the floor test gave 24 minutes of downtime for a 12-minute stop. **Cause:** the line and one
+  of its stations were stopped over the same minutes, and each stoppage was added on its own. **Fix:** downtime is the union
+  of the stop intervals; a planned stop wins over an unplanned one at the same moment. **Lesson:** time is not additive
+  across overlapping records — any duration summed from facts must be merged first.
+- **Discovery:** the old floor test asserted "no OEE until cycle times exist"; the line there HAS a capacity (800 per shift),
+  which is a known pace, so OEE is knowable and is now asserted exactly (A 95.2 %, P 1.3 %, Q 80 %).
+- **Symptom (parse test):** RPT4010 failed to parse with one parenthesis too many. **Cause:** a nested element tree written by
+  hand. **Fix:** counted per line and corrected; the parse test caught it before any browser did. **Lesson:** the parse test
+  earned its keep on its first day.
+- **Discovery:** `VACUUM INTO` works on the read-only connection: it copies the committed snapshot and never blocks the
+  single writer, so a backup does not stop the line.
+- **Discovery:** a test cannot `import` a `.js` browser module from a package without `"type": "module"` (Node reads it as
+  CommonJS); the barcode test loads the screen file as the browser does, through a `data:` URL, so it tests the real file.

@@ -101,9 +101,33 @@ export interface Stoppage {
   minutes: number;
 }
 
+/** OEE of a line for a production day (or one shift of it), ISO 22400. Minutes; percentages 0..100; null = not knowable. */
+export interface OeeFigures {
+  line: string;
+  date: string;
+  shift: string | null;
+  shiftsWorked: string[];
+  plannedMin: number;
+  plannedStopMin: number;
+  busyMin: number;
+  downtimeMin: number;
+  runMin: number;
+  good: number;
+  scrap: number;
+  idealMin: number | null;
+  availability: number | null;
+  performance: number | null;
+  quality: number | null;
+  oee: number | null;
+  /** Stopped minutes by loss category (breakdown, setup, material, quality, planned, other). */
+  losses: Record<string, number>;
+  speedLossMin: number | null;
+}
+
 export interface OeeService {
   /** Stoppages of a production day and/or line, or only the open ones, newest first; open ones have endedAt = null. */
   stoppages(q: { date?: string; line?: string; openOnly?: boolean }): Promise<Stoppage[]>;
+  oee(q: { line: string; date: string; shift?: string }): Promise<OeeFigures>;
 }
 
 /** One step of a routing (engineering). A unit performs it at the station `<line code>-<code>`. */

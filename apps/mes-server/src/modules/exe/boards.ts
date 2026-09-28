@@ -7,7 +7,7 @@ import type { Ctx, RouteKit } from '../../kernel/modules.js';
 
 /**
  * The figures of the boards (the start page and the line board DSH5010), all read from the ledger.
- * Nothing is estimated: OEE needs cycle times, which the plant model does not hold yet, so it is not given;
+ * Nothing is estimated: OEE comes from the OEE module (null parts are shown as "—");
  * the hourly plan exists only when the line has a capacity per shift (8 hours).
  */
 const zDay = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
@@ -49,8 +49,10 @@ export function boardRoutes({ http, require }: RouteKit, ctx: Ctx) {
       lines: await Promise.all(lines.map(async (l) => {
         const stop = openStops.find((s) => s.line === l.code) ?? null;
         const wo = await woView(await current(l.code));
+        const oee = ctx.services.has('oee') ? await ctx.services.get('oee').oee({ line: l.code, date }) : null;
         return { code: l.code, name_en: l.name_en, name_ar: l.name_ar, state: stop ? 'down' : wo ? 'run' : 'idle', stop, workOrder: wo,
-          good: qty(sum('COMPLETE', l.code)), scrap: qty(sum('SCRAP', l.code)) };
+          good: qty(sum('COMPLETE', l.code)), scrap: qty(sum('SCRAP', l.code)),
+          oee: oee && { oee: oee.oee, availability: oee.availability, performance: oee.performance, quality: oee.quality } };
       })),
     };
   });
@@ -82,6 +84,7 @@ export function boardRoutes({ http, require }: RouteKit, ctx: Ctx) {
       hours: hours.map((h) => ({ hour: h.hour, good: qty(h.good), scrap: qty(h.scrap) })),
       good: qty(good), scrap: qty(scrap), planned: qty(planned!.q ?? 0),
       state: openStop ? 'down' : 'run', openStop, stoppages: dayStops, workOrder: await woView(await current(code)),
+      oee: ctx.services.has('oee') ? await ctx.services.get('oee').oee({ line: code, date }) : null,
     };
   });
 }

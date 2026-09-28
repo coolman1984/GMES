@@ -3,7 +3,7 @@
 // reaction has a colour, an icon and large words; a lost connection is a full-width red bar, never silent storage.
 // Every press is a command to the server with its own id; the counters show what the ledger holds, not local counts.
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, ApiError, commandId, hhmm, name, num, session, t } from "../common.js";
+import { api, ApiError, commandId, hhmm, loadStopReasons, name, num, session, stopName, t } from "../common.js";
 // (serial mode: GMES docs/design/05 flow 3 with a routing: scan the unit, then its key parts; FAIL sends it to repair)
 
 const { h } = ui;
@@ -15,7 +15,8 @@ const SCRAP_BY_AREA = {
   LCM: [["panel", "monitor"], ["cosmetic", "eye"], ["function", "x-octagon"], ["contamination", "alert"], ["other", "more"]],
   MAIN: [["function", "x-octagon"], ["cosmetic", "eye"], ["assembly", "wrench"], ["panel", "monitor"], ["other", "more"]],
 };
-const STOP = [["material", "box"], ["breakdown", "x-octagon"], ["changeover", "refresh"], ["quality", "shield"], ["break", "clock"], ["other", "more"]];
+// stop reasons come from the plant's own list (SYS9040); the icon follows the loss category of the reason
+const LOSS_ICON = { breakdown: "x-octagon", setup: "refresh", material: "box", quality: "shield", planned: "clock", other: "more" };
 
 export default function create() {
   const me = session().user;
@@ -83,7 +84,7 @@ export default function create() {
     offline.hidden = S.online;
     buttons.classList.toggle("is-blocked", blocked() || !wo);
     stopBar.hidden = !S.stop;
-    if (S.stop) ui.clear(stopBar, ui.icon("pause", 26), h("b", { text: t("st.stopped_for", { reason: t("stop." + S.stop.reason) }) }), h("span", {}, ui.ltr(hhmm(S.stop.startedAt) + " · " + S.stop.startedBy + (S.stop.station ? "" : " · " + S.stop.line))),
+    if (S.stop) ui.clear(stopBar, ui.icon("pause", 26), h("b", { text: t("st.stopped_for", { reason: stopName(S.stop.reason) }) }), h("span", {}, ui.ltr(hhmm(S.stop.startedAt) + " · " + S.stop.startedBy + (S.stop.station ? "" : " · " + S.stop.line))),
       h("span", { class: "eco-grow" }), h("button", { type: "button", class: "st-resume", onclick: resume }, ui.icon("play", 22), h("span", { text: t("st.resume") })));
     buttons.querySelector(".st-big-stop span").textContent = S.stop ? t("st.resume") : t("st.stop");
     buttons.querySelector(".st-big-stop").disabled = !S.line || blocked();
@@ -107,6 +108,7 @@ export default function create() {
       S.lines = nodes.filter((n) => n.type === "line" && n.active);
       S.allStations = nodes.filter((n) => n.type === "station" && n.active);
       S.areaOf = Object.fromEntries(S.lines.map((l) => [l.code, (nodes.find((n) => n.id === l.parent_id) || {}).code]));
+      S.stopReasons = await loadStopReasons();
     } catch (e) { refused(e, t("scr.MDM1010")); return; }
     if (!S.lines.length) { feedback("warn", t("st.no_lines"), t("hint.no_lines"), "sitemap"); draw(); return; }
     if (!S.lines.some((l) => l.code === S.line)) S.line = S.lines[0].code;
@@ -180,12 +182,13 @@ export default function create() {
   }
   function reasons(kind) {
     if (blocked() || (kind === "scrap" && !S.wo)) return;
-    const list = kind === "scrap" ? SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP : STOP;
+    const list = kind === "scrap" ? SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP
+      : (S.stopReasons || []).filter((r) => r.active).map((r) => [r.code, LOSS_ICON[r.loss] || "more"]);
     const d = ui.dialog({ title: kind === "scrap" ? t("st.scrap_why") : t("st.stop_why"), icon: kind === "scrap" ? "x-octagon" : "pause", width: 720,
       body: h("div", { class: "st-reasons" }, list.map(([r, ic]) => h("button", { type: "button", class: "st-reason st-reason-" + kind, onclick: () => {
         d.close();
         if (kind === "scrap") book("scrap", 1, null, r); else stop(r);
-      } }, ui.icon(ic, 34), h("span", { text: t((kind === "scrap" ? "scrap." : "stop.") + r) })))) });
+      } }, ui.icon(ic, 34), h("span", { text: kind === "scrap" ? t("scrap." + r) : stopName(r) })))) });
     d.el.classList.add("st-dialog");
   }
   async function stop(reason) {
@@ -193,8 +196,8 @@ export default function create() {
     try {
       await api("POST", "/api/stoppages", { commandId: commandId(), line: S.line, station: S.station || null, reason });
       await loadStop();
-      log("warn", "pause", t("st.stop") + " · " + t("stop." + reason));
-      feedback("warn", t("st.stopped_for", { reason: t("stop." + reason) }), t("st.recorded"), "pause");
+      log("warn", "pause", t("st.stop") + " · " + stopName(reason));
+      feedback("warn", t("st.stopped_for", { reason: stopName(reason) }), t("st.recorded"), "pause");
     } catch (e) { refused(e, t("st.stop")); }
     finally { S.busy = false; draw(); }
   }
@@ -205,7 +208,7 @@ export default function create() {
     try {
       await api("POST", `/api/stoppages/${S.stop.id}/end`, { commandId: commandId() });
       await loadStop();
-      log("ok", "play", t("st.resumed") + " · " + t("stop." + reason));
+      log("ok", "play", t("st.resumed") + " · " + stopName(reason));
       feedback("ok", t("st.resumed"), t("st.ready_help"), "play");
     } catch (e) { refused(e, t("st.resume")); }
     finally { S.busy = false; draw(); scan.focus(); }

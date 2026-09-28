@@ -1,8 +1,8 @@
 // DSH5010 Line Board — the TEMPLATE of every TV board: readable across the hall, status first, numbers huge.
 // Everything comes from the ledger and the stoppage facts, refreshed every 30 s. No figure is invented: the hourly plan
-// needs the line's capacity, OEE needs cycle times (not held yet), so they show "—" until they exist.
+// needs the line's capacity, OEE the cycle times of what ran (routings) — without them they show "—".
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, hhmm, name, session, showError, t, today } from "../common.js";
+import { api, hhmm, name, session, showError, t, today, stopName } from "../common.js";
 
 const { h } = ui;
 
@@ -40,7 +40,9 @@ export default function create() {
       kpi(t("bd.plan"), planSoFar === null ? "—" : ui.fmtNumber(planSoFar), planSoFar === null ? null : t("unit.pcs"), null, planSoFar === null ? t("bd.no_capacity") : t("bd.plan_sofar")),
       kpi(t("bd.actual"), ui.fmtNumber(b.good), t("unit.pcs"), "is-accent", t("bd.of_orders", { n: ui.fmtNumber(b.planned) })),
       kpi(t("bd.gap"), gap === null ? "—" : (gap > 0 ? "+" : "") + ui.fmtNumber(gap), gap === null ? null : t("unit.pcs"), gap === null ? null : gap < 0 ? "is-bad" : "is-ok"),
-      kpi(t("bd.oee"), "—", null, null, t("bd.oee_later")),
+      kpi(t("bd.oee"), b.oee && b.oee.oee !== null ? b.oee.oee.toFixed(1) : "—", b.oee && b.oee.oee !== null ? "%" : null,
+        b.oee && b.oee.oee !== null ? (b.oee.oee >= 85 ? "is-ok" : b.oee.oee < 60 ? "is-bad" : null) : null,
+        b.oee && b.oee.oee !== null ? "A " + b.oee.availability + " · P " + b.oee.performance + " · Q " + b.oee.quality : t("bd.oee_unknown")),
       kpi(t("bd.scrap"), scrapPct.toFixed(1), "%", scrapPct > 3 ? "is-bad" : "is-ok", ui.fmtNumber(b.scrap) + " " + t("unit.pcs")));
     const series = [{ label: t("bd.actual"), values: hrs.map((x) => x.good), cls: "eco-chart-good" }];
     if (b.planPerHour) series.unshift({ label: t("bd.plan"), values: hrs.map(() => b.planPerHour), cls: "eco-chart-plan" });
@@ -48,11 +50,11 @@ export default function create() {
     const open = b.openStop, wo = b.workOrder;
     ui.clear(side,
       h("div", { class: "bd-state " + (open ? "is-down" : "is-run") }, ui.icon(open ? "pause" : "play", 34), h("div", {}, h("b", { text: open ? t("bd.stopped") : t("bd.running") }),
-        h("span", { text: open ? t("stop." + open.reason) + " · " + open.minutes + " " + t("bd.min") + (open.station ? " · " + open.station : "") : "" }))),
+        h("span", { text: open ? stopName(open.reason) + " · " + open.minutes + " " + t("bd.min") + (open.station ? " · " + open.station : "") : "" }))),
       wo ? h("div", { class: "bd-wo" }, h("small", { text: t("c.wo") }), h("b", {}, ui.ltr(wo.code)), h("span", { text: name(wo.item) }), ui.progress(wo.completed, wo.planned, { label: ui.fmtNumber(wo.completed) + " / " + ui.fmtNumber(wo.planned) }))
         : h("div", { class: "bd-wo" }, h("span", { class: "eco-muted", text: t("hm.no_wo") })),
       h("div", { class: "bd-stops" }, h("h3", { text: t("bd.stops") }), b.stoppages.length ? b.stoppages.slice(0, 6).map((s) => h("div", { class: "bd-stop" + (s.endedAt ? "" : " is-open") },
-        h("span", {}, ui.ltr(hhmm(s.startedAt))), h("b", { text: t("stop." + s.reason) }), h("span", {}, ui.ltr(s.station || s.line)), h("span", { class: "bd-stop-min" }, ui.ltr(s.minutes + " " + t("bd.min")))))
+        h("span", {}, ui.ltr(hhmm(s.startedAt))), h("b", { text: stopName(s.reason) }), h("span", {}, ui.ltr(s.station || s.line)), h("span", { class: "bd-stop-min" }, ui.ltr(s.minutes + " " + t("bd.min")))))
         : h("span", { class: "eco-muted", text: t("bd.no_stops") })));
   }
   async function start() {

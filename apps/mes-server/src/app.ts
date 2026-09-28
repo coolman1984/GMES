@@ -13,10 +13,15 @@ import { trkModule } from './modules/trk/index.js';
 import { qmsModule } from './modules/qms/index.js';
 import { shpModule } from './modules/shp/index.js';
 import { requireScope, resolveCaller, systemModule } from './modules/system/index.js';
+import { lblModule } from './modules/lbl/index.js';
+import { rptModule } from './modules/rpt/index.js';
+import { opsRoutes } from './ops.js';
 import { serveScreens } from './web.js';
+import { dirname, join } from 'node:path';
 
 /** Installed modules. Removing one (and what depends on it) must leave a working app. */
-export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule, qmsModule, shpModule];
+export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule, qmsModule, shpModule, rptModule, lblModule];
+export const VERSION = '0.5.0';
 
 export interface App {
   http: FastifyInstance;
@@ -24,10 +29,10 @@ export interface App {
   close(): Promise<void>;
 }
 
-export async function buildApp(opts: { dbFile: string; config: Config; clock?: Clock; logger?: boolean }): Promise<App> {
+export async function buildApp(opts: { dbFile: string; config: Config; clock?: Clock; logger?: boolean; backupDir?: string; modules?: AppModule[] }): Promise<App> {
   const db = openSqlite(opts.dbFile);
   const ctx: Ctx = { db, clock: opts.clock ?? systemClock, config: opts.config, services: new Services() };
-  const modules = ordered(MODULES);
+  const modules = ordered(opts.modules ?? MODULES);
   await migrate(db, modules);
   for (const m of modules) m.setup?.(ctx);
 
@@ -39,6 +44,7 @@ export async function buildApp(opts: { dbFile: string; config: Config; clock?: C
   });
   const kit = { http, require: (req: object, scope: string) => requireScope(callers.get(req) ?? null, scope), caller: (req: object) => callers.get(req) ?? null };
   for (const m of modules) m.routes?.(kit, ctx);
+  opsRoutes(kit, ctx, modules, db, opts.backupDir ?? join(dirname(opts.dbFile), 'backups'), VERSION);
 
   // the screens: the shell and its screen templates (UX phase), same origin as the API
   serveScreens(http);

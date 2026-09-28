@@ -324,3 +324,35 @@ to accounting through the feed. Every fact is in a hash-chained shipping history
 **Rejected:** creating customers in manufacturing (another app's master data); booking stock relief or an invoice here
 (accounting's decision and value); letting a container take any pallet and checking afterwards (the check at the door is
 the whole point); allowing mixed-product pallets (a TV plant ships one model per pallet; mixing breaks OQC lots).
+
+### ADR-037 — OEE from facts, reports computed on request, labels as ZPL, backups rehearsed before they count
+**Context:** the owner asked for "every remaining part and screen" of the MES. The efficiency, report, label and system
+entries of the menu were still greyed; the line board showed OEE as "—" and the stop reasons were a fixed list in code.
+**Decision:**
+- **OEE (ISO 22400)** is computed when asked, never stored: planned time = the production shifts the line WORKED (a work
+  order planned for the shift, or output booked inside its window) up to now, minus the shift's break share; planned stops
+  (reasons marked planned, e.g. a break) are removed from the busy time; unplanned downtime is the UNION of the line's and
+  its stations' stoppages (overlaps counted once, a planned stop wins over an unplanned one at the same moment); the ideal
+  cycle is the slowest operation of the routing (the line's pace), else the line's capacity per 480 minutes; quality from
+  the ledger. A part that cannot be known is `null` ("—"), never guessed. Stop reasons become the plant's own table
+  (`oee_reason`, SYS9040), each in a loss category; never deleted, only switched off.
+- **Reports** (`rpt`) are views over other modules' facts plus the one thing people write there: shift handover notes,
+  append-only (a correction is a new note pointing to the old one), and a receipt confirmed once by the next shift.
+- **Labels** (`lbl`): templates in ZPL — the language of the thermal printers plants already own — with {variables} checked
+  against what the label is for (a unit, a pallet, nothing) and filled from the facts; values carrying ZPL control
+  characters (^ ~) are refused. Printers are reached by raw TCP 9100. The first label of a thing is a print; any later one is
+  a REPRINT with its own permission (supervisor, quality) and a reason — a second serial label is how a set ships twice.
+  The print is recorded inside the command (so a retry never prints twice) and sent after the commit; whether the printer
+  took it is a second fact. The screens preview the label (a small ZPL renderer and Code 128 in the browser).
+- **Backups** (`ops.ts`, whole installation): `VACUUM INTO` on the reader connection (a consistent committed copy while the
+  plant runs), then a REHEARSAL on the copy, opened read-only: `integrity_check`, every module's own health checks (hash
+  chains, units against the ledger) and row counts written beside it. "Verify" repeats it and compares the counts. Restore is
+  a documented offline procedure (SYS9070), never a web action; nothing deletes a backup.
+- **Keys** of devices and links get a screen (SYS9030): shown once, listed without secret or hash, revoked at once.
+**Rejected:** storing OEE per shift (a figure that can drift from the facts it came from); summing overlapping stops (a
+station stop inside a line stop would count the same minutes twice); a proprietary label designer or PDF labels (plants run
+Zebra-compatible printers; ZPL is what they accept); restoring from a browser (a click that replaces the plant's database is
+not an operation to leave one confirmation away); scheduled backups inside the server (Windows Task Scheduler calls the same
+API; the server stays one process that serves).
+**Still planned (menu entries left greyed, honestly):** EXE2030 split/merge/move, EXE2040 reversals (both need a
+correction model agreed with accounting first), SYS9050 numbering, SYS9120 import from Excel.

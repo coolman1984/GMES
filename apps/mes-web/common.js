@@ -19,6 +19,15 @@ export const statusLabel = (s) => t("st." + s);
 /** A server row with name_en / name_ar, or a node with en / ar. */
 export const name = (n) => (!n ? "" : S.lang === "ar" ? n.name_ar || n.ar || n.name_en || n.en || n.code : n.name_en || n.en || n.code);
 
+// ------------------------------------------------------------------ stop reasons: the plant's own list (SYS9040)
+const STOPS = new Map();
+export async function loadStopReasons() {
+  try { for (const r of await api("GET", "/api/stop-reasons")) STOPS.set(r.code, r); } catch (_) { /* the dictionary names stay */ }
+  return [...STOPS.values()];
+}
+/** The name of a stop reason: the plant's own name when known, else the dictionary's. */
+export const stopName = (code) => (STOPS.has(code) ? name(STOPS.get(code)) : t("stop." + code));
+
 // ------------------------------------------------------------------ the session (who signed in, the plant)
 export const setSession = (s) => { S.session = s; };
 export const session = () => S.session;

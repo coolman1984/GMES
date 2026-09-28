@@ -3,6 +3,7 @@
 // shows still comes from the server (each screen passes its own load function that calls the API).
 import * as ui from "/eco-ui/eco-ui.js";
 import { api, name, showError, t } from "./common.js";
+import { code128Widths } from "./barcode.js";
 
 const { h } = ui;
 
@@ -98,5 +99,42 @@ export function routeStrip(route) {
 /** Unit statuses as status chips. */
 export const UNIT_STATE = { wip: "run", repair: "hold", completed: "done", scrapped: "down", consumed: "closed", packed: "done", shipped: "closed" };
 export const unitChip = (s) => ui.statusChip(UNIT_STATE[s] || "planned", t("ust." + s));
+
+/**
+ * A preview of a ZPL label as SVG: the commands a label template uses (^PW ^LL ^FO ^A0 ^BY ^BC ^GB ^FD ^FS). Anything
+ * else is ignored — the printer is the truth; this is for seeing the values and the layout before printing.
+ */
+export function zplPreview(zpl, { scale = 0.5 } = {}) {
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); if (text !== undefined) e.textContent = text; return e; };
+  let W = 812, H = 406, x = 0, y = 0, font = 30, module = 2, barcode = null, box = null;
+  const parts = [];
+  for (const raw of String(zpl).split("^").slice(1)) {
+    const cmd = raw.slice(0, 2).toUpperCase(), arg = raw.slice(2).replace(/\s+$/, "");
+    const nums = arg.split(",").map((v) => parseInt(v, 10));
+    if (cmd === "PW") W = nums[0] || W;
+    else if (cmd === "LL") H = nums[0] || H;
+    else if (cmd === "FO") { x = nums[0] || 0; y = nums[1] || 0; }
+    else if (cmd === "A0") { const f = arg.split(","); font = parseInt(f[1], 10) || font; }
+    else if (cmd === "BY") module = nums[0] || module;
+    else if (cmd === "BC") { const f = arg.split(","); barcode = { h: parseInt(f[1], 10) || 80, text: f[2] !== "N" }; }
+    else if (cmd === "GB") box = { w: nums[0] || 1, h: nums[1] || 1, t: nums[2] || 1 };
+    else if (cmd === "FD") {
+      if (barcode) {
+        let bx = x;
+        try {
+          code128Widths(arg).forEach((w, i) => { if (i % 2 === 0) parts.push(el("rect", { x: bx, y, width: w * module, height: barcode.h, fill: "#000" })); bx += w * module; });
+          if (barcode.text) parts.push(el("text", { x: x + (bx - x) / 2, y: y + barcode.h + 26, "font-size": 24, "text-anchor": "middle", "font-family": "monospace" }, arg));
+        } catch (_) { parts.push(el("text", { x, y: y + 30, "font-size": 24, fill: "#c00" }, "✕ " + arg)); }
+      } else parts.push(el("text", { x, y: y + font * 0.8, "font-size": font, "font-family": "Arial, sans-serif", "font-weight": 600 }, arg));
+    } else if (cmd === "FS") {
+      if (box) parts.push(el("rect", { x: x + box.t / 2, y: y + box.t / 2, width: Math.max(1, box.w - box.t), height: Math.max(1, box.h - box.t), fill: "none", stroke: "#000", "stroke-width": box.t }));
+      barcode = null; box = null;
+    }
+  }
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: Math.round(W * scale), height: Math.round(H * scale), class: "mes-label", role: "img" });
+  svg.append(el("rect", { x: 0, y: 0, width: W, height: H, fill: "#fff", stroke: "#bbb" }), ...parts);
+  return svg;
+}
 
 export { h };

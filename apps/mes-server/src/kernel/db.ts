@@ -29,6 +29,8 @@ export interface Database extends Db {
   tx<T>(fn: (t: Db) => Promise<T>): Promise<T>;
   close(): void;
   readonly file: string;
+  /** A consistent copy of the committed database into a new file (VACUUM INTO on the reader: writers are not stopped). */
+  snapshot(to: string): Promise<void>;
 }
 
 class Conn implements Db {
@@ -103,9 +105,18 @@ export function openSqlite(file: string): Database {
     run: (s, p) => tx((t) => t.run(s, p)),
     exec: (s) => tx((t) => t.exec(s)),
     tx,
+    async snapshot(to: string) {
+      reader.raw.prepare('VACUUM INTO ?').run(to);
+    },
     close() {
       reader.raw.close();
       writer.raw.close();
     },
   };
+}
+
+/** A database file opened read-only, for checking a backup without ever writing to it. */
+export function openReadOnly(file: string): Db & { close(): void } {
+  const c = new Conn(new DatabaseSync(file, { readOnly: true }));
+  return { get: (s, p) => c.get(s, p), all: (s, p) => c.all(s, p), run: () => Promise.reject(new Error('read-only')), exec: () => Promise.reject(new Error('read-only')), close: () => c.raw.close() };
 }

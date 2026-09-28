@@ -33,7 +33,7 @@ const MUTATIONS = [
   { name: 'a screen goes back to invented data', file: 'apps/mes-web/screens/home.js', from: 'import * as ui from "/eco-ui/eco-ui.js";', to: 'import * as ui from "/eco-ui/eco-ui.js";\nimport { lines } from "../data.js";', suite: 'apps/mes-server' },
   { name: 'a locked account can still sign in', file: 'apps/mes-server/src/modules/system/users.ts', from: "if (u.status === 'locked') throw", to: "if (false) throw", suite: 'apps/mes-server' },
   { name: 'the failed-password count is rolled back with the refusal', file: 'apps/mes-server/src/modules/system/users.ts', from: '        return lock;\n      });', to: '        if (!lock) wrong();\n        return lock;\n      });', suite: 'apps/mes-server' },
-  { name: 'an operator is given every permission', file: 'apps/mes-server/src/modules/system/roles.ts', from: "OPERATOR: [...READ, 'exe.orders.write', 'oee.stops.write', 'trk.units.write', 'trk.materials.write', 'shp.pack', 'shp.load'],", to: "OPERATOR: ['*'],", suite: 'apps/mes-server' },
+  { name: 'an operator is given every permission', file: 'apps/mes-server/src/modules/system/roles.ts', from: "OPERATOR: [...READ, 'exe.orders.write', 'oee.stops.write', 'trk.units.write', 'trk.materials.write', 'shp.pack', 'shp.load', 'rpt.notes.write', 'lbl.print'],", to: "OPERATOR: ['*'],", suite: 'apps/mes-server' },
   { name: 'a line may be stopped twice at the same time', file: 'apps/mes-server/src/modules/oee/index.ts', from: 'if (same) conflict(', to: 'if (false) conflict(', suite: 'apps/mes-server' },
   { name: 'a work order may run on a line that does not exist', file: 'apps/mes-server/src/modules/exe/index.ts', from: "if (!line || line.type !== 'line') fail('line.unknown'", to: "if (false) fail('line.unknown'", suite: 'apps/mes-server' },
   { name: 'transient failures advance the cursor', file: 'apps/link-mizan/src/link.ts', from: 'if (!(err instanceof BusinessError)) throw err;', to: 'if (!(err instanceof BusinessError) && !(err instanceof TransientError)) throw err;', suite: 'apps/link-mizan' },
@@ -63,6 +63,16 @@ const MUTATIONS = [
   { name: 'the container check digit is not checked', file: 'apps/mes-server/src/modules/shp/index.ts', from: "return (sum % 11) % 10 === Number(no[10]);", to: 'return true;', suite: 'apps/mes-server' },
   { name: 'dispatch does not tell accounting', file: 'apps/mes-server/src/modules/shp/index.ts', from: "type: 'mes.shipment.dispatched.v1', subject:", to: "type: 'mes.shipment.dispatched.v0', subject:", suite: 'apps/mes-server' },
   { name: 'an open pallet is loaded', file: 'apps/mes-server/src/modules/shp/index.ts', from: "if (p.status === 'open') conflict('pallet.open'", to: "if (false) conflict('pallet.open'", suite: 'apps/mes-server' },
+  { name: 'overlapping stoppages are counted twice in OEE', file: 'apps/mes-server/src/modules/oee/calc.ts', from: 'downtime += (length(union(unplanned))', to: 'downtime += (length(unplanned)', suite: 'apps/mes-server' },
+  { name: 'a planned break lowers availability', file: 'apps/mes-server/src/modules/oee/calc.ts', from: '(r?.planned ? planned : unplanned).push([a, b]);', to: 'unplanned.push([a, b]);', suite: 'apps/mes-server' },
+  { name: 'a stop reason outside the plant list is accepted', file: 'apps/mes-server/src/modules/oee/index.ts', from: "if (!reason) fail('stop.reason_unknown'", to: "if (false) fail('stop.reason_unknown'", suite: 'apps/mes-server' },
+  { name: 'a label is reprinted without a reason', file: 'apps/mes-server/src/modules/lbl/index.ts', from: "if (!input.reason) fail('label.reason_required'", to: "if (false) fail('label.reason_required'", suite: 'apps/mes-server' },
+  { name: 'a retried print command prints again', file: 'apps/mes-server/src/modules/lbl/index.ts', from: 'if (!replayed) {', to: 'if (true) {', suite: 'apps/mes-server' },
+  { name: 'a ZPL control character reaches the printer', file: 'apps/mes-server/src/modules/lbl/index.ts', from: "if (/[\\^~]/.test(x)) fail('label.unsafe_value'", to: "if (false) fail('label.unsafe_value'", suite: 'apps/mes-server' },
+  { name: 'a backup is called good without its rehearsal', file: 'apps/mes-server/src/ops.ts', from: "return { ok: integrity === 'ok' && checks.every((c) => c.ok) && mismatches.length === 0,", to: 'return { ok: true,', suite: 'apps/mes-server' },
+  { name: 'a revoked key still works', file: 'apps/mes-server/src/modules/system/index.ts', from: 'if (!row || !row.active ||', to: 'if (!row ||', suite: 'apps/mes-server' },
+  { name: 'the Code 128 check character is wrong', file: 'apps/mes-web/barcode.js', from: 'vals.push(sum % 103);', to: 'vals.push(sum % 101);', suite: 'apps/mes-server' },
+  { name: 'a handover note can be edited', file: 'apps/mes-server/src/modules/rpt/index.ts', from: "CREATE TRIGGER rpt_note_immutable BEFORE UPDATE ON rpt_note BEGIN SELECT RAISE(ABORT, 'rpt: handover notes are append-only'); END;", to: '', suite: 'apps/mes-server' },
 ];
 
 let survived = 0;
