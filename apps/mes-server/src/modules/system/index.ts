@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { AppError } from '../../kernel/errors.js';
 import type { AppModule, Caller, Ctx } from '../../kernel/modules.js';
-import { sessionCaller, userRoutes, usersMigration } from './users.js';
+import { audit, sessionCaller, signature, userRoutes, usersMigration } from './users.js';
 
 /**
  * Keys for links (other apps' connectors), station devices and administrators.
@@ -47,6 +47,12 @@ export function requireScope(caller: Caller | null, scope: string): Caller {
 export const systemModule: AppModule = {
   id: 'system',
   scopes: ['sys.users.read', 'sys.users.write', 'sys.audit.read'],
+  setup(ctx) {
+    ctx.services.provide('sys', {
+      sign: (caller, password) => signature(ctx, caller, password),
+      audit: (t, actor, action, target, details) => audit(t, ctx, actor, action, target, details),
+    });
+  },
   routes(kit, ctx) {
     userRoutes(kit, ctx, kit.caller as (req: object) => Caller | null);
   },

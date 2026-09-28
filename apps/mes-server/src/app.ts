@@ -10,11 +10,12 @@ import { exeModule } from './modules/exe/index.js';
 import { mdmModule } from './modules/mdm/index.js';
 import { oeeModule } from './modules/oee/index.js';
 import { trkModule } from './modules/trk/index.js';
+import { qmsModule } from './modules/qms/index.js';
 import { requireScope, resolveCaller, systemModule } from './modules/system/index.js';
 import { serveScreens } from './web.js';
 
 /** Installed modules. Removing one (and what depends on it) must leave a working app. */
-export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule];
+export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule, qmsModule];
 
 export interface App {
   http: FastifyInstance;

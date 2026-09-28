@@ -7,7 +7,7 @@ import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
 import { load, repair, scan, scrapUnit, stationOf, unitBySerial, unload } from './flow.js';
-import { EVENT_FIELDS, event, setUnit, today, trkMigration } from './store.js';
+import { EVENT_FIELDS, event, setUnit, today, trkMigration, trkMigration2 } from './store.js';
 
 /**
  * Tracking: serial units along their routing, key parts and material lots, the WIP, and traceability both ways
@@ -24,7 +24,7 @@ export const trkModule: AppModule = {
   id: 'trk',
   dependsOn: ['system', 'mdm', 'eng', 'exe'],
   scopes: ['trk.units.read', 'trk.units.write', 'trk.materials.write', 'trk.repair.write'],
-  migrations: [trkMigration],
+  migrations: [trkMigration, trkMigration2],
 
   setup(ctx) {
     const service: TrkService = {
@@ -79,6 +79,13 @@ export const trkModule: AppModule = {
           await setUnit(ctx, t, u, { status: 'shipped' });
         }
       },
+      async scrapUnit(t, caller, serial, ref) { await scrapUnit(ctx, t, caller, { commandId: ref.commandId, serial, reasonCode: ref.reasonCode }); },
+      async toRepair(t, caller, id, ref) {
+        const u = (await t.get<UnitRow>('SELECT * FROM trk_unit WHERE id = ?', [id])) ?? notFound('unit', id);
+        if (u.status !== 'wip') conflict('unit.not_in_process', `${u.serial} is ${u.status}`);
+        await event(ctx, t, caller, { commandId: ref.commandId, kind: 'FAIL', unit: u, op_seq: u.op_seq, op_code: u.op_code, defect_code: ref.defectCode, detail: { by: 'quality' } });
+        await setUnit(ctx, t, u, { status: 'repair', fail_op_seq: u.op_seq });
+      },
     };
     ctx.services.provide('trk', service);
   },
@@ -101,7 +108,8 @@ export const trkModule: AppModule = {
     http.post('/api/units/:serial/repair', async (req) => {
       const caller = require(req, 'trk.repair.write');
       const input = z.object({ ...zOperational, station: z.string().optional(), cause: z.string().trim().min(1).max(60), action: z.string().trim().min(1).max(60),
-        defectCode: z.string().trim().max(40).optional() }).parse(req.body);
+        defectCode: z.string().trim().max(40).optional(),
+        replace: z.object({ oldSerial: z.string().trim().min(1).max(40), newSerial: z.string().trim().min(1).max(40) }).optional() }).parse(req.body);
       const serial = (req.params as { serial: string }).serial;
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'RepairUnit', request: { serial, ...(req.body as object) } }, async (t) => {
         input.person = await person(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
@@ -266,7 +274,7 @@ export const trkModule: AppModule = {
       const tree = async (id: string, depth: number): Promise<any[]> => {
         if (depth > 8) return [];
         const parts = await ctx.db.all<any>(`SELECT g.*, i.code item_code, i.name_en, i.name_ar, c.serial child_serial, c.work_order_id child_wo, c.line_code child_line, c.completed_at child_done
-          FROM trk_genealogy g JOIN mdm_item i ON i.id = g.item_id LEFT JOIN trk_unit c ON c.id = g.child_id WHERE g.parent_id = ? ORDER BY g.event_seq`, [id]);
+          FROM trk_genealogy g JOIN mdm_item i ON i.id = g.item_id LEFT JOIN trk_unit c ON c.id = g.child_id WHERE g.parent_id = ? AND g.removed_seq IS NULL ORDER BY g.event_seq`, [id]);
         const out = [];
         for (const p of parts) {
           const wo = p.child_wo ? await ctx.services.get('exe').workOrder(p.child_wo) : null;
@@ -287,13 +295,13 @@ export const trkModule: AppModule = {
       if (q.serial) {
         const s = q.serial.trim().toUpperCase();
         const u = await unitBySerial(ctx.db, s);
-        start = u ? await ctx.db.all('SELECT parent_id id FROM trk_genealogy WHERE child_id = ?', [u.id])
-          : await ctx.db.all(`SELECT parent_id id FROM trk_genealogy WHERE lot_no = ? AND kind = 'part'`, [s]);
+        start = u ? await ctx.db.all('SELECT parent_id id FROM trk_genealogy WHERE child_id = ? AND removed_seq IS NULL', [u.id])
+          : await ctx.db.all(`SELECT parent_id id FROM trk_genealogy WHERE lot_no = ? AND kind = 'part' AND removed_seq IS NULL`, [s]);
       } else if (q.lot) {
         const lot = q.lot.trim().toUpperCase();
         let itemId: string | null = null;
         if (q.item) itemId = (await ctx.db.get<{ id: string }>('SELECT id FROM mdm_item WHERE id = ? OR code = ?', [q.item, q.item]))?.id ?? null;
-        start = await ctx.db.all(`SELECT DISTINCT parent_id id FROM trk_genealogy WHERE lot_no = ? ${itemId ? 'AND item_id = ?' : ''}`, itemId ? [lot, itemId] : [lot]);
+        start = await ctx.db.all(`SELECT DISTINCT parent_id id FROM trk_genealogy WHERE lot_no = ? AND removed_seq IS NULL ${itemId ? 'AND item_id = ?' : ''}`, itemId ? [lot, itemId] : [lot]);
       } else fail('trace.what', 'give a lot (and its item) or a serial to trace forward');
       // climb to every unit that contains it, then report the top-level products (what would be recalled)
       const seen = new Set<string>();
@@ -360,7 +368,7 @@ async function unitHistory(ctx: Ctx, rawSerial: string) {
     return { seq: o.seq, code: o.code, name_en: o.name_en, name_ar: o.name_ar, kind: o.kind, state, tries: passes.length, at: last?.occurred_at ?? null, station: last?.station ?? null, by: last?.user_name ?? null };
   });
   const parent = u.parent_id ? await ctx.db.get<{ serial: string }>('SELECT serial FROM trk_unit WHERE id = ?', [u.parent_id]) : null;
-  const parts = await ctx.db.all<any>(`SELECT g.kind, g.lot_no, g.qty, g.op_code, g.station, g.verified, g.at, i.code item_code, i.name_en, i.name_ar, c.serial child_serial
+  const parts = await ctx.db.all<any>(`SELECT g.kind, g.removed_seq, g.lot_no, g.qty, g.op_code, g.station, g.verified, g.at, i.code item_code, i.name_en, i.name_ar, c.serial child_serial
     FROM trk_genealogy g JOIN mdm_item i ON i.id = g.item_id LEFT JOIN trk_unit c ON c.id = g.child_id WHERE g.parent_id = ? ORDER BY g.event_seq`, [u.id]);
   const where = ctx.services.has('shp') ? await ctx.services.get('shp').whereIs(u.id) : null;
   return {

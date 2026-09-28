@@ -216,3 +216,17 @@
 - **Symptom:** in the browser run the whole application slid sideways after about ten tabs. **Cause:** the tab strip called
   `scrollIntoView`, which also scrolls every scrollable ancestor — an `overflow: hidden` frame can still be scrolled that way.
   **Fix (eco-ui):** the tab strip scrolls itself only. HR-System must re-copy the kit. **Lesson:** `scrollIntoView` is not local.
+
+## Phase B2 — Quality: codes, plans, inspections, holds, repair, yield (2026-09-28)
+- **What:** `qms` module (ADR-035) — defect and repair codes, inspection plans with limits and AQL, append-only hash-chained
+  inspections, ISO 2859-1 sampling, holds on a unit / serial list / work order / material lot / pallet with a recall count,
+  releases signed with the person's password (new `sys` service: electronic signature and audit), repair with part
+  replacement (genealogy keeps the removed part), first-pass yield / rolled throughput yield and Pareto from the unit history.
+  Screens QMS1010, QMS1020, QMS2010, QMS2020, QMS2030 (new: repair), QMS4010. 8 tests, 9 planted bugs.
+- **Symptom (found in the browser):** after adding the quality screens the whole application stayed blank on the sign-in
+  page. **Cause:** one missing parenthesis in QMS2010; a JavaScript module with a syntax error fails to load, and the shell
+  imports every screen, so ONE bad screen blanks everything. The screen tests read the files as text and never parsed them.
+  **Fix:** a test parses every screen file as a module; a planted bug breaks a screen's syntax and must be caught.
+  **Lesson:** in a no-build front end the parser is the compiler: test that the code parses, not only what it contains.
+- **Discovery:** the first quality tests failed on serial numbers like "T01": the tracking module requires 4-40 characters
+  (a scanner misread of 3 characters is more likely than a real serial). Kept; tests use realistic serials.

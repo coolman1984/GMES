@@ -129,6 +129,14 @@ export const trkMigration = {
   `,
 };
 
+export const trkMigration2 = {
+  id: '002_part_replacement',
+  up: `
+    -- a key part replaced at repair: the old genealogy row stays (history), marked removed by the repair fact
+    ALTER TABLE trk_genealogy ADD COLUMN removed_seq INTEGER;
+  `,
+};
+
 export interface EventIn {
   kind: EventKind;
   unit?: { id: string; serial: string; work_order_id: string; item_id: string; line_code: string } | null;

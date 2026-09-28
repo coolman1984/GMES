@@ -236,15 +236,60 @@ export async function flushOrder(ctx: Ctx, t: Db, caller: Caller, woId: string, 
   return n;
 }
 
-export async function repair(ctx: Ctx, t: Db, caller: Caller, input: { commandId: string; serial: string; station?: string; cause: string; action: string; defectCode?: string; productionDate?: string; shift?: string; person?: { id: string; code: string } }) {
+export interface RepairIn {
+  commandId: string; serial: string; station?: string; cause: string; action: string; defectCode?: string;
+  /** A key part changed during repair: the old serial comes out, the new one goes in (genealogy keeps both). */
+  replace?: { oldSerial: string; newSerial: string; itemId?: string };
+  productionDate?: string; shift?: string; person?: { id: string; code: string };
+}
+
+export async function repair(ctx: Ctx, t: Db, caller: Caller, input: RepairIn) {
   const u = (await unitBySerial(t, input.serial.trim().toUpperCase())) ?? notFound('unit', input.serial);
   if (u.held > 0) conflict('unit.held', `${u.serial} is on quality hold`);
   if (u.status !== 'repair') conflict('unit.not_in_repair', `${u.serial} is ${u.status}, not waiting for repair`);
-  await event(ctx, t, caller, { commandId: input.commandId, productionDate: input.productionDate, shift: input.shift, person: input.person, kind: 'REPAIR', unit: u,
-    station: input.station ?? null, op_seq: u.fail_op_seq, op_code: u.op_code, defect_code: input.defectCode ?? null, detail: { cause: input.cause, action: input.action } });
+  if (ctx.services.has('qms')) {
+    const q = ctx.services.get('qms');
+    await q.checkRepairCode(t, 'cause', input.cause);
+    await q.checkRepairCode(t, 'action', input.action);
+    if (input.defectCode) await q.checkDefect(t, input.defectCode);
+  }
+  const base = { commandId: input.commandId, productionDate: input.productionDate, shift: input.shift, person: input.person };
+  let replaced: Record<string, unknown> | null = null;
+  if (input.replace) replaced = await replacePart(ctx, t, caller, u, input.replace, input.station ?? u.last_station ?? '', base);
+  await event(ctx, t, caller, { ...base, kind: 'REPAIR', unit: u, station: input.station ?? null, op_seq: u.fail_op_seq, op_code: u.op_code,
+    defect_code: input.defectCode ?? null, detail: { cause: input.cause, action: input.action, ...(replaced ? { replaced } : {}) } });
   // back to the operation it failed: the test is repeated, never skipped
   await setUnit(ctx, t, u, { status: 'wip', last_station: input.station ?? u.last_station });
-  return { serial: u.serial, status: 'wip', back_to: u.op_code };
+  return { serial: u.serial, status: 'wip', back_to: u.op_code, replaced };
+}
+
+async function replacePart(ctx: Ctx, t: Db, caller: Caller, u: UnitRow, r: { oldSerial: string; newSerial: string; itemId?: string }, station: string,
+  base: { commandId: string; productionDate?: string; shift?: string; person?: { id: string; code: string } }) {
+  const oldS = r.oldSerial.trim().toUpperCase(), newS = r.newSerial.trim().toUpperCase();
+  const row = await t.get<{ rowid: number; child_id: string | null; item_id: string; op_code: string; kind: string }>(
+    `SELECT rowid, child_id, item_id, op_code, kind FROM trk_genealogy WHERE parent_id = ? AND lot_no = ? AND kind IN ('unit', 'part') AND removed_seq IS NULL`, [u.id, oldS]);
+  if (!row) return conflict('part.not_fitted', `${oldS} is not a part of ${u.serial}`);
+  if (!SERIAL.test(newS)) fail('part.serial_format', `${newS} is not a serial number`);
+  const child = await unitBySerial(t, newS);
+  if (child) {
+    if (child.item_id !== row.item_id) conflict('part.wrong_item', `${newS} is not the same part as ${oldS}`);
+    if (child.held > 0) conflict('part.held', `part ${newS} is on quality hold`);
+    if (child.status !== 'completed') conflict('part.not_available', `part ${newS} is ${child.status}: only a finished, free part can be fitted`);
+  } else if (await t.get(`SELECT 1 FROM trk_genealogy WHERE item_id = ? AND lot_no = ? AND kind = 'part'`, [row.item_id, newS])) {
+    conflict('part.used', `part ${newS} was already fitted to another unit`);
+  }
+  const seq = await event(ctx, t, caller, { ...base, kind: 'ATTACH', unit: u, station, op_code: row.op_code, detail: { part: newS, replaces: oldS } });
+  await t.run('UPDATE trk_genealogy SET removed_seq = ? WHERE rowid = ?', [seq, row.rowid]);
+  const now = ctx.clock.now().toISOString();
+  if (child) {
+    await setUnit(ctx, t, child, { status: 'consumed', parent_id: u.id });
+    await t.run(`INSERT INTO trk_genealogy (parent_id, child_id, kind, item_id, lot_no, qty, op_code, station, verified, event_seq, at) VALUES (?, ?, 'unit', ?, ?, 1000, ?, ?, 1, ?, ?)`,
+      [u.id, child.id, child.item_id, newS, row.op_code, station, seq, now]);
+  } else {
+    await t.run(`INSERT INTO trk_genealogy (parent_id, child_id, kind, item_id, lot_no, qty, op_code, station, verified, event_seq, at) VALUES (?, NULL, 'part', ?, ?, 1000, ?, ?, 0, ?, ?)`,
+      [u.id, row.item_id, newS, row.op_code, station, seq, now]);
+  }
+  return { old: oldS, new: newS };
 }
 
 export async function scrapUnit(ctx: Ctx, t: Db, caller: Caller, input: { commandId: string; serial: string; reasonCode: string; station?: string; productionDate?: string; shift?: string; person?: { id: string; code: string } }) {

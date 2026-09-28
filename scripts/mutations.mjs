@@ -47,6 +47,15 @@ const MUTATIONS = [
   { name: 'the unit history hash ignores the station', file: 'apps/mes-server/src/modules/trk/store.ts', from: "'line_code', 'station', 'op_seq',", to: "'line_code', 'op_seq',", suite: 'apps/mes-server' },
   { name: 'an approved routing can be edited', file: 'apps/mes-server/src/modules/eng/index.ts', from: "if (r.status !== 'draft') conflict('routing.frozen', `revision ${r.revision} is ${r.status}: make a new revision to change it`);", to: '', suite: 'apps/mes-server' },
   { name: 'a routed serial order can be completed by quantity', file: 'apps/mes-server/src/modules/exe/index.ts', from: "if (wo.routing_id && ctx.services.has('trk')", to: "if (false && wo.routing_id && ctx.services.has('trk')", suite: 'apps/mes-server' },
+  { name: 'the AQL acceptance number is one too many', file: 'apps/mes-server/src/modules/qms/aql.ts', from: 'const accept = AC[l + a]!;', to: 'const accept = AC[l + a]! + 1;', suite: 'apps/mes-server' },
+  { name: 'a failed outgoing inspection does not hold the lot', file: 'apps/mes-server/src/modules/qms/index.ts', from: "if (result === 'fail' && stage === 'oqc'", to: "if (false && result === 'fail' && stage === 'oqc'", suite: 'apps/mes-server' },
+  { name: 'a hold is released without a signature', file: 'apps/mes-server/src/modules/qms/index.ts', from: 'const signer = await sys().sign(caller, input.password);', to: 'const signer = { login: caller.name, name: caller.name };', suite: 'apps/mes-server' },
+  { name: 'a wrong password still signs', file: 'apps/mes-server/src/modules/system/users.ts', from: "if (!(await checkPassword(password ?? '', u!.password_hash))) {", to: 'if (false) {', suite: 'apps/mes-server' },
+  { name: 'finished units are scrapped by a hold decision', file: 'apps/mes-server/src/modules/qms/index.ts', from: "if (finished.length) conflict('hold.finished_units'", to: "if (false) conflict('hold.finished_units'", suite: 'apps/mes-server' },
+  { name: 'measurements outside their limits pass', file: 'apps/mes-server/src/modules/qms/index.ts', from: 'ok: (lo === null || v >= lo) && (hi === null || v <= hi) });', to: 'ok: true });', suite: 'apps/mes-server' },
+  { name: 'a defect code outside the plant list is accepted', file: 'apps/mes-server/src/modules/qms/index.ts', from: "if (!d) fail('defect.unknown'", to: "if (false) fail('defect.unknown'", suite: 'apps/mes-server' },
+  { name: 'a replaced part stays in the genealogy', file: 'apps/mes-server/src/modules/trk/flow.ts', from: "await t.run('UPDATE trk_genealogy SET removed_seq = ? WHERE rowid = ?', [seq, row.rowid]);", to: '', suite: 'apps/mes-server' },
+  { name: 'a screen file with a syntax error is served', file: 'apps/mes-web/screens/qms4010.js', from: 'return { el: sc.el };', to: 'return { el: sc.el ;', suite: 'apps/mes-server' },
 ];
 
 let survived = 0;

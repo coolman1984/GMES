@@ -288,3 +288,23 @@ ledger table, and adding fields would change the hash of every old line; account
 routing into each order (a frozen revision is already immutable); one row per unit updated in place without history (a
 changed status would erase what happened); per-unit consumption lines (a million ledger lines a month for screws);
 multi-line routings with station lists (a code rule is simpler and cannot drift).
+
+### ADR-035 — Quality: signed-off inspections, holds that stop units anywhere, releases signed by a person
+**Context:** a television plant tests every set (function, hi-pot, white balance), repairs the failures, inspects lots
+before they leave (OQC by AQL sampling) and must stop suspect units at once — including every set that contains a suspect
+material lot — and release them only on a quality decision.
+**Decision:** a `qms` module. Defect codes and repair cause / action codes are the plant's lists (an empty list accepts any
+code, so a plant can start before writing them). An inspection is an append-only, hash-chained record: measurements are
+checked against the plan's limits on the server (exact decimals, ADR-018); a sampled inspection (IQC / OQC) takes its
+sample and acceptance number from ISO 2859-1 (single, normal; the diagonal structure of table II-A is coded and tested
+against published rows). A failed OQC holds the lot in the same transaction. A hold resolves its target to units (a unit, a
+list, a work order, a pallet, or every finished product whose genealogy contains a lot or part) and increments each unit's
+hold count, so a unit under two holds stays stopped until both are released; units already shipped are counted as the
+recall list, never "held". A release is a person's electronic signature (their password, checked by the system module;
+machine keys cannot sign) with a disposition; rework and scrap apply only to units still in production — a finished unit
+is never silently taken back out of the production ledger. A repair can replace a key part: the old genealogy row is kept
+and marked removed by the repair fact.
+**Rejected:** a boolean "held" flag (a second hold's release would free a unit the first still holds); holding shipped units
+(a physical impossibility that would hide the recall); scrapping finished units from a hold (it would need a reversal in the
+production ledger and a contract for accounting: EXE2040); deleting a replaced part's genealogy row (the history of what was
+in the unit is the point of traceability); a PIN or "are you sure?" as signature (anyone at the keyboard can click it).

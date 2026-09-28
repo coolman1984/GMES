@@ -242,6 +242,9 @@ export interface TrkService {
   markPacked(t: Db, caller: Caller, unitId: string, ref: { commandId: string; box: string; station?: string }): Promise<void>;
   markUnpacked(t: Db, caller: Caller, unitId: string, ref: { commandId: string; box: string; reason: string }): Promise<void>;
   markShipped(t: Db, caller: Caller, unitIds: string[], ref: { commandId: string; shipment: string; container: string }): Promise<void>;
+  /** Quality dispositions: scrap a unit still in production, or send it back to repair. */
+  scrapUnit(t: Db, caller: Caller, serial: string, ref: { commandId: string; reasonCode: string }): Promise<void>;
+  toRepair(t: Db, caller: Caller, unitId: string, ref: { commandId: string; defectCode: string }): Promise<void>;
 }
 
 /** Where a finished unit is now: its box, pallet, shipment and container (the shipping module). */
@@ -254,12 +257,25 @@ export interface UnitWhereabouts {
 
 export interface ShpService {
   whereIs(unitId: string, t?: Db): Promise<UnitWhereabouts | null>;
+  /** The units packed on a pallet (a shipping lot), by id. */
+  unitsIn(t: Db, pallet: string): Promise<string[]>;
+}
+
+/** The system module: electronic signatures and the audit trail of master data. */
+export interface SysService {
+  /** The signed-in person confirms a decision with their password; refused for machine keys and wrong passwords. */
+  sign(caller: Caller, password: string): Promise<{ login: string; name: string }>;
+  audit(t: Db, actor: string, action: string, target: string, details?: unknown): Promise<void>;
 }
 
 /** Quality (the qms module), as other modules need it. */
 export interface QmsService {
   /** Refuses a defect code that is not in the list (or is inactive). */
   checkDefect(t: Db, code: string): Promise<void>;
+  /** Refuses a repair cause / action code that is not in the list. */
+  checkRepairCode(t: Db, kind: 'cause' | 'action', code: string): Promise<void>;
+  /** The outgoing inspection of a shipping lot (a pallet): passed, failed, or not inspected yet. */
+  oqcResult(t: Db, lot: string): Promise<'passed' | 'failed' | 'none'>;
 }
 
 declare module '../kernel/modules.js' {
@@ -271,6 +287,7 @@ declare module '../kernel/modules.js' {
     exe: ExeService;
     trk: TrkService;
     qms: QmsService;
+    sys: SysService;
     shp: ShpService;
   }
 }

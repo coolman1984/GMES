@@ -302,3 +302,19 @@
 .mes-plan-cell.is-over { background: var(--eco-bad-soft); }
 .mes-plan-wo { display: flex; align-items: center; gap: 6px; font-size: var(--eco-fs-sm); } .mes-plan-wo b { font-family: var(--eco-mono); }
 .mes-plan-load .eco-progress { width: 100%; }
+
+/* ---------- quality (phase B2) ---------- */
+.mes-measures { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+.mes-measures > div { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--eco-line); border-radius: 4px; background: var(--eco-surface-2); }
+.mes-measures > div.is-bad { border-color: var(--eco-bad); background: var(--eco-bad-soft); color: var(--eco-bad); }
+.mes-measures b { font-family: var(--eco-mono); }
+.mes-measure-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.mes-analysis { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-card { border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); padding: 10px 14px; }
+.mes-card > h3 { font-size: var(--eco-fs-md); margin: 0 0 8px; }
+.mes-table { width: 100%; border-collapse: collapse; font-size: var(--eco-fs-sm); }
+.mes-table th { text-align: start; color: var(--eco-text-3); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--eco-line); }
+.mes-table td { padding: 5px 8px; border-bottom: 1px solid var(--eco-line); vertical-align: middle; }
+.mes-fpy { display: flex; flex-wrap: wrap; gap: 4px; }
+.mes-fpy-op { display: inline-flex; gap: 5px; padding: 2px 7px; border-radius: 4px; background: var(--eco-surface-3); font: 600 11.5px var(--eco-mono); }
+.mes-fpy-op.is-ok { background: var(--eco-ok-soft); color: var(--eco-ok); } .mes-fpy-op.is-warn { background: var(--eco-warn-soft); color: var(--eco-warn); } .mes-fpy-op.is-bad { background: var(--eco-bad-soft); color: var(--eco-bad); }
