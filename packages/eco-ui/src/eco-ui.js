@@ -35,6 +35,14 @@ const TEXT = {
     connected: "Connected", disconnected: "Not connected", keyboard: "Keyboard shortcuts", details: "Details", more: "More",
     shortcuts: [["Ctrl+K", "Search screens"], ["F5", "Inquiry"], ["Ctrl+E", "Export"], ["Alt+1…9", "Switch tab"], ["Esc", "Close dialog or menu"],
                 ["↑ ↓", "Move in the grid"], ["Enter", "Open the selected row"]],
+    look: "Look", modern: "Modern", classic: "Classic (dense)", preferences: "Preferences", actions: "Actions",
+    toggle_theme: "Switch light / dark", toggle_language: "Switch language", toggle_look: "Switch modern / classic look",
+    palette_move: "move", palette_open: "open", palette_search: "Search screens and actions", help: "Help", print: "Print",
+    filter: "Filter", filter_search: "Search values", select_all: "(Select all)", clear_filter: "Clear filter", clear_filters: "Clear all filters",
+    from: "From", to: "To", min: "Min", max: "Max", blank: "(Blank)", filters: "Filters",
+    group_by: "Group by this column", ungroup: "No grouping", grouped_by: "Grouped by {label}", expand_groups: "Expand all groups", collapse_groups: "Collapse all groups",
+    all: "All", what_to_do: "What to do", open: "Open", all_clear: "Nothing needs attention", show_details: "Show details",
+    sev_error: "Must fix", sev_warning: "Check", sev_tip: "Tip",
   },
   ar: {
     close: "إغلاق", cancel: "إلغاء", ok: "موافق", save: "حفظ", yes: "نعم", no: "لا", apply: "تطبيق", reset: "إعادة ضبط", delete: "حذف",
@@ -56,6 +64,14 @@ const TEXT = {
     connected: "متصل", disconnected: "غير متصل", keyboard: "اختصارات لوحة المفاتيح", details: "التفاصيل", more: "المزيد",
     shortcuts: [["Ctrl+K", "البحث عن شاشة"], ["F5", "استعلام"], ["Ctrl+E", "تصدير"], ["Alt+1…9", "التنقل بين التبويبات"], ["Esc", "إغلاق النافذة أو القائمة"],
                 ["↑ ↓", "التنقل في الجدول"], ["Enter", "فتح الصف المحدد"]],
+    look: "الشكل", modern: "حديث", classic: "كلاسيكي (مضغوط)", preferences: "التفضيلات", actions: "إجراءات",
+    toggle_theme: "التبديل بين الفاتح والداكن", toggle_language: "تغيير اللغة", toggle_look: "التبديل بين الشكل الحديث والكلاسيكي",
+    palette_move: "للتنقل", palette_open: "للفتح", palette_search: "ابحث عن شاشة أو إجراء", help: "مساعدة", print: "طباعة",
+    filter: "تصفية", filter_search: "ابحث في القيم", select_all: "(تحديد الكل)", clear_filter: "إلغاء التصفية", clear_filters: "إلغاء كل التصفيات",
+    from: "من", to: "إلى", min: "الأدنى", max: "الأعلى", blank: "(فارغ)", filters: "التصفيات",
+    group_by: "التجميع حسب هذا العمود", ungroup: "بدون تجميع", grouped_by: "مجمّع حسب {label}", expand_groups: "فتح كل المجموعات", collapse_groups: "طي كل المجموعات",
+    all: "الكل", what_to_do: "ما المطلوب", open: "فتح", all_clear: "لا يوجد ما يحتاج انتباهك", show_details: "عرض التفاصيل",
+    sev_error: "يجب إصلاحه", sev_warning: "للمراجعة", sev_tip: "نصيحة",
   },
 };
 let LANG = "en";
@@ -156,6 +172,11 @@ const ICONS = {
   mail: "M3 6h18v12H3zM3 7l9 6 9-6", phone: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z",
   "map-pin": "M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11zM14.5 10a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z",
   tag: "M3 12V4h8l10 10-8 8zM7.5 8h.01", zap: "M13 3L5 13h6l-1 8 8-10h-6z", gauge: "M4 17a8 8 0 1 1 16 0M12 17l4-5",
+  lightbulb: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z",
+  scale: "M12 4v16M8 20h8M5 7h14M5 7l-2.5 6a2.5 2.5 0 0 0 5 0zM19 7l-2.5 6a2.5 2.5 0 0 0 5 0z",
+  "trending-up": "M3 17l6-6 4 4 8-8M15 7h6v6", "user-check": "M14 8a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM3.5 19.5c1-3 3.5-4.5 7-4.5 1.5 0 2.8.3 3.8.9M15.5 16.5l2 2 3.5-4",
+  "clipboard-check": "M9 4h6v3H9zM8 5.5H6V21h12V5.5h-2M9 14l2 2 4-4", list: "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01",
+  sparkles: "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
 };
 export function icon(name, size = 16, cls) {
   const def = ICONS[name] || ICONS.info;
@@ -177,15 +198,17 @@ export const prefs = {
   },
 };
 
-/** Theme, density, language and product: applied as attributes on <html>, read by tokens.css. */
-export function configure({ product, lang, theme, density, prefix } = {}) {
+/** Theme, density, look, language and product: applied as attributes on <html>, read by tokens.css. */
+export function configure({ product, lang, theme, density, look, prefix } = {}) {
   const root = document.documentElement;
   if (prefix) PREFIX = prefix;
   if (product) root.dataset.product = product;
   if (lang) { LANG = TEXT[lang] ? lang : "en"; root.lang = lang; root.dir = lang === "ar" ? "rtl" : "ltr"; }
   if (theme) root.dataset.theme = theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
   if (density) root.dataset.density = density;
+  if (look) root.dataset.look = look === "modern" ? "modern" : "classic";
 }
+export const isModern = () => document.documentElement.dataset.look === "modern";
 export const isRTL = () => document.documentElement.dir === "rtl";
 export const lang = () => LANG;
 
@@ -315,6 +338,68 @@ export function ring(pct, { size = 64, label, status } = {}) {
       s("circle", { cx: size / 2, cy: size / 2, r, class: "eco-ring-track" }),
       s("circle", { cx: size / 2, cy: size / 2, r, class: "eco-ring-fill", "stroke-dasharray": `${(c * v) / 100} ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})` })),
     h("span", { class: "eco-ring-text", text: label ?? Math.round(v) + "%" }));
+}
+/** Parts of a whole as a ring with a legend. parts: [{label, value, status}] (status: ok|warn|bad|info|run|idle|hold|… colours it). */
+export function donut({ parts = [], size = 132, center, centerLabel } = {}) {
+  const total = parts.reduce((a, p) => a + (Number(p.value) || 0), 0), r = size / 2 - 9, c = 2 * Math.PI * r;
+  let at = 0;
+  const arcs = parts.filter((p) => p.value > 0).map((p, i) => {
+    const len = (c * p.value) / (total || 1), gap = parts.length > 1 ? Math.min(2, len / 3) : 0;
+    const arc = s("circle", { cx: size / 2, cy: size / 2, r, class: "eco-donut-arc",
+      "stroke-dasharray": `${Math.max(0, len - gap)} ${c}`, "stroke-dashoffset": String(-at), transform: `rotate(-90 ${size / 2} ${size / 2})` },
+    s("title", {}, document.createTextNode(p.label + ": " + fmtNumber(p.value))));
+    arc.classList.add("eco-st-" + (p.status || "info"));
+    at += len;
+    return arc;
+  });
+  return h("div", { class: "eco-donut" },
+    h("div", { class: "eco-donut-ring", style: { width: size + "px", height: size + "px" } },
+      s("svg", { width: size, height: size, viewBox: `0 0 ${size} ${size}`, "aria-hidden": "true" }, s("circle", { cx: size / 2, cy: size / 2, r, class: "eco-donut-track" }), arcs),
+      h("div", { class: "eco-donut-center" }, h("b", {}, h("bdi", { dir: "ltr", text: center ?? fmtNumber(total) })), centerLabel ? h("small", { text: centerLabel }) : null)),
+    h("ul", { class: "eco-donut-legend" }, parts.map((p) => h("li", { class: "eco-st-" + (p.status || "info") }, h("i", { class: "eco-dot" }), h("span", { text: p.label }),
+      h("b", {}, h("bdi", { dir: "ltr", text: fmtNumber(p.value) })), h("small", { class: "eco-muted", text: total ? Math.round((p.value / total) * 100) + "%" : "" })))));
+}
+/** A row of figures divided by hairlines (budgets, balances, summaries). items: [{label, value, status, hint}] */
+export function kpiStrip(items = []) {
+  return h("div", { class: "eco-kpistrip" }, items.filter(Boolean).map((k) => h("div", { class: k.status ? "eco-st-" + k.status : null },
+    h("span", { text: k.label }), h("strong", {}, h("bdi", { dir: "ltr", text: String(k.value ?? "") }), k.unit ? h("small", { text: " " + k.unit }) : null), k.hint ? h("small", { class: "eco-muted", text: k.hint }) : null)));
+}
+/** One large verdict at the top of a page: kind ok | warn | bad. */
+export function healthBanner(kind, title, text) {
+  return h("div", { class: "eco-health eco-health-" + kind, role: kind === "bad" ? "alert" : "status" },
+    icon({ ok: "check-circle", warn: "alert", bad: "x-octagon" }[kind] || "info", 28), h("div", {}, h("strong", { text: title }), text ? h("div", { class: "eco-health-text", text }) : null));
+}
+/** Progress through numbered steps (a wizard). */
+export function steps(total, current) {
+  return h("div", { class: "eco-steps", role: "progressbar", "aria-valuemin": "1", "aria-valuemax": String(total), "aria-valuenow": String(current) },
+    Array.from({ length: total }, (_, i) => h("span", { class: i < current ? "is-on" : null })));
+}
+const ADVICE_ICON = { error: "x-octagon", warning: "alert", tip: "lightbulb" };
+/**
+ * A finding with its reason and what to do (an advisor, a checklist). severity: error | warning | tip.
+ * items: [{label, sub, onClick}] the records concerned; action: {label, onClick}; basis: the rule or law behind it.
+ */
+export function advice({ severity = "warning", title, tags = [], body, fix, basis, items = [], action, open } = {}) {
+  let isOpen = open ?? severity !== "tip";
+  const box = h("section", { class: ["eco-advice", "eco-advice-" + severity] });
+  const head = h("button", { type: "button", class: "eco-advice-head", "aria-expanded": String(isOpen) }, h("span", { class: "eco-advice-icon" }, icon(ADVICE_ICON[severity] || "info", 20)),
+    h("span", { class: "eco-advice-titles" }, h("strong", { text: title }),
+      h("span", { class: "eco-advice-tags" }, badge(T("sev_" + severity), { error: "bad", warning: "warn", tip: "info" }[severity] || "neutral"), tags.map((x) => badge(x, "neutral")),
+        items.length ? h("span", { class: "eco-count", text: String(items.length) }) : null)),
+    icon(isOpen ? "chev-up" : "chev-down", 14, "eco-advice-twist"));
+  const detail = h("div", { class: "eco-advice-body" },
+    body ? h("p", { text: body }) : null,
+    fix ? h("div", { class: "eco-advice-fix" }, h("strong", { text: T("what_to_do") + " " }), h("span", { text: fix })) : null,
+    basis ? h("div", { class: "eco-advice-basis" }, icon("scale", 14), h("span", { text: basis })) : null,
+    items.length ? h("ul", { class: "eco-advice-items" }, items.slice(0, 50).map((it) => h("li", {},
+      it.onClick ? h("button", { type: "button", class: "eco-linkbtn", onclick: it.onClick, text: it.label }) : h("span", { text: it.label }), it.sub ? h("small", { class: "eco-muted", text: it.sub }) : null)),
+    items.length > 50 ? h("li", { class: "eco-muted", text: "… +" + (items.length - 50) }) : null) : null,
+    action ? h("div", {}, button({ label: action.label || T("open"), icon: "arrow-up", size: "sm", onClick: action.onClick, cls: "eco-advice-action" })) : null);
+  const draw = () => { detail.hidden = !isOpen; head.setAttribute("aria-expanded", String(isOpen)); const tw = head.querySelector(".eco-advice-twist"); tw && tw.replaceWith(icon(isOpen ? "chev-up" : "chev-down", 14, "eco-advice-twist")); };
+  head.addEventListener("click", () => { isOpen = !isOpen; draw(); });
+  box.append(head, detail);
+  draw();
+  return box;
 }
 
 // ------------------------------------------------------------------ form controls
@@ -582,15 +667,20 @@ export function tree(nodes, { onSelect, selected, expanded, key, render, dense }
 // ------------------------------------------------------------------ the data grid
 /**
  * columns: [{key, label, width, type: text|code|number|date|status|progress|custom, align, digits, frozen, hidden,
- *            total: "sum"|"count"|fn, render(row) -> node|string, value(row) -> sortable/exported value, status(row) -> st}]
- * options: {rows, rowKey, selection: single|multi|none, onSelect(rows), onOpen(row), layoutKey, totals, emptyText, rowStatus(row)}
+ *            total: "sum"|"count"|fn, render(row) -> node|string, value(row) -> sortable/exported value, status(row) -> st,
+ *            filter: false (no column filter), groupable: false}]
+ * options: {rows, rowKey, selection: single|multi|none, onSelect(rows), onOpen(row), layoutKey, totals, emptyText, rowStatus(row),
+ *           presets: [{id, label, test(row)}] named quick filters shown above the grid}
+ * A person can filter every column (values, a number range or a date range), group the rows by a column (with counts
+ * and sums per group) and pick a preset; the export follows what is shown.
  */
 export function grid(columns, opts = {}) {
-  const o = { rowKey: "id", selection: "single", totals: false, ...opts };
+  const o = { rowKey: "id", selection: "single", totals: false, presets: [], ...opts };
   const base = columns.map((c) => ({ width: 120, type: "text", ...c }));
   const saved = o.layoutKey ? prefs.get("grid:" + o.layoutKey, null) : null;
   let cols = applyLayout(base, saved);
   let rows = o.rows || [], view = [], sort = saved && saved.sort ? saved.sort : [], quick = "", selected = new Set(), cursor = -1, state = o.rows ? "ready" : "idle", stateText = "";
+  let filters = {}, groupKey = saved && saved.group ? saved.group : null, folded = new Set(), preset = "", lines = [];
   // rowHeight: a grid whose cells hold more than a line (a roster, a matrix) sets its own height; the others follow the density
   const RH = () => o.rowHeight || parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--eco-row-h")) || 26;
 
@@ -626,9 +716,20 @@ export function grid(columns, opts = {}) {
     if (c.type === "progress") { const v = valueOf(c, r); return progress(v, c.max ? c.max(r) : 100, { status: c.status ? c.status(r) : null }); }
     return document.createTextNode(text(c, r));
   }
+  const colOf = (key) => cols.find((c) => c.key === key);
+  const filterKind = (c) => (c.type === "number" || c.type === "percent" ? "range" : c.type === "date" ? "dates" : "set");
+  function matches(c, f, r) {
+    if (f.kind === "set") return f.values.includes(text(c, r));
+    if (f.kind === "range") { const n = Number(valueOf(c, r)); return Number.isFinite(n) && (f.min === null || n >= f.min) && (f.max === null || n <= f.max); }
+    const d = String(valueOf(c, r) ?? "").slice(0, 10);
+    return !!d && (!f.from || d >= f.from) && (!f.to || d <= f.to);
+  }
   function compute() {
     const q = quick.trim().toLowerCase();
     view = q ? rows.filter((r) => cols.some((c) => text(c, r).toLowerCase().includes(q))) : rows.slice();  // hidden columns too: a hidden column must not hide a match
+    const pr = preset && o.presets.find((p) => p.id === preset);
+    if (pr) view = view.filter((r) => pr.test(r));
+    for (const [key, f] of Object.entries(filters)) { const c = colOf(key); if (c) view = view.filter((r) => matches(c, f, r)); }
     if (sort.length) {
       const byKey = Object.fromEntries(cols.map((c) => [c.key, c]));
       view.sort((a, b) => {
@@ -641,6 +742,59 @@ export function grid(columns, opts = {}) {
         return 0;
       });
     }
+    const gc = groupKey && colOf(groupKey);
+    if (!gc) { lines = view.map((r) => ({ row: r })); return; }
+    const groups = new Map();
+    for (const r of view) { const k = text(gc, r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+    lines = [];
+    for (const [k, rs] of groups) { lines.push({ group: k, rows: rs }); if (!folded.has(k)) for (const r of rs) lines.push({ row: r }); }
+  }
+  function toggleGroup(k) { folded.has(k) ? folded.delete(k) : folded.add(k); all(); }
+  function sumOf(c, list) { return list.reduce((a, r) => a + (Number(valueOf(c, r)) || 0), 0); }
+  function filterText(c, f) {
+    if (f.kind === "set") return f.values.slice(0, 3).map((v) => v || T("blank")).join(", ") + (f.values.length > 3 ? " +" + (f.values.length - 3) : "");
+    if (f.kind === "range") return [f.min !== null ? "≥ " + fmtNumber(f.min, c.digits || 0) : "", f.max !== null ? "≤ " + fmtNumber(f.max, c.digits || 0) : ""].filter(Boolean).join(" ");
+    return (f.from || "…") + " → " + (f.to || "…");
+  }
+  /** The filter of one column: sort, then the values (or a range), then Clear / Apply. */
+  function filterMenu(anchor, c) {
+    const kind = filterKind(c), cur = filters[c.key];
+    const sortRow = h("div", { class: "eco-gfilter-sort" },
+      button({ label: T("sort_asc"), icon: "arrow-up", size: "sm", pressed: !!sort.find((x) => x.key === c.key && x.dir === "asc"), onClick: () => { sort = [{ key: c.key, dir: "asc" }]; persist(); all(); closeMenus(); } }),
+      button({ label: T("sort_desc"), icon: "arrow-down", size: "sm", pressed: !!sort.find((x) => x.key === c.key && x.dir === "desc"), onClick: () => { sort = [{ key: c.key, dir: "desc" }]; persist(); all(); closeMenus(); } }));
+    let read;
+    let body;
+    if (kind === "range" || kind === "dates") {
+      const a = input({ type: kind === "range" ? "number" : "date", value: cur ? (kind === "range" ? cur.min : cur.from) ?? "" : "" });
+      const b = input({ type: kind === "range" ? "number" : "date", value: cur ? (kind === "range" ? cur.max : cur.to) ?? "" : "" });
+      body = h("div", { class: "eco-gfilter-range" }, field(kind === "range" ? T("min") : T("from"), a), field(kind === "range" ? T("max") : T("to"), b));
+      read = () => {
+        if (kind === "range") { const min = a.value === "" ? null : Number(a.value), max = b.value === "" ? null : Number(b.value); return min === null && max === null ? null : { kind, min, max }; }
+        return !a.value && !b.value ? null : { kind, from: a.value, to: b.value };
+      };
+    } else {
+      const counts = new Map();
+      for (const r of rows) { const v = text(c, r); counts.set(v, (counts.get(v) || 0) + 1); }
+      const values = [...counts.keys()].sort((x, y) => x.localeCompare(y, undefined, { numeric: true })).slice(0, 500);
+      const chosen = new Set(cur ? cur.values : values);
+      const list = h("div", { class: "eco-gfilter-list" });
+      const find = input({ type: "search", placeholder: T("filter_search") });
+      const drawList = () => {
+        const q = find.value.trim().toLowerCase(), shown = values.filter((v) => !q || v.toLowerCase().includes(q));
+        const allBox = checkbox({ label: T("select_all"), checked: shown.every((v) => chosen.has(v)), onChange: (on) => { shown.forEach((v) => (on ? chosen.add(v) : chosen.delete(v))); drawList(); } });
+        clear(list, h("div", { class: "eco-gfilter-item is-all" }, allBox), shown.map((v) => h("div", { class: "eco-gfilter-item" },
+          checkbox({ label: v || T("blank"), checked: chosen.has(v), onChange: (on) => { on ? chosen.add(v) : chosen.delete(v); } }), h("small", { class: "eco-muted", text: fmtNumber(counts.get(v)) }))));
+      };
+      find.addEventListener("input", drawList);
+      drawList();
+      body = h("div", { class: "eco-gfilter-set" }, find, list);
+      read = () => (chosen.size === values.length ? null : { kind: "set", values: [...chosen] });
+    }
+    const apply = () => { const f = read(); if (f) filters[c.key] = f; else delete filters[c.key]; closeMenus(); all(); };
+    body.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && ev.target.tagName === "INPUT" && ev.target.type !== "checkbox") { ev.preventDefault(); apply(); } });
+    popover(anchor, h("div", { class: "eco-gfilter" }, h("div", { class: "eco-gfilter-title" }, icon("filter", 13), h("strong", { text: c.label })), sortRow, body,
+      h("div", { class: "eco-gfilter-actions" }, button({ label: T("clear_filter"), kind: "ghost", size: "sm", disabled: !cur, onClick: () => { delete filters[c.key]; closeMenus(); all(); } }),
+        h("span", { class: "eco-grow" }), button({ label: T("apply"), kind: "primary", size: "sm", onClick: apply }))), { align: "start", width: 290 });
   }
   function drawHead() {
     const off = stickyOffsets(), tpl = template();
@@ -660,9 +814,11 @@ export function grid(columns, opts = {}) {
         "aria-sort": sorted ? (sorted.dir === "asc" ? "ascending" : "descending") : null, style: c.frozen ? { insetInlineStart: off[c.key] + "px" } : null, draggable: "true" },
       h("span", { class: "eco-gh-label", text: c.label }),
       sorted ? h("span", { class: "eco-gh-sort" }, icon(sorted.dir === "asc" ? "arrow-up" : "arrow-down", 12), sort.length > 1 ? h("small", { text: String(sort.indexOf(sorted) + 1) }) : null) : null,
+      c.filter === false ? null : h("button", { type: "button", class: ["eco-gh-filter", filters[c.key] && "is-on"], title: T("filter") + (filters[c.key] ? ": " + filterText(c, filters[c.key]) : ""),
+        "aria-label": T("filter"), tabindex: "-1", onclick: (ev) => { ev.stopPropagation(); filterMenu(ev.currentTarget, c); } }, icon("filter", 12)),
       h("button", { type: "button", class: "eco-gh-menu", "aria-label": T("more"), tabindex: "-1", onclick: (ev) => { ev.stopPropagation(); columnMenu(ev.currentTarget, c); } }, icon("chev-down", 12)),
       h("span", { class: "eco-gh-resize", onpointerdown: (ev) => resize(ev, c), onclick: (ev) => ev.stopPropagation() }));
-      hc.addEventListener("click", (ev) => { if (ev.target.closest(".eco-gh-menu, .eco-gh-resize")) return; toggleSort(c.key, ev.shiftKey); });
+      hc.addEventListener("click", (ev) => { if (ev.target.closest(".eco-gh-menu, .eco-gh-filter, .eco-gh-resize")) return; toggleSort(c.key, ev.shiftKey); });
       hc.addEventListener("contextmenu", (ev) => { ev.preventDefault(); columnMenu({ x: ev.clientX, y: ev.clientY }, c); });
       hc.addEventListener("dragstart", (ev) => { ev.dataTransfer.setData("text/eco-col", c.key); });
       hc.addEventListener("dragover", (ev) => ev.preventDefault());
@@ -693,8 +849,17 @@ export function grid(columns, opts = {}) {
   }
   function align(c) { return c.align || (c.type === "number" || c.type === "percent" ? "end" : c.type === "status" || c.type === "progress" ? "start" : "start"); }
   let lastRange = "";
+  function groupRow(ln, i, rh, tpl) {
+    const gc = colOf(groupKey), sums = visible().filter((c) => c.total === "sum");
+    return h("div", { class: ["eco-gr", "eco-gr-group", i === cursor && "is-cursor"], role: "row", "aria-expanded": String(!folded.has(ln.group)),
+      style: { top: i * rh + "px", gridTemplateColumns: tpl, height: rh + "px", "--eco-row-h": rh + "px" }, "data-i": String(i) },
+    h("div", { class: "eco-gc eco-gc-group", role: "gridcell" },
+      h("span", { class: "eco-gc-group-in" }, icon(folded.has(ln.group) ? (isRTL() ? "chev-left" : "chev-right") : "chev-down", 13),
+        h("span", { class: "eco-muted", text: gc.label + ":" }), h("bdi", { class: "eco-gc-group-value", text: ln.group || T("blank") }), h("span", { class: "eco-count", text: fmtNumber(ln.rows.length) }),
+        sums.map((c) => h("span", { class: "eco-gc-group-sum" }, h("span", { class: "eco-muted", text: c.label + " " }), h("bdi", { dir: "ltr", text: fmtNumber(sumOf(c, ln.rows), c.digits || 0) }))))));
+  }
   function drawBody(force) {
-    const rh = RH(), n = view.length;
+    const rh = RH(), n = lines.length;
     body.style.height = n * rh + "px";
     const top = Math.max(0, scroller.scrollTop - head.offsetHeight), hgt = scroller.clientHeight || 600;
     const from = Math.max(0, Math.floor(top / rh) - 8), to = Math.min(n, Math.ceil((top + hgt) / rh) + 8);
@@ -703,7 +868,9 @@ export function grid(columns, opts = {}) {
     lastRange = range;
     const off = stickyOffsets(), tpl = template(), out = [];
     for (let i = from; i < to; i++) {
-      const r = view[i], id = r[o.rowKey], isSel = selected.has(id);
+      const ln = lines[i];
+      if (!ln.row) { out.push(groupRow(ln, i, rh, tpl)); continue; }
+      const r = ln.row, id = r[o.rowKey], isSel = selected.has(id);
       const st = o.rowStatus ? o.rowStatus(r) : null;
       const row = h("div", { class: ["eco-gr", i % 2 && "is-alt", isSel && "is-sel", i === cursor && "is-cursor", st && "eco-row-" + st], role: "row", "aria-selected": String(isSel),
         style: { top: i * rh + "px", gridTemplateColumns: tpl, height: rh + "px", "--eco-row-h": rh + "px" }, "data-i": String(i) });
@@ -727,7 +894,11 @@ export function grid(columns, opts = {}) {
     if (state === "loading") clear(overlay, h("div", { class: "eco-grid-msg" }, h("span", { class: "eco-spinner" }), h("span", { text: stateText || T("loading") })));
     else if (state === "error") clear(overlay, empty({ icon: "x-octagon", title: stateText }));
     else if (state === "idle") clear(overlay, empty({ icon: "filter", text: stateText || o.idleText || T("not_queried") }));
-    else clear(overlay, empty({ icon: "search", title: quick ? T("no_data") : T("no_data"), text: quick ? T("quick_filter") + ": “" + quick + "”" : (stateText || o.emptyText || "") }));
+    else {
+      const narrowed = quick || preset || Object.keys(filters).length;
+      clear(overlay, empty({ icon: "search", title: T("no_data"), text: quick ? T("quick_filter") + ": “" + quick + "”" : narrowed ? T("filters") + ": " + (Object.keys(filters).length + (preset ? 1 : 0)) : (stateText || o.emptyText || ""),
+        action: narrowed && rows.length ? button({ label: T("clear_filters"), icon: "x", size: "sm", onClick: () => api.clearFilters() }) : null }));
+    }
   }
   const tell = () => root.dispatchEvent(new CustomEvent("eco-view"));
   function all(force = true) { compute(); drawHead(); drawBody(force); drawOverlay(); tell(); }
@@ -738,7 +909,7 @@ export function grid(columns, opts = {}) {
   function persist() {
     if (!o.layoutKey) return;
     prefs.set("grid:" + o.layoutKey, { order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.map((c) => [c.key, c.width])),
-      frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort });
+      frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort, group: groupKey });
   }
   function toggleSort(key, add) {
     const cur = sort.find((x) => x.key === key);
@@ -763,6 +934,10 @@ export function grid(columns, opts = {}) {
       { label: T("sort_asc"), icon: "arrow-up", onSelect: () => { sort = [{ key: c.key, dir: "asc" }]; persist(); all(); } },
       { label: T("sort_desc"), icon: "arrow-down", onSelect: () => { sort = [{ key: c.key, dir: "desc" }]; persist(); all(); } },
       sort.length ? { label: T("sort_clear"), icon: "x", onSelect: () => { sort = []; persist(); all(); } } : null, "-",
+      c.filter === false ? null : { label: T("filter") + "…", icon: "filter", onSelect: () => filterMenu(anchor, c) },
+      filters[c.key] ? { label: T("clear_filter"), icon: "x", onSelect: () => { delete filters[c.key]; all(); } } : null,
+      c.groupable === false ? null : groupKey === c.key ? { label: T("ungroup"), icon: "layers", onSelect: () => api.groupBy(null) } : { label: T("group_by"), icon: "layers", onSelect: () => api.groupBy(c.key) },
+      groupKey ? { label: folded.size ? T("expand_groups") : T("collapse_groups"), icon: folded.size ? "expand" : "minus", onSelect: () => { if (folded.size) folded.clear(); else lines.filter((l) => !l.row).forEach((l) => folded.add(l.group)); all(); } } : null, "-",
       { label: c.frozen ? T("unpin") : T("pin"), icon: "pin", onSelect: () => { c.frozen = !c.frozen; if (c.frozen) { cols = cols.filter((x) => x !== c); const k = cols.filter((x) => x.frozen).length; cols.splice(k, 0, c); } persist(); all(); } },
       { label: T("hide"), icon: "eye", disabled: visible().length <= 1, onSelect: () => { c.hidden = true; persist(); all(); } }, "-",
       { label: T("columns") + "…", icon: "columns", onSelect: () => columnsDialog() },
@@ -785,32 +960,39 @@ export function grid(columns, opts = {}) {
   scroller.addEventListener("scroll", () => drawBody(false), { passive: true });
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => drawBody(false)).observe(scroller);
   window.addEventListener("eco-refresh", () => { if (root.isConnected) { lastRange = ""; all(); } });
+  // `cursor` and data-i count display lines (a grouped grid mixes group headers with rows); `view` holds the rows only
   body.addEventListener("click", (ev) => {
     const row = ev.target.closest(".eco-gr"); if (!row) return;
-    const i = Number(row.dataset.i), id = view[i][o.rowKey];
+    const i = Number(row.dataset.i), ln = lines[i];
+    if (!ln) return;
+    if (!ln.row) { cursor = i; toggleGroup(ln.group); return; }
+    const id = ln.row[o.rowKey];
     if (o.selection === "none") return;
     if (o.selection === "multi" && (ev.ctrlKey || ev.metaKey)) selected.has(id) ? selected.delete(id) : selected.add(id);
-    else if (o.selection === "multi" && ev.shiftKey && cursor >= 0) { const [a, b] = [Math.min(cursor, i), Math.max(cursor, i)]; for (let k = a; k <= b; k++) selected.add(view[k][o.rowKey]); }
+    else if (o.selection === "multi" && ev.shiftKey && cursor >= 0) { const [a, b] = [Math.min(cursor, i), Math.max(cursor, i)]; for (let k = a; k <= b; k++) if (lines[k] && lines[k].row) selected.add(lines[k].row[o.rowKey]); }
     else { selected = new Set([id]); }
     cursor = i; scroller.focus({ preventScroll: true }); changed();
   });
-  body.addEventListener("dblclick", (ev) => { const row = ev.target.closest(".eco-gr"); if (row && o.onOpen) o.onOpen(view[Number(row.dataset.i)]); });
+  body.addEventListener("dblclick", (ev) => { const row = ev.target.closest(".eco-gr"); const ln = row && lines[Number(row.dataset.i)]; if (ln && ln.row && o.onOpen) o.onOpen(ln.row); });
   scroller.addEventListener("keydown", (ev) => {
-    if (!view.length) return;
+    if (!lines.length) return;
     const page = Math.max(1, Math.floor(scroller.clientHeight / RH()) - 1);
     const moves = { ArrowDown: 1, ArrowUp: -1, PageDown: page, PageUp: -page };
+    const cur = cursor >= 0 ? lines[cursor] : null;
     let next = null;
-    if (ev.key in moves) next = Math.max(0, Math.min(view.length - 1, (cursor < 0 ? -1 : cursor) + moves[ev.key]));
+    if (ev.key in moves) next = Math.max(0, Math.min(lines.length - 1, (cursor < 0 ? -1 : cursor) + moves[ev.key]));
     else if (ev.key === "Home" && ev.ctrlKey) next = 0;
-    else if (ev.key === "End" && ev.ctrlKey) next = view.length - 1;
-    else if (ev.key === "Enter" && cursor >= 0 && o.onOpen) { ev.preventDefault(); o.onOpen(view[cursor]); return; }
-    else if (ev.key === " " && cursor >= 0 && o.selection === "multi") { ev.preventDefault(); const id = view[cursor][o.rowKey]; selected.has(id) ? selected.delete(id) : selected.add(id); changed(); return; }
+    else if (ev.key === "End" && ev.ctrlKey) next = lines.length - 1;
+    else if (ev.key === "Enter" && cur && !cur.row) { ev.preventDefault(); toggleGroup(cur.group); return; }
+    else if (ev.key === "Enter" && cur && o.onOpen) { ev.preventDefault(); o.onOpen(cur.row); return; }
+    else if (ev.key === " " && cur && cur.row && o.selection === "multi") { ev.preventDefault(); const id = cur.row[o.rowKey]; selected.has(id) ? selected.delete(id) : selected.add(id); changed(); return; }
     else if (ev.key === "a" && (ev.ctrlKey || ev.metaKey) && o.selection === "multi") { ev.preventDefault(); view.forEach((r) => selected.add(r[o.rowKey])); changed(); return; }
     if (next === null) return;
     ev.preventDefault();
     cursor = next;
-    if (o.selection !== "none" && !(o.selection === "multi" && ev.shiftKey)) selected = new Set([view[next][o.rowKey]]);
-    else if (o.selection === "multi") selected.add(view[next][o.rowKey]);
+    const nr = lines[next].row;
+    if (nr && o.selection !== "none" && !(o.selection === "multi" && ev.shiftKey)) selected = new Set([nr[o.rowKey]]);
+    else if (nr && o.selection === "multi") selected.add(nr[o.rowKey]);
     const rh = RH(), y = next * rh, top = scroller.scrollTop, vis = scroller.clientHeight - head.offsetHeight - (foot.hidden ? 0 : foot.offsetHeight);
     if (y < top) scroller.scrollTop = y; else if (y + rh > top + vis) scroller.scrollTop = y + rh - vis;
     changed();
@@ -831,11 +1013,26 @@ export function grid(columns, opts = {}) {
     setQuickFilter(q) { quick = q || ""; all(); },
     rows: () => rows, view: () => view, count: () => rows.length, shown: () => view.length,
     selected: () => rows.filter((r) => selected.has(r[o.rowKey])),
-    select(id) { selected = new Set(id === null || id === undefined ? [] : [id]); cursor = view.findIndex((r) => r[o.rowKey] === id); changed(); },
+    select(id) {
+      selected = new Set(id === null || id === undefined ? [] : [id]);
+      const gc = groupKey && colOf(groupKey), r = view.find((x) => x[o.rowKey] === id);
+      if (gc && r && folded.delete(text(gc, r))) compute();  // a chosen row inside a folded group opens its group
+      cursor = lines.findIndex((l) => l.row && l.row[o.rowKey] === id); changed();
+    },
     focus: () => scroller.focus(),
-    columnsDialog, layout: () => ({ order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.map((c) => [c.key, c.width])), frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort }),
-    applyLayout(l) { cols = applyLayout(base, l); sort = (l && l.sort) || []; persist(); all(); },
-    resetLayout() { cols = base.map((c) => ({ ...c })); sort = []; o.layoutKey && prefs.set("grid:" + o.layoutKey, null); all(); },
+    columnsDialog, layout: () => ({ order: cols.map((c) => c.key), hidden: cols.filter((c) => c.hidden).map((c) => c.key), widths: Object.fromEntries(cols.map((c) => [c.key, c.width])), frozen: cols.filter((c) => c.frozen).map((c) => c.key), sort, group: groupKey }),
+    applyLayout(l) { cols = applyLayout(base, l); sort = (l && l.sort) || []; groupKey = (l && l.group) || null; persist(); all(); },
+    resetLayout() { cols = base.map((c) => ({ ...c })); sort = []; groupKey = null; folded.clear(); filters = {}; preset = ""; o.layoutKey && prefs.set("grid:" + o.layoutKey, null); all(); },
+    /** Group the rows by a column (null: no grouping). Remembered with the layout. */
+    groupBy(key) { groupKey = key && colOf(key) ? key : null; folded.clear(); cursor = -1; persist(); all(); },
+    grouped: () => groupKey, groupLabel: () => (groupKey && colOf(groupKey) ? colOf(groupKey).label : ""),
+    /** The active column filters as [{key, label, text}] (for chips above the grid). */
+    filters: () => Object.entries(filters).map(([key, f]) => { const c = colOf(key); return c ? { key, label: c.label, text: filterText(c, f) } : null; }).filter(Boolean),
+    setFilter(key, f) { if (f) filters[key] = f; else delete filters[key]; all(); },
+    clearFilter(key) { delete filters[key]; all(); },
+    clearFilters() { filters = {}; preset = ""; all(); root.dispatchEvent(new CustomEvent("eco-filters-cleared")); },
+    presets: () => o.presets, preset: () => preset,
+    setPreset(id) { preset = id || ""; all(); },
     refresh: () => all(),
     /** CSV that Excel opens directly: UTF-8 with BOM, the columns and the order the person sees, the rows after filter and sort. */
     toCSV() {
@@ -970,13 +1167,16 @@ export function conditionPanel(fields, { key, title, onSubmit, collapsed, extra 
  *   toolbar:   the screen's own actions on the start side, the standard ones (Inquiry F5, Reset, Export, Columns) on the end side
  *   conditions (optional), result bar (applied chips, row count, query time, quick filter), grid, detail panel (optional)
  */
-export function screen({ code, title, path = [], toolbar = [], standard = {}, conditions, grid: g, detail, detailKey, body, shell, headExtra, note } = {}) {
+export function screen({ code, title, subtitle, help, path = [], toolbar = [], standard = {}, conditions, grid: g, detail, detailKey, body, shell, headExtra, note } = {}) {
   const favBtn = shell && code ? button({ icon: "star", kind: "ghost", size: "sm", title: T("favourite_add"), onClick: () => { shell.toggleFavourite(code); drawFav(); } }) : null;
   const drawFav = () => { if (!favBtn) return; const on = shell.isFavourite(code); favBtn.classList.toggle("is-fav", on); favBtn.title = on ? T("favourite_remove") : T("favourite_add"); };
   drawFav();
+  // help: a text (or node) explaining the screen, opened from the "?" beside its code
+  const helpBtn = help ? button({ icon: "help", kind: "ghost", size: "sm", title: T("help"), onClick: () => dialog({ title, subtitle: code || null, icon: "help", width: 520,
+    body: typeof help === "string" ? h("div", { class: "eco-help" }, help.split(/\n{2,}/).map((p) => h("p", { class: "eco-dialog-text", text: p }))) : help, actions: [{ label: T("close"), kind: "primary" }] }) }) : null;
   const crumbs = h("nav", { class: "eco-crumbs", "aria-label": "breadcrumb" }, path.map((p) => [h("span", { text: p }), icon(isRTL() ? "chev-left" : "chev-right", 11)]), h("strong", { text: title }));
-  const head = h("div", { class: "eco-screen-head" }, crumbs, h("span", { class: "eco-grow" }), headExtra || null,
-    code ? h("span", { class: "eco-code", title: "Screen code" }, ltr(code)) : null, favBtn);
+  const head = h("div", { class: "eco-screen-head" }, h("div", { class: "eco-screen-titles" }, crumbs, subtitle ? h("span", { class: "eco-screen-sub", text: subtitle }) : null), h("span", { class: "eco-grow" }), headExtra || null,
+    code ? h("span", { class: "eco-code", title: "Screen code" }, ltr(code)) : null, helpBtn, favBtn);
   const std = [];
   if (standard.inquiry) std.push(button({ label: standard.inquiryLabel || "Inquiry", icon: standard.inquiryIcon || "search", kind: "primary", kbd: "F5", onClick: standard.inquiry, cls: "eco-act-inquiry" }));
   if (standard.reset) std.push(button({ label: standard.resetLabel || T("reset"), icon: "x", kind: "default", onClick: standard.reset }));
@@ -987,12 +1187,25 @@ export function screen({ code, title, path = [], toolbar = [], standard = {}, co
   const bar = toolbar.length || std.length ? h("div", { class: "eco-toolbar", role: "toolbar" }, h("div", { class: "eco-toolbar-start" }, toolbar), h("div", { class: "eco-toolbar-end" }, std)) : null;
   const count = h("span", { class: "eco-result-count" }), time = h("span", { class: "eco-result-time" }), applied = h("div", { class: "eco-result-applied" });
   const quick = g ? searchBox({ placeholder: T("quick_filter"), onInput: (v) => { g.setQuickFilter(v); }, width: "200px" }) : null;
-  const result = g ? h("div", { class: "eco-resultbar" }, h("span", { class: "eco-muted eco-result-label", text: T("applied") + ":" }), applied, h("span", { class: "eco-grow" }), quick, count, time) : null;
+  // presets (named quick filters) and the column filters in force, each removable with one click
+  const presetBar = g && g.presets && g.presets().length ? segmented({ size: "sm", value: "", options: [["", T("all")]].concat(g.presets().map((p) => [p.id, p.label])), onChange: (v) => g.setPreset(v) }) : null;
+  const colFilters = h("div", { class: "eco-result-filters" });
+  const drawFilters = () => {
+    if (!g || !g.filters) return;
+    const fs = g.filters();
+    clear(colFilters, fs.map((f) => h("span", { class: "eco-chip eco-chip-filter" }, icon("filter", 11), h("span", { class: "eco-muted", text: f.label + ": " }), h("bdi", { text: f.text }),
+      h("button", { type: "button", class: "eco-chip-x", title: T("clear_filter"), "aria-label": T("clear_filter"), onclick: () => g.clearFilter(f.key) }, icon("x", 11)))),
+    fs.length > 1 ? h("button", { type: "button", class: "eco-linkbtn", text: T("clear_filters"), onclick: () => g.clearFilters() }) : null,
+    g.grouped && g.grouped() ? h("span", { class: "eco-chip eco-chip-filter" }, icon("layers", 11), h("span", { text: T("grouped_by", { label: g.groupLabel() }) }),
+      h("button", { type: "button", class: "eco-chip-x", title: T("ungroup"), "aria-label": T("ungroup"), onclick: () => g.groupBy(null) }, icon("x", 11))) : null);
+  };
+  const result = g ? h("div", { class: "eco-resultbar" }, presetBar, h("span", { class: "eco-muted eco-result-label", text: T("applied") + ":" }), applied, colFilters, h("span", { class: "eco-grow" }), quick, count, time) : null;
+  if (g && presetBar) g.el.addEventListener("eco-filters-cleared", () => presetBar.redraw(""));
   let main = body || null;
   if (g) {
     const gridWrap = h("div", { class: "eco-screen-grid" }, g.el);
     main = detail ? split(gridWrap, detail, { key: detailKey || (code ? code + ":detail" : null), initial: 380, min: 240 }) : gridWrap;
-    g.el.addEventListener("eco-view", () => api.count());
+    g.el.addEventListener("eco-view", () => { api.count(); drawFilters(); });
   }
   const el = h("div", { class: "eco-screen", "data-code": code || "" }, head, bar, note || null, conditions ? conditions.el : null, result, h("div", { class: "eco-screen-main" }, main));
   const api = {
@@ -1024,7 +1237,8 @@ export function screen({ code, title, path = [], toolbar = [], standard = {}, co
  *   menu: [{id, label, icon, children: [{code, label, icon?} | {id, label, children}]}],
  *   screens: {CODE: {title, path: [...], icon, create(ctx) -> {el, onActivate?, onClose?} }},
  *   home: CODE shown as the fixed first tab, maxTabs, searchExample,
- *   topActions: [nodes], userMenu: [menu items], onLanguage(lang), onTheme(theme), statusItems: [nodes], sampleData: text
+ *   topActions: [nodes], userMenu: [menu items], onLanguage(lang), onTheme(theme), onLook(look), statusItems: [nodes], sampleData: text,
+ *   commands: [{title, icon, keywords, kbd, run()}] actions offered in the screen search (Ctrl+K) beside the screens
  * }
  */
 export function createShell(opts) {
@@ -1048,10 +1262,19 @@ export function createShell(opts) {
   const userBtn = h("button", { type: "button", class: "eco-userbtn", onclick: (ev) => userMenu(ev.currentTarget) },
     avatar(o.user?.name, 26), h("span", { class: "eco-userbtn-text" }, h("span", { text: o.user?.name || "" }), o.user?.role ? h("small", { text: o.user.role }) : null), icon("chev-down", 12));
   const isDark = () => document.documentElement.dataset.theme === "dark";
-  const themeBtn = button({ icon: isDark() ? "sun" : "moon", kind: "top", title: T("theme"), onClick: () => setTheme(isDark() ? "light" : "dark") });
-  function setTheme(th) { o.onTheme && o.onTheme(th); clear(themeBtn, icon(isDark() ? "sun" : "moon", 15)); }
+  const themeBtn = button({ icon: isDark() ? "sun" : "moon", kind: "top", title: T("theme"), onClick: () => setTheme(isDark() ? "light" : "dark"), cls: "eco-theme-btn" });
+  // the modern look shows the theme as a sun / moon pill (the classic look keeps one icon button)
+  const pillBtn = (th, ic) => h("button", { type: "button", class: "eco-theme-" + th, title: T(th), "aria-label": T(th), "aria-pressed": String(th === "dark" ? isDark() : !isDark()), onclick: () => setTheme(th) }, icon(ic, 15));
+  const themePill = h("div", { class: "eco-theme-pill", role: "group", "aria-label": T("theme") }, pillBtn("light", "sun"), pillBtn("dark", "moon"));
+  function setTheme(th) {
+    o.onTheme && o.onTheme(th);
+    clear(themeBtn, icon(isDark() ? "sun" : "moon", 15));
+    themePill.querySelector(".eco-theme-light").setAttribute("aria-pressed", String(!isDark()));
+    themePill.querySelector(".eco-theme-dark").setAttribute("aria-pressed", String(isDark()));
+  }
+  function setLook(lk) { configure({ look: lk }); prefs.set("look", lk); o.onLook && o.onLook(lk); refreshAll(); }
   const top = h("header", { class: "eco-top" }, navToggle, brand, company, h("div", { class: "eco-top-center" }, searchBtn), o.topActions || null,
-    themeBtn,
+    themeBtn, themePill,
     button({ icon: "help", kind: "top", title: T("keyboard"), onClick: () => shortcuts() }), bell, userBtn);
 
   // left navigation
@@ -1174,37 +1397,47 @@ export function createShell(opts) {
   // screen search (Ctrl+K)
   function palette() {
     const all_ = Object.entries(o.screens).filter(([, sc]) => !sc.hidden).map(([code, sc]) => ({ code, ...sc }));
+    // actions beside the screens (Mizan's command palette): the product's own commands, then the preferences
+    const acts = (o.commands || []).map((c) => ({ ...c, code: "", group: T("actions") })).concat([
+      { title: T("toggle_theme"), icon: isDark() ? "sun" : "moon", keywords: "theme dark light", run: () => setTheme(isDark() ? "light" : "dark") },
+      { title: T("toggle_look"), icon: "sparkles", keywords: "look modern classic style", run: () => setLook(isModern() ? "classic" : "modern") },
+      o.onLanguage ? { title: T("toggle_language"), icon: "globe", keywords: "language arabic english", run: () => o.onLanguage(lang() === "ar" ? "en" : "ar") } : null,
+      { title: T("keyboard"), icon: "keyboard", keywords: "keys shortcuts", run: () => shortcuts() },
+    ].filter(Boolean).map((c) => ({ ...c, code: "", group: T("preferences") })));
     const q = input({ placeholder: T("search_hint", { example: o.searchExample }), type: "search" });
     const list = h("div", { class: "eco-palette-list", role: "listbox" });
     let items = [], idx = 0;
     const draw = () => {
       const s_ = q.value.trim().toLowerCase();
       const recent = prefs.get(recentKey, []).filter((c) => o.screens[c]);
-      if (!s_) items = recent.map((c) => ({ code: c, ...o.screens[c], group: T("recent") })).concat(all_.filter((x) => !recent.includes(x.code)).map((x) => ({ ...x, group: T("all_screens") })));
+      if (!s_) items = recent.map((c) => ({ code: c, ...o.screens[c], group: T("recent") })).concat(all_.filter((x) => !recent.includes(x.code)).map((x) => ({ ...x, group: T("all_screens") })), acts);
       else {
-        const score = (x) => x.code.toLowerCase() === s_ ? 0 : x.code.toLowerCase().startsWith(s_) ? 1 : x.title.toLowerCase().startsWith(s_) ? 2 : (x.code + " " + x.title + " " + (x.path || []).join(" ") + " " + (x.keywords || "")).toLowerCase().includes(s_) ? 3 : 9;
-        items = all_.map((x) => ({ ...x, s: score(x) })).filter((x) => x.s < 9).sort((a, b) => a.s - b.s || a.code.localeCompare(b.code));
+        const words = s_.split(/\s+/);
+        const score = (x) => x.code && x.code.toLowerCase() === s_ ? 0 : x.code && x.code.toLowerCase().startsWith(s_) ? 1 : x.title.toLowerCase().startsWith(s_) ? 2
+          : words.every((w) => (x.code + " " + x.title + " " + (x.path || []).join(" ") + " " + (x.keywords || "")).toLowerCase().includes(w)) ? 3 : 9;
+        items = all_.concat(acts).map((x) => ({ ...x, s: score(x) })).filter((x) => x.s < 9).sort((a, b) => a.s - b.s || (a.code || "~").localeCompare(b.code || "~"));
       }
       idx = Math.min(idx, Math.max(0, items.length - 1));
       let group = null;
       const nodes = [];
       items.forEach((x, i) => {
         if (x.group && x.group !== group) { group = x.group; nodes.push(h("div", { class: "eco-palette-group", text: group })); }
-        nodes.push(h("div", { class: ["eco-palette-item", i === idx && "is-on"], role: "option", "aria-selected": String(i === idx), onclick: () => go(x.code), onmousemove: () => { if (idx !== i) { idx = i; draw(); } } },
-          h("span", { class: "eco-palette-ic" }, icon(x.icon || "table", 15)), h("span", { class: "eco-palette-code" }, ltr(x.code)), h("span", { class: "eco-palette-title", text: x.title }),
-          h("span", { class: "eco-palette-path", text: (x.path || []).join(" › ") })));
+        nodes.push(h("div", { class: ["eco-palette-item", i === idx && "is-on", !x.code && "is-action"], role: "option", "aria-selected": String(i === idx), onclick: () => go(x), onmousemove: () => { if (idx !== i) { idx = i; draw(); } } },
+          h("span", { class: "eco-palette-ic" }, icon(x.icon || "table", 15)), h("span", { class: "eco-palette-code" }, x.code ? ltr(x.code) : null), h("span", { class: "eco-palette-title", text: x.title }),
+          x.kbd ? kbd(x.kbd) : h("span", { class: "eco-palette-path", text: (x.path || []).join(" › ") })));
       });
       clear(list, nodes.length ? nodes : empty({ icon: "search", title: T("no_screens") }));
       list.querySelector(".is-on")?.scrollIntoView({ block: "nearest" });
     };
-    const go = (code) => { d.close(); openScreen(code); };
+    const go = (x) => { d.close(); if (x.run) x.run(); else openScreen(x.code); };
     q.addEventListener("input", () => { idx = 0; draw(); });
     q.addEventListener("keydown", (ev) => {
       if (ev.key === "ArrowDown") { ev.preventDefault(); idx = Math.min(items.length - 1, idx + 1); draw(); }
       else if (ev.key === "ArrowUp") { ev.preventDefault(); idx = Math.max(0, idx - 1); draw(); }
-      else if (ev.key === "Enter" && items[idx]) { ev.preventDefault(); go(items[idx].code); }
+      else if (ev.key === "Enter" && items[idx]) { ev.preventDefault(); go(items[idx]); }
     });
-    const d = dialog({ title: T("search_screens"), icon: "search", width: 640, body: h("div", { class: "eco-palette" }, h("div", { class: "eco-palette-input" }, icon("search", 16), q), list) });
+    const foot = h("div", { class: "eco-palette-foot" }, h("span", {}, kbd("↑"), kbd("↓"), " " + T("palette_move")), h("span", {}, kbd("↵"), " " + T("palette_open")), h("span", {}, kbd("Esc"), " " + T("close")));
+    const d = dialog({ title: T("search_screens"), icon: "search", width: 640, body: h("div", { class: "eco-palette" }, h("div", { class: "eco-palette-input" }, icon("search", 16), q), list, foot) });
     d.el.classList.add("eco-dialog-palette");
     draw(); q.focus();
   }
@@ -1220,6 +1453,9 @@ export function createShell(opts) {
       "-", { header: T("theme") },
       { label: T("light"), icon: "sun", checked: document.documentElement.dataset.theme !== "dark", onSelect: () => setTheme("light") },
       { label: T("dark"), icon: "moon", checked: document.documentElement.dataset.theme === "dark", onSelect: () => setTheme("dark") },
+      { header: T("look") },
+      { label: T("modern"), icon: "sparkles", checked: isModern(), onSelect: () => setLook("modern") },
+      { label: T("classic"), icon: "table", checked: !isModern(), onSelect: () => setLook("classic") },
       { header: T("density") },
       { label: T("compact"), checked: document.documentElement.dataset.density !== "comfortable", onSelect: () => { configure({ density: "compact" }); prefs.set("density", "compact"); refreshAll(); } },
       { label: T("comfortable"), checked: document.documentElement.dataset.density === "comfortable", onSelect: () => { configure({ density: "comfortable" }); prefs.set("density", "comfortable"); refreshAll(); } },
@@ -1257,6 +1493,7 @@ export function createShell(opts) {
       if (o.home) openScreen(o.home);
       for (const c of restore) if (c !== o.home && c !== want && o.screens[c]) openScreen(c);
       if (want && want !== o.home && o.screens[want]) openScreen(want);
+      else if (want === o.home && restore.length) openScreen(o.home);  // the address asked for home: restored tabs must not cover it
     },
   };
   drawNav();

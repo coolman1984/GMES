@@ -5,7 +5,32 @@
  * Values are our own: inspired by the working philosophy of dense enterprise MES screens
  * (dark top bar, light work area, condition panel -> Inquiry -> grid), never copied from any vendor.
  * Status colours are fixed across every product, screen and board (GMES docs/design/06 §6.3).
+ *
+ * Two looks share every component ([data-look]): "classic" (the default: dense, dark top bar, square corners) and
+ * "modern" (the look Mizan brought to the ecosystem: white canvas, hairline borders, pill buttons, soft shadows, the
+ * Inter and IBM Plex Sans Arabic typefaces). A product picks its default look; a person may switch it.
  */
+
+/* ---- typefaces carried by the kit itself (SIL Open Font License 1.1, see fonts/*-OFL.txt): no download at run time ---- */
+@font-face {
+  font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2-variations"), url("fonts/inter-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2-variations"), url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-display: swap; font-weight: 400; src: url("fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-display: swap; font-weight: 500; src: url("fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-display: swap; font-weight: 600; src: url("fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-style: normal; font-display: swap; font-weight: 700; src: url("fonts/ibm-plex-sans-arabic-arabic-700-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200F, U+FB50-FDFF, U+FE70-FEFF; }
+
 :root {
   color-scheme: light;
 
@@ -87,6 +112,11 @@
   --eco-s1: 2px; --eco-s2: 4px; --eco-s3: 6px; --eco-s4: 8px; --eco-s5: 12px; --eco-s6: 16px; --eco-s7: 20px; --eco-s8: 24px;
   --eco-radius: 3px;
   --eco-radius-lg: 6px;
+  --eco-radius-xl: 8px;
+  --eco-radius-pill: 3px;
+  --eco-card-shadow: none;
+  --eco-page-pad: 12px;
+  --eco-ease: ease;
   --eco-top-h: 44px;
   --eco-tabs-h: 32px;
   --eco-status-h: 24px;
@@ -161,3 +191,125 @@
 
 /* Station and board modes (data-mode) change the frame, not these tokens: their screens size themselves for touch
  * and for distance (GMES docs/design/06 §6.2 rule 6). */
+
+/* ==================================================================== the modern look (data-look="modern")
+ * Mizan's visual language, carried into the kit so every product can use it: white canvas, hairline borders, a light
+ * translucent top bar, pill buttons, 8/16/22 px corners, soft layered shadows, Inter + IBM Plex Sans Arabic.
+ * The light block comes after the dark one on purpose: the dark modern block below is more specific and wins. */
+:root[data-look="modern"] {
+  color-scheme: light;
+  --eco-top-bg: #ffffff;
+  --eco-top-bg-2: #f4f4f6;
+  --eco-top-fg: #15171c;
+  --eco-top-fg-2: #5d6270;
+  --eco-top-line: #ebebef;
+  --eco-nav-bg: #fafafa;
+  --eco-nav-fg: #5d6270;
+  --eco-nav-fg-2: #8e94a0;
+  --eco-nav-hover: #f0f0f3;
+  --eco-nav-active-bg: #ffffff;
+  --eco-nav-active-fg: #15171c;
+  --eco-app-bg: #ffffff;
+  --eco-surface: #ffffff;
+  --eco-surface-2: #fafafa;
+  --eco-surface-3: #f4f4f6;
+  --eco-line: #ebebef;
+  --eco-line-2: #dcdce3;
+  --eco-line-strong: #b4b8c3;
+  --eco-text: #15171c;
+  --eco-text-2: #5d6270;
+  --eco-text-3: #8e94a0;
+  --eco-accent: #2563eb; --eco-accent-strong: #1d4ed8; --eco-accent-soft: #eef3ff; --eco-accent-line: #bcd0fb;
+  --eco-grid-head-bg: #fafafa;
+  --eco-grid-head-fg: #8e94a0;
+  --eco-grid-row-alt: #ffffff;
+  --eco-grid-row-hover: #f6f6f8;
+  --eco-grid-row-sel: var(--eco-accent-soft);
+  --eco-grid-row-sel-line: var(--eco-accent-line);
+  --eco-grid-total-bg: #fafafa;
+  --eco-grid-frozen-shadow: 6px 0 8px -8px rgba(16, 24, 40, .22);
+  --eco-ok: #15803d;   --eco-ok-soft: #eaf7ef;
+  --eco-warn: #b45309; --eco-warn-soft: #fff7e6;
+  --eco-bad: #dc2626;  --eco-bad-soft: #fdeeee;
+  --eco-info: #0e7490; --eco-info-soft: #e8f7fa;
+  --eco-font: "Inter Variable", "IBM Plex Sans Arabic", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Tahoma, Arial, sans-serif;
+  --eco-font-ar: "IBM Plex Sans Arabic", "Inter Variable", "Segoe UI", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+  --eco-fs-xs: 11.5px;
+  --eco-fs-sm: 12.5px;
+  --eco-fs: 13.5px;
+  --eco-fs-md: 14.5px;
+  --eco-fs-lg: 16px;
+  --eco-fs-xl: 19px;
+  --eco-fs-2xl: 26px;
+  --eco-fs-kpi: 26px;
+  --eco-radius: 8px;
+  --eco-radius-lg: 16px;
+  --eco-radius-xl: 22px;
+  --eco-radius-pill: 999px;
+  --eco-top-h: 60px;
+  --eco-tabs-h: 44px;
+  --eco-status-h: 28px;
+  --eco-nav-w: 252px;
+  --eco-nav-rail: 60px;
+  --eco-control-h: 38px;
+  --eco-button-h: 36px;
+  --eco-row-h: 44px;
+  --eco-head-h: 40px;
+  --eco-page-pad: 24px;
+  --eco-shadow-1: 0 1px 2px rgba(16, 24, 40, .04);
+  --eco-card-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+  --eco-shadow-pop: 0 2px 4px rgba(16, 24, 40, .04), 0 12px 32px rgba(16, 24, 40, .08);
+  --eco-shadow-dialog: 0 8px 16px rgba(16, 24, 40, .06), 0 32px 72px rgba(16, 24, 40, .16);
+  --eco-overlay: rgba(17, 19, 24, .28);
+  --eco-focus: 0 0 0 3px color-mix(in srgb, var(--eco-accent) 35%, transparent);
+  --eco-speed: 150ms;
+  --eco-ease: cubic-bezier(.2, .7, .2, 1);
+}
+/* the office default stays dense: a modern screen that still shows many rows */
+:root[data-look="modern"][data-density="compact"] { --eco-row-h: 36px; --eco-head-h: 36px; --eco-control-h: 34px; --eco-button-h: 32px; --eco-fs: 13px; }
+:root[data-look="modern"][data-product="hr"] {
+  --eco-accent: #0f766e; --eco-accent-strong: #0b5f58; --eco-accent-soft: #e8f6f3; --eco-accent-line: #9fd8cd;
+}
+:root[data-look="modern"][data-theme="dark"] {
+  color-scheme: dark;
+  --eco-top-bg: #0b0c10;
+  --eco-top-bg-2: #171a21;
+  --eco-top-fg: #ececf1;
+  --eco-top-fg-2: #a3a9b6;
+  --eco-top-line: #22252e;
+  --eco-nav-bg: #0f1116;
+  --eco-nav-fg: #a3a9b6;
+  --eco-nav-fg-2: #6c7383;
+  --eco-nav-hover: #171a21;
+  --eco-nav-active-bg: #161920;
+  --eco-nav-active-fg: #ececf1;
+  --eco-app-bg: #0b0c10;
+  --eco-surface: #111319;
+  --eco-surface-2: #0f1116;
+  --eco-surface-3: #171a21;
+  --eco-line: #22252e;
+  --eco-line-2: #2f333e;
+  --eco-line-strong: #4a4f5c;
+  --eco-text: #ececf1;
+  --eco-text-2: #a3a9b6;
+  --eco-text-3: #6c7383;
+  --eco-accent: #3b82f6; --eco-accent-strong: #93b8ff; --eco-accent-soft: rgba(59, 130, 246, .14); --eco-accent-line: #2d4f86;
+  --eco-grid-head-bg: #0f1116;
+  --eco-grid-head-fg: #6c7383;
+  --eco-grid-row-alt: #111319;
+  --eco-grid-row-hover: #161920;
+  --eco-grid-total-bg: #0f1116;
+  --eco-grid-frozen-shadow: 6px 0 8px -8px rgba(0, 0, 0, .7);
+  --eco-ok: #4ade80;   --eco-ok-soft: rgba(34, 197, 94, .13);
+  --eco-warn: #fbbf24; --eco-warn-soft: rgba(245, 158, 11, .13);
+  --eco-bad: #f87171;  --eco-bad-soft: rgba(239, 68, 68, .13);
+  --eco-info: #22d3ee; --eco-info-soft: rgba(34, 211, 238, .12);
+  --eco-shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --eco-card-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  --eco-shadow-pop: 0 2px 4px rgba(0, 0, 0, .35), 0 12px 32px rgba(0, 0, 0, .4);
+  --eco-shadow-dialog: 0 8px 16px rgba(0, 0, 0, .4), 0 32px 72px rgba(0, 0, 0, .55);
+  --eco-overlay: rgba(0, 0, 0, .55);
+}
+:root[data-look="modern"][data-theme="dark"][data-product="hr"] {
+  --eco-accent: #0f9f90; --eco-accent-strong: #5eead4; --eco-accent-soft: rgba(45, 212, 191, .13); --eco-accent-line: #1e6158;
+}
