@@ -259,3 +259,100 @@ the screen search also runs actions (the product's `commands`, theme, look, lang
 **Rejected:** copying Mizan's React front end into HR (breaks ADR-029, adds a Node build to a Python installer, splits the
 ecosystem's look); styling HR alone in `hr.css` (HR and GMES would drift); making modern the default for everyone now (the
 owner approved the dense G-MES philosophy for the shop floor).
+
+### ADR-034 — Engineering revisions are frozen; serial units follow their routing with their own hash-chained history
+**Context:** the owner asked for the rest of the product with a realistic television plant: every TV has a serial, passes a
+sequence of stations (panel loading, main board, function test, packing), fails and is repaired, and must be traceable to its
+parts and material lots. The production ledger (`exe_ledger`) holds QUANTITIES, which accounting receives; nothing held units.
+**Decision:**
+1. A new `eng` module owns the manufacturing facet of an item (ownership table: "BOM, routing, cycle time: manufacturing"):
+   routings and bills of materials as revisions. A draft is edited; approving freezes it (the server refuses, and database
+   triggers refuse, any change to its lines) and makes the previous approved revision obsolete. A work order stores the ids of
+   the approved revisions it was released with: a frozen revision IS the snapshot, no copy is kept. The plant's production
+   shifts and calendar live here too (the plant's working time; people's rosters stay HR-System's).
+2. An operation is performed on a line at the station named `<line code>-<operation code>`: routing and plant model meet by
+   code, never by a copied list of stations.
+3. A new `trk` module keeps serial units: `trk_event`, append-only and hash-chained (shared helper `kernel/chain.ts`), is the
+   unit history; `trk_unit`, `trk_genealogy` and the load counters are its projections. The route is enforced on the server
+   (first operation creates the unit; skipping a required operation, moving a held unit, scanning a unit in repair, a unit that
+   already passed, and starting more units than planned are refused). A FAIL goes to repair and returns to the SAME test.
+4. The two histories stay separate but are joined in the same transaction: a unit's last operation books ONE `COMPLETE` of
+   quantity 1 (lot = serial) in the production ledger; a scrapped unit ONE `SCRAP`. A health check proves units == ledger per
+   order. Consumption is booked before the order's final unit (lots used from station loads, and backflushed material that no
+   station scans), because accounting relies on consumption preceding the final completion.
+5. Key parts are scanned where the BOM says (`scan: serial`): a unit made here becomes `consumed` into its parent; a bought-in
+   serial is accepted once and marked not verified. Material lots are loaded on stations (`scan: lot`); a lot nobody registered
+   is accepted and marked not verified (ownership: supplier lots belong to accounting when it is connected).
+**Rejected:** adding unit transaction types to `exe_ledger` (SQLite cannot change its CHECK without rebuilding the audited
+ledger table, and adding fields would change the hash of every old line; accounting does not need unit moves); copying the
+routing into each order (a frozen revision is already immutable); one row per unit updated in place without history (a
+changed status would erase what happened); per-unit consumption lines (a million ledger lines a month for screws);
+multi-line routings with station lists (a code rule is simpler and cannot drift).
+
+### ADR-035 — Quality: signed-off inspections, holds that stop units anywhere, releases signed by a person
+**Context:** a television plant tests every set (function, hi-pot, white balance), repairs the failures, inspects lots
+before they leave (OQC by AQL sampling) and must stop suspect units at once — including every set that contains a suspect
+material lot — and release them only on a quality decision.
+**Decision:** a `qms` module. Defect codes and repair cause / action codes are the plant's lists (an empty list accepts any
+code, so a plant can start before writing them). An inspection is an append-only, hash-chained record: measurements are
+checked against the plan's limits on the server (exact decimals, ADR-018); a sampled inspection (IQC / OQC) takes its
+sample and acceptance number from ISO 2859-1 (single, normal; the diagonal structure of table II-A is coded and tested
+against published rows). A failed OQC holds the lot in the same transaction. A hold resolves its target to units (a unit, a
+list, a work order, a pallet, or every finished product whose genealogy contains a lot or part) and increments each unit's
+hold count, so a unit under two holds stays stopped until both are released; units already shipped are counted as the
+recall list, never "held". A release is a person's electronic signature (their password, checked by the system module;
+machine keys cannot sign) with a disposition; rework and scrap apply only to units still in production — a finished unit
+is never silently taken back out of the production ledger. A repair can replace a key part: the old genealogy row is kept
+and marked removed by the repair fact.
+**Rejected:** a boolean "held" flag (a second hold's release would free a unit the first still holds); holding shipped units
+(a physical impossibility that would hide the recall); scrapping finished units from a hold (it would need a reversal in the
+production ledger and a contract for accounting: EXE2040); deleting a replaced part's genealogy row (the history of what was
+in the unit is the point of traceability); a PIN or "are you sure?" as signature (anyone at the keyboard can click it).
+
+### ADR-036 — Shipping: pallets, shipping orders and containers in manufacturing; the sale stays in accounting
+**Context:** a television plant ships in containers: finished sets are palletized, pallets pass an outgoing inspection, and
+a container is loaded for a shipping order and sealed. The owner asked for "container loading and every detail". The
+ownership table gives customers and sales to accounting; nothing covered the physical shipment.
+**Decision:** a `shp` module owns the physical side: packing specifications per product (units per pallet, pallets per
+container type), palletizing (one product per pallet, closed when full), shipping orders (customer as a NAME until
+`eco.party` exists; products and quantities), containers identified by ISO 6346 numbers with a checked check digit, and
+loading checks enforced on the server: only closed pallets, of an ordered product, never more than ordered, never more than
+the container holds (mixed products use fractions of each product's capacity), no unit on hold, and a PASSED outgoing
+inspection when the plant has an OQC plan for the product. Sealing dispatches: units and pallets become shipped and one
+`mes.shipment.dispatched.v1` (new additive contract, lines per product and warehouse, serials of serialised products) goes
+to accounting through the feed. Every fact is in a hash-chained shipping history.
+**Rejected:** creating customers in manufacturing (another app's master data); booking stock relief or an invoice here
+(accounting's decision and value); letting a container take any pallet and checking afterwards (the check at the door is
+the whole point); allowing mixed-product pallets (a TV plant ships one model per pallet; mixing breaks OQC lots).
+
+### ADR-037 — OEE from facts, reports computed on request, labels as ZPL, backups rehearsed before they count
+**Context:** the owner asked for "every remaining part and screen" of the MES. The efficiency, report, label and system
+entries of the menu were still greyed; the line board showed OEE as "—" and the stop reasons were a fixed list in code.
+**Decision:**
+- **OEE (ISO 22400)** is computed when asked, never stored: planned time = the production shifts the line WORKED (a work
+  order planned for the shift, or output booked inside its window) up to now, minus the shift's break share; planned stops
+  (reasons marked planned, e.g. a break) are removed from the busy time; unplanned downtime is the UNION of the line's and
+  its stations' stoppages (overlaps counted once, a planned stop wins over an unplanned one at the same moment); the ideal
+  cycle is the slowest operation of the routing (the line's pace), else the line's capacity per 480 minutes; quality from
+  the ledger. A part that cannot be known is `null` ("—"), never guessed. Stop reasons become the plant's own table
+  (`oee_reason`, SYS9040), each in a loss category; never deleted, only switched off.
+- **Reports** (`rpt`) are views over other modules' facts plus the one thing people write there: shift handover notes,
+  append-only (a correction is a new note pointing to the old one), and a receipt confirmed once by the next shift.
+- **Labels** (`lbl`): templates in ZPL — the language of the thermal printers plants already own — with {variables} checked
+  against what the label is for (a unit, a pallet, nothing) and filled from the facts; values carrying ZPL control
+  characters (^ ~) are refused. Printers are reached by raw TCP 9100. The first label of a thing is a print; any later one is
+  a REPRINT with its own permission (supervisor, quality) and a reason — a second serial label is how a set ships twice.
+  The print is recorded inside the command (so a retry never prints twice) and sent after the commit; whether the printer
+  took it is a second fact. The screens preview the label (a small ZPL renderer and Code 128 in the browser).
+- **Backups** (`ops.ts`, whole installation): `VACUUM INTO` on the reader connection (a consistent committed copy while the
+  plant runs), then a REHEARSAL on the copy, opened read-only: `integrity_check`, every module's own health checks (hash
+  chains, units against the ledger) and row counts written beside it. "Verify" repeats it and compares the counts. Restore is
+  a documented offline procedure (SYS9070), never a web action; nothing deletes a backup.
+- **Keys** of devices and links get a screen (SYS9030): shown once, listed without secret or hash, revoked at once.
+**Rejected:** storing OEE per shift (a figure that can drift from the facts it came from); summing overlapping stops (a
+station stop inside a line stop would count the same minutes twice); a proprietary label designer or PDF labels (plants run
+Zebra-compatible printers; ZPL is what they accept); restoring from a browser (a click that replaces the plant's database is
+not an operation to leave one confirmation away); scheduled backups inside the server (Windows Task Scheduler calls the same
+API; the server stays one process that serves).
+**Still planned (menu entries left greyed, honestly):** EXE2030 split/merge/move, EXE2040 reversals (both need a
+correction model agreed with accounting first), SYS9050 numbering, SYS9120 import from Excel.

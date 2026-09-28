@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
@@ -41,6 +42,13 @@ describe('the screens are served by the server itself (one address, one origin)'
 
 describe('the interface kit and the screens (UX phase, ADR-029)', () => {
   const files = [...js(WEB_DIR), ...js(KIT_DIR)];
+
+  test('every screen file is valid JavaScript (a syntax error in one screen blanks the whole application)', () => {
+    for (const f of files) {
+      const r = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: read(f), encoding: 'utf8' });
+      assert.equal(r.status, 0, f + '\n' + r.stderr);
+    }
+  });
 
   test('server values are written as text only: no HTML parsing, no code from strings', () => {
     for (const f of files) assert.doesNotMatch(read(f), /\.innerHTML|outerHTML\s*=|insertAdjacentHTML|document\.write|\beval\(|new Function\(/, f);

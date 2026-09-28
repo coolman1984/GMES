@@ -1452,7 +1452,14 @@ export function createShell(opts) {
       if (i < 9) tab.dataset.key = String(i + 1);
       return tab;
     }));
-    tabList.querySelector(".is-active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // scroll the tab strip only: scrollIntoView would also scroll every ancestor, and an overflow:hidden app frame
+    // can still be scrolled that way (the whole application slid sideways once more tabs than fit were open)
+    const on = tabList.querySelector(".is-active");
+    if (on) {
+      const a = on.getBoundingClientRect(), b = tabList.getBoundingClientRect();
+      if (a.left < b.left) tabList.scrollLeft -= b.left - a.left;
+      else if (a.right > b.right) tabList.scrollLeft += a.right - b.right;
+    }
   }
   function tabMenu(anchor, code) {
     menu(anchor, [code !== o.home ? { label: T("close_tab"), icon: "x", onSelect: () => close(code) } : null, { label: T("close_others"), onSelect: () => closeOthers(code) }, { label: T("close_all"), onSelect: () => closeOthers(o.home) }]);

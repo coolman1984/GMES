@@ -103,7 +103,11 @@ describe('work orders on lines, stoppages and the boards (EXE3010, EXE2020, DSH5
     assert.equal(home.lines.length, 1);
     assert.equal(home.lines[0].state, 'down');
     assert.equal(home.stoppages.open, 1);
-    assert.ok(!('oee' in board), 'OEE is not given until cycle times exist');
+    // OEE from the facts: shift A from 07:00 to now (11:12 local) = 252 min; the line and a station were stopped over the
+    // same 12 minutes, counted once; ideal cycle from the capacity (480 min / 800) = 0.6 min x 5 units = 3 min
+    assert.deepEqual([board.oee.plannedMin, board.oee.downtimeMin, board.oee.runMin, board.oee.idealMin], [252, 12, 240, 3]);
+    assert.deepEqual([board.oee.availability, board.oee.performance, board.oee.quality], [95.2, 1.3, 80]);
+    assert.deepEqual(board.oee.shiftsWorked, ['A']);
   });
 
   test('reading needs a session or a key, like every API', async () => {

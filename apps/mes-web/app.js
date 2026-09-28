@@ -2,7 +2,7 @@
 // built yet are shown, greyed, with their code, so the map of the product is visible from the first day.
 // Before the shell: the server says whether the installation has accounts and who is signed in (auth.js).
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, can, loadLang, session, setSession, t, lang, today } from "./common.js";
+import { api, can, loadLang, loadStopReasons, session, setSession, t, lang, today } from "./common.js";
 import { changePasswordDialog, changePasswordPage, loginPage, setupPage } from "./auth.js";
 import home from "./screens/home.js";
 import exe3010 from "./screens/exe3010.js";
@@ -11,20 +11,81 @@ import mdm1010 from "./screens/mdm1010.js";
 import mdm1020 from "./screens/mdm1020.js";
 import sys9010 from "./screens/sys9010.js";
 import dsh5010 from "./screens/dsh5010.js";
+import exe2010 from "./screens/exe2010.js";
+import exe3020 from "./screens/exe3020.js";
+import exe3030 from "./screens/exe3030.js";
+import wip3010 from "./screens/wip3010.js";
+import wip3020 from "./screens/wip3020.js";
+import trc2010 from "./screens/trc2010.js";
+import trc3010 from "./screens/trc3010.js";
+import trc3020 from "./screens/trc3020.js";
+import mdm1030 from "./screens/mdm1030.js";
+import mdm1040 from "./screens/mdm1040.js";
+import mdm1050 from "./screens/mdm1050.js";
+import mdm1060 from "./screens/mdm1060.js";
+import qms1010 from "./screens/qms1010.js";
+import qms1020 from "./screens/qms1020.js";
+import qms2010 from "./screens/qms2010.js";
+import qms2020 from "./screens/qms2020.js";
+import qms2030 from "./screens/qms2030.js";
+import qms4010 from "./screens/qms4010.js";
+import shp1010 from "./screens/shp1010.js";
+import shp2010 from "./screens/shp2010.js";
+import shp2020 from "./screens/shp2020.js";
+import shp2030 from "./screens/shp2030.js";
+import shp3010 from "./screens/shp3010.js";
+import oee2010 from "./screens/oee2010.js";
+import oee4010 from "./screens/oee4010.js";
+import oee4020 from "./screens/oee4020.js";
+import rpt4010 from "./screens/rpt4010.js";
+import rpt4020 from "./screens/rpt4020.js";
+import rpt4030 from "./screens/rpt4030.js";
+import lbl1010 from "./screens/lbl1010.js";
+import lbl2010 from "./screens/lbl2010.js";
+import dsh5020 from "./screens/dsh5020.js";
+import sys9020 from "./screens/sys9020.js";
+import sys9030 from "./screens/sys9030.js";
+import sys9040 from "./screens/sys9040.js";
+import sys9060 from "./screens/sys9060.js";
+import sys9070 from "./screens/sys9070.js";
+import sys9090 from "./screens/sys9090.js";
+import sys9100 from "./screens/sys9100.js";
 
-const VERSION = "0.3.0";
+const VERSION = "0.5.0";
 // [factory, icon, scope needed to open it]
 const BUILT = { HOME: [home, "home", "exe.orders.read"], EXE3010: [exe3010, "clipboard", "exe.orders.read"], EXE2020: [exe2020, "tablet", "exe.orders.write"],
-  MDM1010: [mdm1010, "sitemap", "mdm.plant.read"], MDM1020: [mdm1020, "box", "mdm.items.read"], SYS9010: [sys9010, "users", "sys.users.read"], DSH5010: [dsh5010, "monitor", "exe.orders.read"] };
+  MDM1010: [mdm1010, "sitemap", "mdm.plant.read"], MDM1020: [mdm1020, "box", "mdm.items.read"], SYS9010: [sys9010, "users", "sys.users.read"], DSH5010: [dsh5010, "monitor", "exe.orders.read"],
+  EXE2010: [exe2010, "calendar-check", "exe.orders.read"], EXE3020: [exe3020, "history", "trk.units.read"], EXE3030: [exe3030, "table", "exe.ledger.read"],
+  WIP3010: [wip3010, "dashboard", "trk.units.read"], WIP3020: [wip3020, "clock", "trk.units.read"],
+  TRC2010: [trc2010, "box", "trk.units.read"], TRC3010: [trc3010, "link", "trk.units.read"], TRC3020: [trc3020, "link", "trk.units.read"],
+  MDM1030: [mdm1030, "scale", "eng.read"], MDM1040: [mdm1040, "layers", "eng.read"], MDM1050: [mdm1050, "list", "eng.read"], MDM1060: [mdm1060, "calendar", "eng.read"],
+  QMS1010: [qms1010, "clipboard-check", "qms.read"], QMS1020: [qms1020, "alert", "qms.read"], QMS2010: [qms2010, "clipboard-check", "qms.read"],
+  QMS2020: [qms2020, "lock", "qms.read"], QMS2030: [qms2030, "wrench", "qms.read"], QMS4010: [qms4010, "chart", "qms.read"],
+  SHP1010: [shp1010, "box", "shp.read"], SHP2010: [shp2010, "scan", "shp.pack"], SHP2020: [shp2020, "archive", "shp.read"], SHP2030: [shp2030, "archive", "shp.load"], SHP3010: [shp3010, "list", "shp.read"],
+  OEE2010: [oee2010, "pause", "oee.stops.read"], OEE4010: [oee4010, "gauge", "oee.stops.read"], OEE4020: [oee4020, "chart", "oee.stops.read"],
+  RPT4010: [rpt4010, "table", "rpt.read"], RPT4020: [rpt4020, "x-octagon", "rpt.read"], RPT4030: [rpt4030, "clipboard-check", "rpt.read"],
+  LBL1010: [lbl1010, "tag", "lbl.read"], LBL2010: [lbl2010, "printer", "lbl.print"], DSH5020: [dsh5020, "factory", "exe.orders.read"],
+  SYS9020: [sys9020, "shield", "sys.users.read"], SYS9030: [sys9030, "key", "sys.keys.read"], SYS9040: [sys9040, "list", "oee.stops.read"], SYS9060: [sys9060, "settings", "system.health.read"],
+  SYS9070: [sys9070, "archive", "system.backup"], SYS9090: [sys9090, "history", "sys.audit.read"], SYS9100: [sys9100, "activity", "system.health.read"] };
 const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.production", "m.shop_floor"], MDM1010: ["m.master", "m.plant_model"], MDM1020: ["m.master", "m.products"],
-  SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"] };
+  SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"], EXE2010: ["m.production", "m.work_orders"], EXE3020: ["m.production", "m.shop_floor"], EXE3030: ["m.production", "m.shop_floor"],
+  WIP3010: ["m.production", "m.wip"], WIP3020: ["m.production", "m.wip"], TRC2010: ["g.trace", "m.genealogy"], TRC3010: ["g.trace", "m.genealogy"], TRC3020: ["g.trace", "m.genealogy"],
+  MDM1030: ["m.master", "m.products"], MDM1040: ["m.master", "m.products"], MDM1050: ["m.master", "m.products"], MDM1060: ["m.master", "m.plant_model"],
+  QMS1010: ["g.quality", "m.inspection"], QMS1020: ["g.quality", "m.inspection"], QMS2010: ["g.quality", "m.inspection"], QMS2030: ["g.quality", "m.inspection"],
+  QMS2020: ["g.quality", "m.holds"], QMS4010: ["g.quality", "m.holds"],
+  SHP1010: ["g.shipping", "m.shipping"], SHP2010: ["g.shipping", "m.shipping"], SHP2020: ["g.shipping", "m.shipping"], SHP2030: ["g.shipping", "m.shipping"], SHP3010: ["g.shipping", "m.shipping"],
+  OEE2010: ["g.efficiency", "m.downtime"], OEE4010: ["g.efficiency", "m.downtime"], OEE4020: ["g.efficiency", "m.downtime"],
+  RPT4010: ["g.reports", "m.reports"], RPT4020: ["g.reports", "m.reports"], RPT4030: ["g.reports", "m.reports"], LBL1010: ["g.reports", "m.labels"], LBL2010: ["g.reports", "m.labels"],
+  DSH5020: ["m.boards"], SYS9020: ["m.system", "m.security"], SYS9090: ["m.system", "m.security"], SYS9030: ["m.system", "m.devices"], SYS9040: ["m.system", "m.devices"],
+  SYS9060: ["m.system", "m.operations"], SYS9070: ["m.system", "m.operations"], SYS9100: ["m.system", "m.operations"] };
 
 // [group id, icon, [[subgroup key, [codes]]]]
 const MENU = [
   ["production", "clipboard", [["m.work_orders", ["EXE2010", "EXE3010", "EXE2030", "EXE2040"]], ["m.shop_floor", ["EXE2020", "EXE3020", "EXE3030"]], ["m.wip", ["WIP3010", "WIP3020"]]]],
-  ["quality", "shield", [["m.inspection", ["QMS1010", "QMS1020", "QMS2010"]], ["m.holds", ["QMS2020", "QMS4010"]]]],
+  ["quality", "shield", [["m.inspection", ["QMS1010", "QMS1020", "QMS2010", "QMS2030"]], ["m.holds", ["QMS2020", "QMS4010"]]]],
   ["efficiency", "gauge", [["m.downtime", ["OEE2010", "OEE4010", "OEE4020"]]]],
   ["trace", "link", [["m.genealogy", ["TRC2010", "TRC3010", "TRC3020"]]]],
+  ["shipping", "archive", [["m.shipping", ["SHP2020", "SHP2010", "SHP2030", "SHP3010", "SHP1010"]]]],
   ["reports", "chart", [["m.reports", ["RPT4010", "RPT4020", "RPT4030"]], ["m.labels", ["LBL1010", "LBL2010"]]]],
   ["boards", "monitor", [["m.boards", ["DSH5010", "DSH5020"]]]],
   ["master", "database", [["m.plant_model", ["MDM1010", "MDM1060"]], ["m.products", ["MDM1020", "MDM1030", "MDM1040", "MDM1050"]]]],
@@ -47,6 +108,7 @@ async function boot() {
   if (!state.user) return loginPage(again);
   if (state.user.mustChangePassword) return changePasswordPage(again, true);
   setSession(state);
+  if (can("oee.stops.read")) await loadStopReasons();
   // the plant's own name from the plant model (the installation node name until one exists)
   let plantName = state.plant.node;
   if (can("mdm.plant.read")) {

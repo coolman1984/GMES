@@ -194,3 +194,71 @@
 - **Discovery:** the kit's light "modern" tokens come after the dark classic ones in the file; with equal specificity the
   light values would win in dark mode. **Fix:** the dark modern block uses one more attribute (`[data-look][data-theme]`) and
   redefines every colour. **Lesson:** in a token file, order is a rule too: write down which block must win and why.
+
+## Phase B1 — Engineering and the serial flow of a television plant (2026-09-28)
+- **What (owner's order: finish GMES with a realistic TV plant):** `eng` module (routings, bills of materials as frozen
+  revisions, production shifts and calendar, units of measure), `trk` module (serial units along their routing, repair loop,
+  key parts, material lots on stations, genealogy, WIP, traceability both ways), `kernel/chain.ts` (hash-chained fact tables),
+  `/api/ledger` (the production ledger, filtered). Screens: EXE2010 release plan, EXE2020 serial mode, EXE3020 unit history,
+  EXE3030 transactions, WIP3010/3020, TRC2010/3010/3020, MDM1030/1040/1050/1060 (ADR-034). 11 new tests, 10 new planted bugs.
+- **Symptom (found by the new test, before any demo):** a finished order booked 0.004 screws instead of 4. **Cause:** the
+  backflush divided by 1000 a quantity that was already in thousandths (units are a count, `qty_per` is in thousandths).
+  **Fix:** `units * qty_per`. **Lesson:** when two numbers in one formula carry different scales, name the scale in the code;
+  a planted bug now reintroduces the division and must be caught.
+- **Discovery (design):** the last unit of an order makes the order `completed`, after which the ledger refuses consumption.
+  Booking material only when a lot is unloaded would therefore lose it for finished orders. **Fix:** everything a work order
+  used is booked just BEFORE its final unit (lots used from station loads, and backflushed BOM lines); a planted bug moves the
+  booking after the final fact and is caught.
+- **Symptom (found in a real browser, not by the tests):** most new inquiry screens showed "Cannot read properties of undefined
+  (reading 'length')". **Cause:** the shared screen builder passed `presets: undefined` to the grid, which replaced the grid's
+  default `[]` (a spread of an options object copies undefined values). **Fix:** pass the key only when defined. **Lesson:** a
+  default in `{ ...defaults, ...opts }` is lost to an explicit `undefined`; screens are opened in a real browser before a push.
+- **Symptom:** in the browser run the whole application slid sideways after about ten tabs. **Cause:** the tab strip called
+  `scrollIntoView`, which also scrolls every scrollable ancestor — an `overflow: hidden` frame can still be scrolled that way.
+  **Fix (eco-ui):** the tab strip scrolls itself only. HR-System must re-copy the kit. **Lesson:** `scrollIntoView` is not local.
+
+## Phase B2 — Quality: codes, plans, inspections, holds, repair, yield (2026-09-28)
+- **What:** `qms` module (ADR-035) — defect and repair codes, inspection plans with limits and AQL, append-only hash-chained
+  inspections, ISO 2859-1 sampling, holds on a unit / serial list / work order / material lot / pallet with a recall count,
+  releases signed with the person's password (new `sys` service: electronic signature and audit), repair with part
+  replacement (genealogy keeps the removed part), first-pass yield / rolled throughput yield and Pareto from the unit history.
+  Screens QMS1010, QMS1020, QMS2010, QMS2020, QMS2030 (new: repair), QMS4010. 8 tests, 9 planted bugs.
+- **Symptom (found in the browser):** after adding the quality screens the whole application stayed blank on the sign-in
+  page. **Cause:** one missing parenthesis in QMS2010; a JavaScript module with a syntax error fails to load, and the shell
+  imports every screen, so ONE bad screen blanks everything. The screen tests read the files as text and never parsed them.
+  **Fix:** a test parses every screen file as a module; a planted bug breaks a screen's syntax and must be caught.
+  **Lesson:** in a no-build front end the parser is the compiler: test that the code parses, not only what it contains.
+- **Discovery:** the first quality tests failed on serial numbers like "T01": the tracking module requires 4-40 characters
+  (a scanner misread of 3 characters is more likely than a real serial). Kept; tests use realistic serials.
+
+## Phase B3 — Packing, pallets, shipping orders, container loading (2026-09-28)
+- **What:** `shp` module (ADR-036): packing specifications, palletizing (auto-close when full, unpack with reason), shipping
+  orders, containers with ISO 6346 check digits, loading checks (closed, OQC passed, not held, ordered, room left), sealing
+  and dispatch; new contract `mes.shipment.dispatched.v1` (additive; `link-mizan` skips it today with `eco.not_consumed`,
+  checked). Screens SHP1010, SHP2010 (palletizing station), SHP2020, SHP2030 (loading dock), SHP3010 (shipments, packing
+  list). Traceability now answers "which container, which customer" for any serial or lot. 4 tests, planted bugs.
+- **Discovery:** zod 4's `z.record(z.enum(...), …)` requires EVERY key of the enum; a packing specification naming only the
+  container types a plant uses was refused. **Fix:** `z.partialRecord`. **Lesson:** read the validation library's semantics
+  for maps; exhaustive and partial records are different types.
+- **Discovery:** "finished goods waiting" listed main boards (finished at SMD but components, never shipped on their own).
+  **Fix:** only products with a packing specification are finished goods for shipping.
+
+## Phase B4 — OEE, reports, handover, labels, plant board, system screens (2026-09-28)
+- **What:** OEE per ISO 22400 from the facts (ADR-037) with the plant's own stop reasons; `rpt` module (daily production,
+  scrap and rework, shift handover with append-only notes and a signed receipt); `lbl` module (ZPL templates, printers on
+  TCP 9100, print and reprint-with-reason log, browser preview with Code 128); backups with a rehearsal (`ops.ts`); device
+  keys. Screens OEE2010, OEE4010, OEE4020, RPT4010, RPT4020, RPT4030, LBL1010, LBL2010, DSH5020, SYS9020, SYS9030, SYS9040,
+  SYS9060, SYS9070, SYS9090, SYS9100; the line board shows real OEE. 9 tests, 10 planted bugs.
+- **Symptom:** the first OEE of the floor test gave 24 minutes of downtime for a 12-minute stop. **Cause:** the line and one
+  of its stations were stopped over the same minutes, and each stoppage was added on its own. **Fix:** downtime is the union
+  of the stop intervals; a planned stop wins over an unplanned one at the same moment. **Lesson:** time is not additive
+  across overlapping records — any duration summed from facts must be merged first.
+- **Discovery:** the old floor test asserted "no OEE until cycle times exist"; the line there HAS a capacity (800 per shift),
+  which is a known pace, so OEE is knowable and is now asserted exactly (A 95.2 %, P 1.3 %, Q 80 %).
+- **Symptom (parse test):** RPT4010 failed to parse with one parenthesis too many. **Cause:** a nested element tree written by
+  hand. **Fix:** counted per line and corrected; the parse test caught it before any browser did. **Lesson:** the parse test
+  earned its keep on its first day.
+- **Discovery:** `VACUUM INTO` works on the read-only connection: it copies the committed snapshot and never blocks the
+  single writer, so a backup does not stop the line.
+- **Discovery:** a test cannot `import` a `.js` browser module from a package without `"type": "module"` (Node reads it as
+  CommonJS); the barcode test loads the screen file as the browser does, through a `data:` URL, so it tests the real file.

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { formatQty, parseQty, QuantityError } from '@eco/contracts';
-import type { MirrorItem } from '../../contracts/services.js';
+import type { ExeService, MirrorItem } from '../../contracts/services.js';
 import { productionDate } from '../../kernel/clock.js';
 import { runCommand } from '../../kernel/commands.js';
 import type { Db } from '../../kernel/db.js';
@@ -64,6 +64,8 @@ export interface WorkOrderRow {
   line_code: string | null;
   shift_code: string | null;
   priority: number;
+  routing_id: string | null;
+  bom_id: string | null;
   created_at: string;
 }
 
@@ -127,7 +129,27 @@ export const exeModule: AppModule = {
         CREATE INDEX exe_work_order_line ON exe_work_order(line_code, status);
       `,
     },
+    {
+      id: '003_routing_bom',
+      up: `
+        -- the APPROVED engineering revisions the order was released with (frozen revisions: the reference is the snapshot)
+        ALTER TABLE exe_work_order ADD COLUMN routing_id TEXT;
+        ALTER TABLE exe_work_order ADD COLUMN bom_id TEXT;
+        CREATE INDEX exe_ledger_day ON exe_ledger(production_date, txn_type);
+      `,
+    },
   ],
+
+  setup(ctx) {
+    const service: ExeService = {
+      workOrder: async (id, t) => (await (t ?? ctx.db).get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id])) ?? notFound('work_order', id),
+      workOrderByCode: async (code, t) => (t ?? ctx.db).get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE code = ?', [code]),
+      complete: (t, caller, id, input) => complete(ctx, t, caller, id, input),
+      scrap: (t, caller, id, input) => scrap(ctx, t, caller, id, input),
+      consume: (t, caller, id, input) => consume(ctx, t, caller, id, input),
+    };
+    ctx.services.provide('exe', service);
+  },
 
   routes(kit, ctx) {
     const { http, require } = kit;
@@ -182,10 +204,16 @@ export const exeModule: AppModule = {
           if (!line || line.type !== 'line') fail('line.unknown', `${input.line} is not a line of the plant model`);
           if (!line!.active) conflict('line.inactive', `line ${input.line} is inactive`);
         }
+        // the approved engineering of the moment is frozen into the order (a later revision never changes a running order)
+        const eng = ctx.services.has('eng') ? ctx.services.get('eng') : null;
+        const routing = eng ? await eng.approvedRouting(item.id, t) : undefined;
+        const bom = eng ? await eng.approvedBom(item.id, t) : undefined;
+        if (routing && !input.line) fail('wo.line_required', `${item.code} follows a routing: say on which line it runs`);
         await t.run(
-          `INSERT INTO exe_work_order (id, code, item_id, warehouse_id, planned_qty, status, production_date, created_at, line_code, shift_code, priority)
-           VALUES (?, ?, ?, ?, ?, 'released', ?, ?, ?, ?, ?)`,
-          [id, code, item.id, wh.id, input.plannedQty, pdate, ctx.clock.now().toISOString(), input.line ?? null, input.shift ?? null, input.priority ?? 2],
+          `INSERT INTO exe_work_order (id, code, item_id, warehouse_id, planned_qty, status, production_date, created_at, line_code, shift_code, priority, routing_id, bom_id)
+           VALUES (?, ?, ?, ?, ?, 'released', ?, ?, ?, ?, ?, ?, ?)`,
+          [id, code, item.id, wh.id, input.plannedQty, pdate, ctx.clock.now().toISOString(), input.line ?? null, input.shift ?? null, input.priority ?? 2,
+            routing?.id ?? null, bom?.id ?? null],
         );
         await line(ctx, t, caller, 'RELEASE', input, { work_order_id: id, item_id: item.id, warehouse_id: wh.id, qty: input.plannedQty, production_date: pdate });
         return { id, code };
@@ -208,27 +236,7 @@ export const exeModule: AppModule = {
       const input = zConsume.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'ConsumeMaterial', request: { id, ...(req.body as object) } }, async (t) => {
         input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
-        const wo = await openOrder(t, id);
-        const mdm = ctx.services.get('mdm');
-        const item = await mdm.item(input.itemId, t);
-        if (!item.active) fail('item.inactive', `item ${item.code} is not active`);
-        if (!item.stock_tracked) fail('item.not_stocked', `${item.code} carries no stock, so it cannot be consumed from a warehouse`);
-        if (item.tracking !== 'none' && !input.lotNo) fail('lot.required', `${item.code} is tracked by ${item.tracking}: scan the lot`);
-        const wh = await mdm.warehouse(input.warehouseId, t);
-        const pdate = input.productionDate ?? today(ctx);
-        const seq = await line(ctx, t, caller, 'CONSUME', input, {
-          work_order_id: wo.id, item_id: item.id, warehouse_id: wh.id, qty: input.qty, lot_no: input.lotNo ?? null, production_date: pdate,
-        });
-        const product = await mdm.item(wo.item_id, t);
-        const ev = await ctx.services.get('eco').publish(t, {
-          type: 'mes.material.consumed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
-          data: {
-            work_order: woRef(wo, product), item: { id: item.id, code: item.code }, qty: formatQty(input.qty), uom: item.base_uom,
-            warehouse: { id: wh.id, code: wh.code }, ...(input.lotNo ? { lot_no: input.lotNo } : {}),
-            ...operational(caller, input, pdate, seq),
-          },
-        });
-        return { ledgerSeq: seq, eventId: ev.id };
+        return consume(ctx, t, caller, id, input);
       });
       return { ...result, replayed };
     });
@@ -240,27 +248,10 @@ export const exeModule: AppModule = {
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'ReportCompletion', request: { id, ...(req.body as object) } }, async (t) => {
         input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const wo = await openOrder(t, id);
-        conserve(wo, input.qty);
-        const product = await ctx.services.get('mdm').item(wo.item_id, t);
-        if (product.tracking === 'serial' && input.qty !== 1000) fail('serial.one_at_a_time', `${product.code} is serialised: report one unit per serial`);
-        if (product.tracking !== 'none' && !input.lotNo) fail('lot.required', `${product.code} is tracked by ${product.tracking}: give the lot/serial`);
-        const wh = await ctx.services.get('mdm').warehouse(wo.warehouse_id, t);
-        const completed = wo.completed_qty + input.qty;
-        const isFinal = completed + wo.scrapped_qty === wo.planned_qty;
-        await bump(t, wo, { completed_qty: completed, status: isFinal ? 'completed' : 'released' });
-        const pdate = input.productionDate ?? today(ctx);
-        const seq = await line(ctx, t, caller, 'COMPLETE', input, {
-          work_order_id: wo.id, item_id: product.id, warehouse_id: wh.id, qty: input.qty, lot_no: input.lotNo ?? null, production_date: pdate,
-        });
-        const ev = await ctx.services.get('eco').publish(t, {
-          type: 'mes.production.completed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
-          data: {
-            work_order: { ...woRef(wo, product), completed_qty_after: formatQty(completed), scrapped_qty: formatQty(wo.scrapped_qty), is_final: isFinal },
-            item: { id: product.id, code: product.code }, qty: formatQty(input.qty), uom: product.base_uom, warehouse: { id: wh.id, code: wh.code },
-            ...(input.lotNo ? { lot_no: input.lotNo } : {}), ...operational(caller, input, pdate, seq),
-          },
-        });
-        return { ledgerSeq: seq, eventId: ev.id, status: isFinal ? 'completed' : 'released' };
+        if (wo.routing_id && ctx.services.has('trk') && (await ctx.services.get('mdm').item(wo.item_id, t)).tracking === 'serial') {
+          conflict('wo.unit_tracked', `${wo.code} follows a routing unit by unit: its output is booked by scanning each serial at its stations`);
+        }
+        return complete(ctx, t, caller, id, input);
       });
       return { ...result, replayed };
     });
@@ -271,21 +262,7 @@ export const exeModule: AppModule = {
       const input = zScrap.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'RecordScrap', request: { id, ...(req.body as object) } }, async (t) => {
         input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
-        const wo = await openOrder(t, id);
-        conserve(wo, input.qty);
-        const product = await ctx.services.get('mdm').item(wo.item_id, t);
-        const scrapped = wo.scrapped_qty + input.qty;
-        const done = wo.completed_qty + scrapped === wo.planned_qty;
-        await bump(t, wo, { scrapped_qty: scrapped, status: done ? 'completed' : 'released' });
-        const pdate = input.productionDate ?? today(ctx);
-        const seq = await line(ctx, t, caller, 'SCRAP', input, {
-          work_order_id: wo.id, item_id: product.id, warehouse_id: null, qty: input.qty, reason_code: input.reasonCode, production_date: pdate,
-        });
-        const ev = await ctx.services.get('eco').publish(t, {
-          type: 'mes.production.scrapped.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
-          data: { work_order: woRef(wo, product), qty: formatQty(input.qty), uom: product.base_uom, reason_code: input.reasonCode, ...operational(caller, input, pdate, seq) },
-        });
-        return { ledgerSeq: seq, eventId: ev.id, status: done ? 'completed' : 'released' };
+        return scrap(ctx, t, caller, id, input);
       });
       return { ...result, replayed };
     });
@@ -315,6 +292,25 @@ export const exeModule: AppModule = {
       return { ...result, replayed };
     });
 
+    // The production ledger itself, filtered (EXE3030): what was consumed, produced, scrapped, released and closed.
+    http.get('/api/ledger', async (req) => {
+      require(req, 'exe.ledger.read');
+      const q = z.object({ from: zDate, to: zDate, type: z.enum(['RELEASE', 'CONSUME', 'COMPLETE', 'SCRAP', 'CLOSE']).optional().or(z.literal('')),
+        line: z.string().optional(), wo: z.string().optional(), lot: z.string().optional(), limit: z.coerce.number().int().min(1).max(20000).default(5000) }).parse(req.query);
+      const where = ['l.production_date >= ?', 'l.production_date <= ?'];
+      const p: (string | number)[] = [q.from, q.to];
+      if (q.type) { where.push('l.txn_type = ?'); p.push(q.type); }
+      if (q.line) { where.push('w.line_code = ?'); p.push(q.line); }
+      if (q.wo) { where.push('w.code LIKE ?'); p.push('%' + q.wo.trim() + '%'); }
+      if (q.lot) { where.push('l.lot_no LIKE ?'); p.push('%' + q.lot.trim().toUpperCase() + '%'); }
+      const rows = await ctx.db.all<any>(`SELECT l.seq, l.txn_type, l.qty, l.lot_no, l.reason_code, l.user_name, l.production_date, l.shift_code, l.occurred_at,
+          w.code wo_code, w.line_code, i.code item_code, i.name_en, i.name_ar, i.base_uom, h.code wh_code
+        FROM exe_ledger l JOIN exe_work_order w ON w.id = l.work_order_id LEFT JOIN mdm_item i ON i.id = l.item_id LEFT JOIN mdm_warehouse h ON h.id = l.warehouse_id
+        WHERE ${where.join(' AND ')} ORDER BY l.seq DESC LIMIT ${q.limit + 1}`, p);
+      if (rows.length > q.limit) fail('query.too_wide', `More than ${q.limit} lines match: narrow the production days or add a condition`);
+      return rows.map((r) => ({ ...r, qty: formatQty(r.qty) }));
+    });
+
     http.get('/api/ledger/verify', async (req) => {
       require(req, 'exe.ledger.read');
       return verify(ctx.db);
@@ -335,6 +331,76 @@ export const exeModule: AppModule = {
     ];
   },
 };
+
+// ------------------------------------------------------------------ the three quantity facts, inside the caller's transaction
+type BookingIn = { commandId: string; productionDate?: string; shift?: string; person?: { id: string; code: string }; station?: string };
+
+async function consume(ctx: Ctx, t: Db, caller: Caller, id: string, input: BookingIn & { itemId: string; qty: number; warehouseId: string; lotNo?: string }) {
+  const wo = await openOrder(t, id);
+  const mdm = ctx.services.get('mdm');
+  const item = await mdm.item(input.itemId, t);
+  if (!item.active) fail('item.inactive', `item ${item.code} is not active`);
+  if (!item.stock_tracked) fail('item.not_stocked', `${item.code} carries no stock, so it cannot be consumed from a warehouse`);
+  if (item.tracking !== 'none' && !input.lotNo) fail('lot.required', `${item.code} is tracked by ${item.tracking}: scan the lot`);
+  const wh = await mdm.warehouse(input.warehouseId, t);
+  const pdate = input.productionDate ?? today(ctx);
+  const seq = await line(ctx, t, caller, 'CONSUME', input, {
+    work_order_id: wo.id, item_id: item.id, warehouse_id: wh.id, qty: input.qty, lot_no: input.lotNo ?? null, production_date: pdate,
+  });
+  const product = await mdm.item(wo.item_id, t);
+  const ev = await ctx.services.get('eco').publish(t, {
+    type: 'mes.material.consumed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
+    data: {
+      work_order: woRef(wo, product), item: { id: item.id, code: item.code }, qty: formatQty(input.qty), uom: item.base_uom,
+      warehouse: { id: wh.id, code: wh.code }, ...(input.lotNo ? { lot_no: input.lotNo } : {}),
+      ...operational(caller, input, pdate, seq),
+    },
+  });
+  return { ledgerSeq: seq, eventId: ev.id };
+}
+
+async function complete(ctx: Ctx, t: Db, caller: Caller, id: string, input: BookingIn & { qty: number; lotNo?: string }) {
+  const wo = await openOrder(t, id);
+  conserve(wo, input.qty);
+  const product = await ctx.services.get('mdm').item(wo.item_id, t);
+  if (product.tracking === 'serial' && input.qty !== 1000) fail('serial.one_at_a_time', `${product.code} is serialised: report one unit per serial`);
+  if (product.tracking !== 'none' && !input.lotNo) fail('lot.required', `${product.code} is tracked by ${product.tracking}: give the lot/serial`);
+  const wh = await ctx.services.get('mdm').warehouse(wo.warehouse_id, t);
+  const completed = wo.completed_qty + input.qty;
+  const isFinal = completed + wo.scrapped_qty === wo.planned_qty;
+  await bump(t, wo, { completed_qty: completed, status: isFinal ? 'completed' : 'released' });
+  const pdate = input.productionDate ?? today(ctx);
+  const seq = await line(ctx, t, caller, 'COMPLETE', input, {
+    work_order_id: wo.id, item_id: product.id, warehouse_id: wh.id, qty: input.qty, lot_no: input.lotNo ?? null, production_date: pdate,
+  });
+  const ev = await ctx.services.get('eco').publish(t, {
+    type: 'mes.production.completed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
+    data: {
+      work_order: { ...woRef(wo, product), completed_qty_after: formatQty(completed), scrapped_qty: formatQty(wo.scrapped_qty), is_final: isFinal },
+      item: { id: product.id, code: product.code }, qty: formatQty(input.qty), uom: product.base_uom, warehouse: { id: wh.id, code: wh.code },
+      ...(input.lotNo ? { lot_no: input.lotNo } : {}), ...operational(caller, input, pdate, seq),
+    },
+  });
+  return { ledgerSeq: seq, eventId: ev.id, status: isFinal ? 'completed' : 'released' };
+}
+
+async function scrap(ctx: Ctx, t: Db, caller: Caller, id: string, input: BookingIn & { qty: number; reasonCode: string }) {
+  const wo = await openOrder(t, id);
+  conserve(wo, input.qty);
+  const product = await ctx.services.get('mdm').item(wo.item_id, t);
+  const scrapped = wo.scrapped_qty + input.qty;
+  const done = wo.completed_qty + scrapped === wo.planned_qty;
+  await bump(t, wo, { scrapped_qty: scrapped, status: done ? 'completed' : 'released' });
+  const pdate = input.productionDate ?? today(ctx);
+  const seq = await line(ctx, t, caller, 'SCRAP', input, {
+    work_order_id: wo.id, item_id: product.id, warehouse_id: null, qty: input.qty, reason_code: input.reasonCode, production_date: pdate,
+  });
+  const ev = await ctx.services.get('eco').publish(t, {
+    type: 'mes.production.scrapped.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
+    data: { work_order: woRef(wo, product), qty: formatQty(input.qty), uom: product.base_uom, reason_code: input.reasonCode, ...operational(caller, input, pdate, seq) },
+  });
+  return { ledgerSeq: seq, eventId: ev.id, status: done ? 'completed' : 'released' };
+}
 
 function today(ctx: Ctx) {
   return productionDate(ctx.clock.now(), ctx.config.timeZone, ctx.config.productionDayStart);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zCode, zDate, zPerformedBy, zPositiveDecimal, zRef, zUuid } from './common.js';
+import { zCode, zDate, zPerformedBy, zPositiveDecimal, zRef, zTime, zUuid } from './common.js';
 
 /**
  * Operational facts published by manufacturing. They say what HAPPENED, never what another
@@ -66,3 +66,27 @@ export const zWorkOrderClosedV1 = z.object({
   ...operational,
 });
 export type WorkOrderClosedV1 = z.infer<typeof zWorkOrderClosedV1>;
+
+/**
+ * A container (or truck) was sealed and left the plant: finished goods physically shipped against a shipping order.
+ * Manufacturing states what left, from which warehouse, under which seal; accounting decides how to book the delivery
+ * (stock relief, invoice). Serials are listed for serialised items so a recall can reach the customer.
+ */
+export const zShipmentDispatchedV1 = z.object({
+  shipment: z.object({ id: zUuid, code: zCode, customer: z.string().min(1).max(200), destination: z.string().max(200).optional() }),
+  container: z.object({ id: zUuid, number: zCode, seal: zCode, type: zCode }),
+  lines: z.array(z.object({
+    item: zRef,
+    qty: zPositiveDecimal,
+    uom: zCode,
+    warehouse: zRef,
+    pallets: z.number().int().min(0),
+    serials: z.array(z.string().min(1).max(64)).max(20000).optional(),
+  })).min(1),
+  dispatched_at: zTime,
+  production_date: zDate,
+  performed_by: zPerformedBy,
+  /** Position of the fact in manufacturing's shipping history (hash-chained). */
+  shipping_seq: z.number().int().positive(),
+});
+export type ShipmentDispatchedV1 = z.infer<typeof zShipmentDispatchedV1>;

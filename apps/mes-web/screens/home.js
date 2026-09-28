@@ -1,6 +1,6 @@
 // The start page: the plant at a glance (from the ledger and the stoppage facts) and the way into every screen.
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, can, name, session, showError, statusLabel, t, today } from "../common.js";
+import { api, can, name, session, showError, statusLabel, t, today, stopName } from "../common.js";
 
 const { h } = ui;
 
@@ -11,7 +11,7 @@ export default function create({ shell }) {
   const lineCard = (l) => h("button", { type: "button", class: "hm-line hm-" + l.state, onclick: () => { ui.prefs.set("board:line", l.code); shell.open("DSH5010"); } },
     h("div", { class: "hm-line-top" }, h("b", {}, ui.ltr(l.code)), ui.statusChip(l.state, statusLabel(l.state))),
     h("div", { class: "hm-line-wo" }, l.workOrder ? [ui.ltr(l.workOrder.code), h("span", { class: "eco-muted", text: " · " + name(l.workOrder.item) })]
-      : h("span", { class: "eco-muted", text: l.stop ? t("stop." + l.stop.reason) : t("hm.no_wo") })),
+      : h("span", { class: "eco-muted", text: l.stop ? stopName(l.stop.reason) : t("hm.no_wo") })),
     l.workOrder ? ui.progress(l.workOrder.completed, l.workOrder.planned, { status: l.state === "down" ? "down" : "run" }) : h("div", { class: "hm-line-empty" }));
   const quick = (code, ic) => h("button", { type: "button", class: "hm-quick", onclick: () => shell.open(code) }, h("span", { class: "hm-quick-ic" }, ui.icon(ic, 18)),
     h("div", {}, h("b", { text: t("scr." + code) }), h("span", {}, ui.ltr(code))));

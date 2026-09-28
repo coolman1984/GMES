@@ -122,7 +122,27 @@ export async function sessionCaller(ctx: Ctx, req: FastifyRequest): Promise<Call
   return { name: row.login, scopes: new Set(ROLE_SCOPES[row.role] ?? []), user: { id: row.id, login: row.login, role: row.role } };
 }
 
-async function audit(t: Db, ctx: Ctx, actor: string, action: string, target: string, details?: unknown) {
+/**
+ * An electronic signature: the person signed in confirms a decision by typing their password again (a quality release,
+ * a correction). A machine key cannot sign: a decision is a person's. A wrong password counts toward the lock, as a sign-in.
+ */
+export async function signature(ctx: Ctx, caller: Caller, password: string): Promise<{ login: string; name: string }> {
+  if (!caller.user) forbidden('sign.person_required', 'this decision needs the signature of a person signed in to the screens');
+  const u = await ctx.db.get<UserRow>('SELECT * FROM sys_user WHERE id = ?', [caller.user!.id]);
+  if (!u || u.status !== 'active') forbidden('sign.inactive', 'this account cannot sign');
+  if (!(await checkPassword(password ?? '', u!.password_hash))) {
+    await ctx.db.tx(async (t) => {
+      const failed = (await t.get<{ failed: number }>('SELECT failed FROM sys_user WHERE id = ?', [u!.id]))!.failed + 1;
+      await t.run(`UPDATE sys_user SET failed = ?, status = CASE WHEN ? THEN 'locked' ELSE status END WHERE id = ?`, [failed, failed >= 5 ? 1 : 0, u!.id]);
+      await audit(t, ctx, u!.login, 'signature.failed', u!.login, { failed });
+    });
+    forbidden('sign.wrong_password', 'the password does not match: the decision was not signed');
+  }
+  await ctx.db.run('UPDATE sys_user SET failed = 0 WHERE id = ?', [u!.id]);
+  return { login: u!.login, name: u!.name };
+}
+
+export async function audit(t: Db, ctx: Ctx, actor: string, action: string, target: string, details?: unknown) {
   await t.run('INSERT INTO sys_audit (at, actor, action, target, details) VALUES (?, ?, ?, ?, ?)', [
     ctx.clock.now().toISOString(), actor, action, target, details === undefined ? null : JSON.stringify(details),
   ]);

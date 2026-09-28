@@ -7,7 +7,8 @@
  * Configuration (environment): GMES_DATA_DIR (./data), GMES_PORT (4700), GMES_HOST (0.0.0.0),
  * GMES_COMPANY_ID (required: the company's ecosystem id), GMES_NODE (plant-1), GMES_TZ (Africa/Cairo),
  * GMES_DAY_START (07:00), GMES_OWNER (mizan | gmes: who owns items and warehouses),
- * GMES_PERSON_OWNER (hr | none: whether HR-System owns people; default none).
+ * GMES_PERSON_OWNER (hr | none: whether HR-System owns people; default none),
+ * GMES_BACKUP_DIR (<data dir>/backups; a second disk is better, ADR-028).
  */
 import { resolve } from 'node:path';
 import { isUuid } from '@eco/contracts';
@@ -25,6 +26,7 @@ const owner = process.env.GMES_OWNER === 'gmes' ? 'gmes' : 'mizan';
 const person = process.env.GMES_PERSON_OWNER === 'hr' ? 'hr' : 'none';
 const app = await buildApp({
   dbFile: resolve(dataDir, 'gmes.db'),
+  backupDir: resolve(process.env.GMES_BACKUP_DIR ?? resolve(dataDir, 'backups')),
   logger: process.env.GMES_LOG === '1',
   config: {
     companyId,

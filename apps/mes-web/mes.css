@@ -239,3 +239,185 @@
 /* the line board header: the big line picker must not squeeze the title and the day onto two lines */
 .bd-pick { max-width: 640px; }
 .bd-title span, .bd-shift { white-space: nowrap; }
+/* ---------- serial flow (phase B1): station serial mode, unit history, routings, WIP, planning ---------- */
+.st-serial-only { display: none; }
+.st.is-serial .st-serial-only { display: flex; }
+.st.is-serial .st-buttons > .st-big:not(.st-serial-only):not(.st-big-stop) { display: none; }
+.st-mode-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--eco-radius); border: 2px solid var(--c); background: var(--eco-surface); --c: var(--st-run); }
+.st-mode-card.st-r-bad { --c: var(--st-down); } .st-mode-card.st-r-warn { --c: var(--st-idle); }
+.st-mode-card b { font-size: 18px; color: var(--c); }
+.st-mode-card small { color: var(--eco-text-3); font-weight: 600; letter-spacing: .02em; }
+.st-pending { display: flex; gap: 6px; align-items: center; font-weight: 600; color: var(--eco-warn); }
+.st-loads { display: flex; flex-direction: column; gap: 6px; }
+.st-load { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.st-load b { font-family: var(--eco-mono); } .st-load small { margin-inline-start: auto; color: var(--eco-text-3); }
+.st-load.is-missing { border-color: var(--eco-bad); background: var(--eco-bad-soft); }
+.st-reason b { font: 700 18px var(--eco-mono); }
+
+.mes-route { list-style: none; display: flex; flex-wrap: wrap; gap: 0; margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--eco-line); }
+.mes-route li { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 86px; padding: 0 6px; text-align: center; --c: var(--eco-line-2); }
+.mes-route li::before { content: ""; position: absolute; top: 10px; inset-inline-start: -50%; width: 100%; height: 2px; background: var(--c); z-index: 0; }
+.mes-route li:first-child::before { display: none; }
+.mes-route-dot { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--eco-surface); border: 2px solid var(--c); color: #fff; }
+.mes-route li b { font: 650 12px var(--eco-mono); margin-top: 4px; } .mes-route li small { color: var(--eco-text-3); font-size: var(--eco-fs-xs); }
+.mes-route-done { --c: var(--st-run) !important; } .mes-route-done .mes-route-dot { background: var(--st-run); }
+.mes-route-next { --c: var(--eco-accent) !important; } .mes-route-next .mes-route-dot { box-shadow: 0 0 0 4px var(--eco-accent-soft); }
+.mes-route-repair { --c: var(--st-hold) !important; } .mes-route-repair .mes-route-dot { background: var(--st-hold); }
+.mes-route-scrapped { --c: var(--st-down) !important; } .mes-route-scrapped .mes-route-dot { background: var(--st-down); }
+.mes-route-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--eco-line); color: var(--eco-text-3); }
+.mes-op { padding: 2px 7px; border-radius: 4px; font: 650 11.5px var(--eco-mono); background: var(--eco-surface-3); color: var(--eco-text); }
+.mes-op-test { background: var(--eco-warn-soft); color: var(--eco-warn); } .mes-op-inspection { background: var(--eco-accent-soft); color: var(--eco-accent); } .mes-op-pack { background: var(--eco-ok-soft); color: var(--eco-ok); }
+.mes-fill-grid { flex: 1; min-height: 200px; display: flex; } .mes-fill-grid > .eco-grid { flex: 1; }
+.mes-rows { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow: auto; }
+.mes-rows-table { border-collapse: collapse; width: 100%; }
+.mes-rows-table th { text-align: start; font-size: var(--eco-fs-xs); color: var(--eco-text-3); padding: 2px 4px; }
+.mes-rows-table td { padding: 2px 4px; } .mes-rows-table td > * { width: 100%; }
+.mes-cal { display: flex; flex-direction: column; overflow: auto; }
+.mes-unit { display: flex; flex-direction: column; min-height: 0; height: 100%; overflow: auto; }
+.mes-unit > .eco-empty { margin: auto; }
+.mes-unit-head { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--eco-line); }
+.mes-unit-serial { font: 700 22px var(--eco-mono); letter-spacing: -.01em; }
+.mes-unit .eco-tabset { flex: 1; min-height: 260px; }
+.mes-serial-box { display: flex; align-items: center; gap: 6px; } .mes-serial-box input { width: 240px; font-family: var(--eco-mono); }
+.mes-trace-info { padding: 12px 14px; }
+.mes-ev-FAIL { background: var(--st-down) !important; } .mes-ev-REPAIR { background: var(--st-hold) !important; } .mes-ev-COMPLETE, .mes-ev-SHIP { background: var(--st-run) !important; } .mes-ev-HOLD { background: var(--st-hold) !important; }
+.mes-wip { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-wip-order { border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.mes-wip-order > header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--eco-line); }
+.mes-wip-order > header .eco-progress { width: 180px; }
+.mes-wip-route { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; padding: 10px 12px; }
+.mes-wip-op { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--eco-line); border-radius: 6px; background: var(--eco-surface-2); min-height: 76px; }
+.mes-wip-op small { font: 650 11px var(--eco-mono); color: var(--eco-text-3); } .mes-wip-name { font-size: var(--eco-fs-xs); color: var(--eco-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mes-wip-op b { font-size: 20px; color: var(--eco-text-3); } .mes-wip-op.has b { color: var(--eco-text); } .mes-wip-op.has { border-color: var(--eco-accent); background: var(--eco-accent-soft); }
+.mes-wip-op.is-repair { border-color: var(--st-hold); } .mes-wip-op.is-held { border-color: var(--st-down); background: var(--eco-bad-soft); }
+.mes-wip-tag { display: inline-flex; gap: 3px; align-items: center; font: 600 11px var(--eco-mono); } .mes-wip-tag.is-repair { color: var(--st-hold); } .mes-wip-tag.is-held { color: var(--st-down); }
+.mes-wip-age { font-size: var(--eco-fs-xs); color: var(--eco-text-3); }
+.mes-plan { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-plan-grid { display: flex; flex-direction: column; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.mes-plan-hd, .mes-plan-row { display: grid; grid-template-columns: 200px repeat(var(--shifts), minmax(0, 1fr)); }
+.mes-plan-hd span { padding: 6px 10px; font-weight: 650; font-size: var(--eco-fs-sm); color: var(--eco-text-2); border-bottom: 1px solid var(--eco-line); background: var(--eco-surface-2); }
+.mes-plan-row + .mes-plan-row { border-top: 1px solid var(--eco-line); }
+.mes-plan-line { display: flex; flex-direction: column; padding: 8px 10px; border-inline-end: 1px solid var(--eco-line); } .mes-plan-line b { font-family: var(--eco-mono); }
+.mes-plan-cell { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-inline-end: 1px solid var(--eco-line); min-height: 60px; }
+.mes-plan-cell.is-over { background: var(--eco-bad-soft); }
+.mes-plan-wo { display: flex; align-items: center; gap: 6px; font-size: var(--eco-fs-sm); } .mes-plan-wo b { font-family: var(--eco-mono); }
+.mes-plan-load .eco-progress { width: 100%; }
+
+/* ---------- quality (phase B2) ---------- */
+.mes-measures { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+.mes-measures > div { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--eco-line); border-radius: 4px; background: var(--eco-surface-2); }
+.mes-measures > div.is-bad { border-color: var(--eco-bad); background: var(--eco-bad-soft); color: var(--eco-bad); }
+.mes-measures b { font-family: var(--eco-mono); }
+.mes-measure-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.mes-analysis { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-card { border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); padding: 10px 14px; }
+.mes-card > h3 { font-size: var(--eco-fs-md); margin: 0 0 8px; }
+.mes-table { width: 100%; border-collapse: collapse; font-size: var(--eco-fs-sm); }
+.mes-table th { text-align: start; color: var(--eco-text-3); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--eco-line); }
+.mes-table td { padding: 5px 8px; border-bottom: 1px solid var(--eco-line); vertical-align: middle; }
+.mes-fpy { display: flex; flex-wrap: wrap; gap: 4px; }
+.mes-fpy-op { display: inline-flex; gap: 5px; padding: 2px 7px; border-radius: 4px; background: var(--eco-surface-3); font: 600 11.5px var(--eco-mono); }
+.mes-fpy-op.is-ok { background: var(--eco-ok-soft); color: var(--eco-ok); } .mes-fpy-op.is-warn { background: var(--eco-warn-soft); color: var(--eco-warn); } .mes-fpy-op.is-bad { background: var(--eco-bad-soft); color: var(--eco-bad); }
+
+/* ---------- shipping (phase B3) ---------- */
+.shp-station .st-main { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); }
+.shp-title { font-size: 18px; color: #fff; }
+.shp-open { display: flex; flex-direction: column; gap: 6px; }
+.shp-pallets { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.shp-pallet { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.shp-pallet-top { display: flex; align-items: center; justify-content: space-between; } .shp-pallet-top b { font: 700 15px var(--eco-mono); }
+.shp-pallet .eco-progress { width: 100%; } .shp-pallet .eco-progress-track { height: 10px; }
+.shp-stock { display: flex; flex-direction: column; gap: 6px; }
+.shp-line { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 6px 0; }
+.shp-line b { font-family: var(--eco-mono); } .shp-line .eco-progress { width: 100%; } .shp-line small { grid-column: 2; }
+.shp-lines { padding: 6px 12px; }
+.shp-lines .shp-line { grid-template-columns: 110px minmax(0, 1fr) 180px; } .shp-lines .shp-line small { grid-column: auto; }
+.shp-container { margin-top: 10px; }
+.shp-cont-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 2px solid var(--eco-accent); border-radius: var(--eco-radius); background: var(--eco-accent-soft); }
+.shp-cont-card b { font: 700 20px var(--eco-mono); }
+.shp-cont-card > div { display: flex; flex-direction: column; }
+.shp-cont-nums { margin-inline-start: auto; display: grid !important; grid-template-columns: auto auto; gap: 0 8px; align-items: baseline; }
+
+/* ------------------------------------------------------------------ B4: OEE, reports, labels, plant board, system */
+.mes-oee, .mes-report, .mes-health, .mes-matrix-host, .mes-label-editor { display: flex; flex-direction: column; gap: 12px; }
+.mes-report, .mes-health, .mes-matrix-host { padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-oee { padding: 12px 16px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
+.mes-oee-trend { padding: 12px 16px; }
+.mes-oee-line { cursor: pointer; display: flex; flex-direction: column; gap: 10px; }
+.mes-oee-line:hover { border-color: var(--eco-accent-line); }
+.mes-oee-line > header { display: flex; align-items: baseline; gap: 10px; font-size: var(--eco-fs-lg); }
+.mes-oee-body { display: flex; align-items: center; gap: 14px; }
+.mes-oee-body .eco-kpistrip { flex: 1; }
+.mes-oee-model { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; font-size: var(--eco-fs-sm); }
+.mes-oee-model > div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--eco-line); padding: 2px 0; }
+.mes-oee-model > div.is-loss b { color: var(--eco-bad); }
+.mes-oee-line > footer { font-size: var(--eco-fs-sm); }
+.mes-oee-split { display: flex; flex-direction: column; }
+.mes-cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mes-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.mes-cols-side { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; align-items: start; }
+@media (max-width: 1100px) { .mes-cols2, .mes-cols3, .mes-cols-side { grid-template-columns: minmax(0, 1fr); } }
+.mes-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.mes-form-3 { grid-template-columns: 160px repeat(3, minmax(0, 1fr)); }
+.mes-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 10px; }
+.mes-strong { font-weight: 700; }
+.mes-print-title { display: none; }
+.mes-list { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; font-size: var(--eco-fs-sm); }
+.mes-list li.is-bad { color: var(--eco-bad); }
+.mes-notes { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mes-notes li { border-inline-start: 3px solid var(--eco-accent-line); padding: 4px 10px; background: var(--eco-surface-2); border-radius: 0 var(--eco-radius) var(--eco-radius) 0; }
+.mes-notes li.is-corrected p { text-decoration: line-through; color: var(--eco-text-3); }
+.mes-notes p { margin: 4px 0; white-space: pre-wrap; }
+.mes-note-add { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.mes-note-input { min-height: 60px; resize: vertical; padding: 6px 8px; }
+.mes-list-pick { display: flex; flex-direction: column; gap: 4px; }
+.mes-pick { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; text-align: start; padding: 8px 10px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); cursor: pointer; color: inherit; font: inherit; }
+.mes-pick small { grid-column: 1 / -1; }
+.mes-pick.is-on { border-color: var(--eco-accent); background: var(--eco-accent-soft); }
+.mes-label-editor { background: var(--eco-surface); border: 1px solid var(--eco-line); border-radius: var(--eco-radius); padding: 12px 14px; }
+.mes-zpl { width: 100%; min-height: 240px; font: 13px/1.45 var(--eco-mono); padding: 8px; resize: vertical; }
+.mes-vars { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.mes-var { font: 12px var(--eco-mono); padding: 2px 6px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius-pill); background: var(--eco-surface-2); color: var(--eco-text-2); cursor: pointer; }
+.mes-var.is-used { border-color: var(--eco-accent-line); color: var(--eco-accent-strong); background: var(--eco-accent-soft); }
+.mes-var.is-bad { border-color: var(--eco-bad); color: var(--eco-bad); background: var(--eco-bad-soft); }
+.mes-label-host { overflow: auto; padding: 8px; background: var(--eco-surface-3); border-radius: var(--eco-radius); }
+.mes-label { display: block; max-width: 100%; height: auto; box-shadow: var(--eco-shadow-1); }
+.mes-label-info { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.mes-matrix th:not(:first-child), .mes-matrix-cell { text-align: center; }
+.mes-matrix-cell.is-yes { color: var(--eco-ok); background: var(--eco-ok-soft); }
+.mes-matrix-group td { background: var(--eco-surface-2); padding-top: 8px; }
+.mes-scopes { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.mes-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.mes-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--eco-fs-xs); padding: 2px 8px; border-radius: var(--eco-radius-pill); }
+.mes-check.is-ok { background: var(--eco-ok-soft); color: var(--eco-ok); }
+.mes-check.is-bad { background: var(--eco-bad-soft); color: var(--eco-bad); font-weight: 700; }
+.mes-steps { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 6px; }
+.mes-add-row td { background: var(--eco-surface-2); }
+tr.is-off td { color: var(--eco-text-3); }
+.mes-health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.mes-health-mod h3 { display: flex; align-items: center; gap: 6px; }
+.mes-health-mod.is-ok h3 .eco-ic { color: var(--eco-ok); }
+.mes-health-mod.is-bad { border-color: var(--eco-bad); }
+.mes-health-mod.is-bad h3 .eco-ic { color: var(--eco-bad); }
+.mes-health-mod ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: var(--eco-fs-sm); }
+.mes-health-mod li .eco-ic { color: var(--eco-ok); }
+.mes-health-mod li.is-bad, .mes-health-mod li.is-bad .eco-ic { color: var(--eco-bad); font-weight: 600; }
+/* the plant board (DSH5020): one tile per line, readable across the hall */
+.pb .bd-kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.pb .bd-kpi b { font-size: 48px; }
+.pb-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.pb-tile { --c: #4b586e; display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-radius: 10px; background: #121925; border: 1px solid #1f2a3a; border-inline-start: 8px solid var(--c); }
+.pb-tile.is-run { --c: #34c26f; } .pb-tile.is-down { --c: #f0473b; animation: bd-pulse 2s ease-in-out infinite; } .pb-tile.is-idle { --c: #4b586e; }
+.pb-top { display: flex; justify-content: space-between; align-items: baseline; }
+.pb-top b { font: 800 32px var(--eco-mono); }
+.pb-state { font-size: 18px; font-weight: 700; color: var(--c); }
+.pb-name { font-size: 15px; color: #9aa6b8; }
+.pb-stop { display: flex; align-items: center; gap: 8px; color: #ff6b61; font-size: 18px; font-weight: 600; }
+.pb-wo { display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.pb-wo .eco-progress-track { height: 10px; background: #1f2a3a; }
+.pb-wo .eco-progress-text { width: auto; color: #cfd6e1; }
+.pb-figs { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px; }
+.pb-figs small { display: block; color: #9aa6b8; font-size: 14px; }
+.pb-figs b { font: 800 36px var(--eco-mono); }
+.pb .eco-ring-text { color: #eef2f8; font-weight: 700; }
+@media print { .mes-print-title { display: block; font-size: 18px; margin: 0 0 8px; } .mes-note-add, .mes-actions { display: none; } }
