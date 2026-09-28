@@ -101,3 +101,29 @@
 - **Foundation, not yet extracted:** HR's `signing.py`, `canonical.py`, `Backups.verify`/`rehearse` and `Device` are
   the candidates for the shared foundation (E8.6). They stay in HR until GMES (F3) is their second user — extracting
   from one user fixes the wrong seams.
+
+## Phase UX1 — The application shell before any new module (2026-09-28)
+- **What:** owner's instruction: stop feature work; build the shell and a reusable design system first. `packages/eco-ui`
+  (tokens light/dark, density, per-product accent; shell with menu tree, Ctrl+K screen search, MDI tabs, breadcrumb + code,
+  standard toolbar, condition panel with saved filters, dense virtual grid, dialogs, notifications); `apps/mes-web` (GMES shell,
+  EXE3010, MDM1010, SYS9010, EXE2020, DSH5010; office/station/board modes) served by `mes-server` (`src/web.ts`); HR-System
+  carries the same kit unchanged (ADR-029). 9 new tests, 4 new planted bugs, all caught.
+- **Symptom:** opening `/#EXE3010` showed only the start page. **Cause:** the home tab was opened first and rewrote the
+  address to `#HOME` before the shell read it. **Fix:** `start()` reads the address before opening anything. **Lesson:** read
+  the input before the first step that can change it (the same shape as G-MES gotcha #32: options rebuild the panel).
+- **Symptom:** saved theme and language were ignored after a reload. **Cause:** preferences were read before the store was
+  given its product name, so reads went to `eco:*` while writes went to `gmes:*`. **Fix:** `configure({ prefix })` first.
+  **Lesson:** a preference that "does not stick" is usually read and written under two different names.
+- **Symptom:** in the totals row, the first cells showed the last data row through them. **Cause:** frozen cells use
+  `background: inherit` to follow the row colour; the totals row has no colour of its own, so they were transparent.
+  **Fix:** frozen total cells take the totals colour explicitly. **Lesson:** `inherit` is only as good as the parent.
+- **Symptom:** chart labels were stretched on wide cards. **Cause:** `preserveAspectRatio="none"` scaled text with the bars.
+  **Fix:** uniform scaling and a wider default drawing. **Lesson:** never stretch an SVG that carries text.
+- **Symptom:** the station's big buttons floated mid-screen. **Cause:** a hidden stop bar left a grid row template with
+  one row too many. **Fix:** a flex column. **Lesson:** `hidden` items drop out of a grid; row templates do not know it.
+- **Symptom (found by a browser run, not by review):** the quick filter found nothing for a value in a hidden column.
+  **Cause:** it searched only visible columns. **Fix:** it searches every column. **Lesson:** a person who hid a column
+  still expects to find by it; verify interactions in a real browser, not only screenshots.
+- **Open:** the colours are still ours; the side-by-side comparison with real G-MES screenshots waits for the owner's
+  redacted screenshots (`docs/ux/visual-acceptance.md`). The product name "GMES" is close to Samsung's "G-MES" while
+  design doc 06 §6.1 asks for an own name — a decision for the owner.

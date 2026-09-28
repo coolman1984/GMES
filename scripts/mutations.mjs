@@ -24,6 +24,10 @@ const MUTATIONS = [
   { name: 'link posts without looking for its reference first', file: 'apps/link-mizan/src/link.ts', from: 'if (found) return found;', to: 'void found;', suite: 'apps/link-mizan' },
   { name: 'a parked event no longer holds back its work order', file: 'apps/link-mizan/src/link.ts', from: 'if (held.has(env.ecocorrelation)) {', to: 'if (held.has(env.ecocorrelation) && false) {', suite: 'apps/link-mizan' },
   { name: 'the cost share of a completion ignores scrap', file: 'apps/link-mizan/src/link.ts', from: 'const remaining = planned - completedBefore - scrapped;', to: 'const remaining = planned - completedBefore;', suite: 'apps/link-mizan' },
+  { name: 'a screen parses text as HTML', file: 'apps/mes-web/screens/exe3010.js', from: 'ui.clear(detailBody, head,', to: 'detailBody.innerHTML = ""; ui.clear(detailBody, head,', suite: 'apps/mes-server' },
+  { name: 'the screens allow scripts from anywhere', file: 'apps/mes-server/src/web.ts', from: "script-src 'self'; style-src", to: "script-src 'self' 'unsafe-inline'; style-src", suite: 'apps/mes-server' },
+  { name: 'an Arabic text of the screens is missing', file: 'apps/mes-web/i18n/ar.json', from: '"cancel": "إلغاء",\n', to: '', suite: 'apps/mes-server' },
+  { name: 'a screen hides that its data is invented', file: 'apps/mes-web/screens/sys9010.js', from: 'headExtra: sampleNote(),', to: 'headExtra: null,', suite: 'apps/mes-server' },
   { name: 'transient failures advance the cursor', file: 'apps/link-mizan/src/link.ts', from: 'if (!(err instanceof BusinessError)) throw err;', to: 'if (!(err instanceof BusinessError) && !(err instanceof TransientError)) throw err;', suite: 'apps/link-mizan' },
 ];
 

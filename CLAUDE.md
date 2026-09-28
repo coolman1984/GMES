@@ -21,6 +21,8 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 |---|---|
 | `packages/eco-contracts` | Ecosystem contracts (zod) → generated JSON Schemas in `schemas/` (run `npm run schemas`) |
 | `apps/mes-server` | Manufacturing kernel: `kernel/` (db port, commands, clock), `contracts/` (sockets between modules), `modules/` (system, mdm, eco, exe) |
+| `apps/mes-web` | The screens: shell + screen templates on sample data (UX phase), served by `mes-server` (`src/web.ts`) |
+| `packages/eco-ui` | The ecosystem's one interface kit (tokens, shell, grid, dialogs); HR-System copies it unchanged (ADR-029) |
 | `apps/link-mizan` | Mizan's agent: mirrors items/warehouses, applies manufacturing facts through Mizan's existing API |
 | `scripts/fetch-mizan.sh` | The pinned real Mizan the end-to-end tests run against |
 | `scripts/fetch-hr.sh` | The pinned real HR-System (Python) the HR end-to-end test runs against |

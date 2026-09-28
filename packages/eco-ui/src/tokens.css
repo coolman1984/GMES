@@ -1,0 +1,163 @@
+/* eco-ui design tokens — the one visual language of the ecosystem's products (GMES, HR-System, ...).
+ *
+ * Every colour, size and space a screen uses comes from here. A product changes only its accent
+ * ([data-product]); a person changes the theme ([data-theme]) and the density ([data-density]).
+ * Values are our own: inspired by the working philosophy of dense enterprise MES screens
+ * (dark top bar, light work area, condition panel -> Inquiry -> grid), never copied from any vendor.
+ * Status colours are fixed across every product, screen and board (GMES docs/design/06 §6.3).
+ */
+:root {
+  color-scheme: light;
+
+  /* ---- shell ---- */
+  --eco-top-bg: #141c2b;
+  --eco-top-bg-2: #1c2638;
+  --eco-top-fg: #e7ecf4;
+  --eco-top-fg-2: #9aa6b8;
+  --eco-top-line: #2a3549;
+  --eco-nav-bg: #f7f8fa;
+  --eco-nav-fg: #2b3443;
+  --eco-nav-fg-2: #6b7585;
+  --eco-nav-hover: #eceff4;
+  --eco-nav-active-bg: var(--eco-accent-soft);
+  --eco-nav-active-fg: var(--eco-accent-strong);
+
+  /* ---- surfaces and lines ---- */
+  --eco-app-bg: #e9edf2;
+  --eco-surface: #ffffff;
+  --eco-surface-2: #f6f7f9;
+  --eco-surface-3: #eef1f5;
+  --eco-line: #dde2e9;
+  --eco-line-2: #c7ced8;
+  --eco-line-strong: #9aa4b2;
+
+  /* ---- text ---- */
+  --eco-text: #18202c;
+  --eco-text-2: #465163;
+  --eco-text-3: #768193;
+  --eco-text-inverse: #ffffff;
+
+  /* ---- product accent (overridden per product below) ---- */
+  --eco-accent: #1b5fd1;
+  --eco-accent-strong: #134aa6;
+  --eco-accent-soft: #e5eefc;
+  --eco-accent-line: #aac5f3;
+  --eco-focus: 0 0 0 2px var(--eco-surface), 0 0 0 4px color-mix(in srgb, var(--eco-accent) 55%, transparent);
+
+  /* ---- grid ---- */
+  --eco-grid-head-bg: #eef1f5;
+  --eco-grid-head-fg: #334055;
+  --eco-grid-row-alt: #fafbfc;
+  --eco-grid-row-hover: #f0f5fd;
+  --eco-grid-row-sel: #dde9fb;
+  --eco-grid-row-sel-line: #8fb2ee;
+  --eco-grid-total-bg: #fff7e0;
+  --eco-grid-frozen-shadow: 6px 0 6px -6px rgba(20, 30, 50, .28);
+
+  /* ---- semantic ---- */
+  --eco-ok: #1d7f45;       --eco-ok-soft: #e3f4ea;
+  --eco-warn: #b26b00;     --eco-warn-soft: #fff1d6;
+  --eco-bad: #c4312a;      --eco-bad-soft: #fde6e4;
+  --eco-info: #1b5fd1;     --eco-info-soft: #e5eefc;
+
+  /* ---- production status: fixed everywhere (with an icon beside it, never colour alone) ---- */
+  --st-run: #1f8a4c;
+  --st-idle: #d19a07;
+  --st-down: #d0352b;
+  --st-setup: #2563c9;
+  --st-planned: #6b7482;
+  --st-hold: #7a3fd6;
+  --st-rework: #e0701a;
+  --st-done: #0f766e;
+
+  /* ---- type ---- */
+  --eco-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+  --eco-font-ar: "Segoe UI", "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, Arial, sans-serif;
+  --eco-mono: "Cascadia Mono", "Consolas", "SFMono-Regular", "Roboto Mono", "DejaVu Sans Mono", monospace;
+  --eco-fs-xs: 11px;
+  --eco-fs-sm: 12px;
+  --eco-fs: 12.5px;
+  --eco-fs-md: 13.5px;
+  --eco-fs-lg: 15px;
+  --eco-fs-xl: 18px;
+  --eco-fs-2xl: 24px;
+  --eco-fs-kpi: 26px;
+
+  /* ---- space, size, shape ---- */
+  --eco-s1: 2px; --eco-s2: 4px; --eco-s3: 6px; --eco-s4: 8px; --eco-s5: 12px; --eco-s6: 16px; --eco-s7: 20px; --eco-s8: 24px;
+  --eco-radius: 3px;
+  --eco-radius-lg: 6px;
+  --eco-top-h: 44px;
+  --eco-tabs-h: 32px;
+  --eco-status-h: 24px;
+  --eco-nav-w: 248px;
+  --eco-nav-rail: 48px;
+  --eco-control-h: 26px;
+  --eco-button-h: 26px;
+  --eco-row-h: 26px;
+  --eco-head-h: 28px;
+  --eco-shadow-1: 0 1px 2px rgba(16, 24, 40, .08);
+  --eco-shadow-pop: 0 8px 24px rgba(16, 24, 40, .18), 0 1px 3px rgba(16, 24, 40, .12);
+  --eco-shadow-dialog: 0 20px 48px rgba(16, 24, 40, .28);
+  --eco-overlay: rgba(12, 18, 28, .42);
+  --eco-speed: 120ms;
+}
+
+/* ---- product accents: each product is recognisable by its own colour ---- */
+:root[data-product="mes"] {
+  --eco-accent: #1b5fd1; --eco-accent-strong: #134aa6; --eco-accent-soft: #e5eefc; --eco-accent-line: #aac5f3;
+}
+:root[data-product="hr"] {
+  --eco-accent: #0f7a6d; --eco-accent-strong: #0a5c52; --eco-accent-soft: #e0f3f0; --eco-accent-line: #97d3ca;
+  --eco-grid-row-hover: #eff8f6; --eco-grid-row-sel: #d8efeb; --eco-grid-row-sel-line: #7cc3b8; --eco-info: #1b5fd1;
+}
+
+/* ---- density: compact is the office default; comfortable for touch laptops ---- */
+:root[data-density="comfortable"] {
+  --eco-row-h: 32px; --eco-head-h: 32px; --eco-control-h: 30px; --eco-button-h: 30px; --eco-fs: 13px;
+}
+
+/* ---- dark theme ---- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --eco-top-bg: #0b1018;
+  --eco-top-bg-2: #131a25;
+  --eco-top-fg: #e3e8f0;
+  --eco-top-fg-2: #8b97aa;
+  --eco-top-line: #222c3b;
+  --eco-nav-bg: #111722;
+  --eco-nav-fg: #cfd6e1;
+  --eco-nav-fg-2: #8994a6;
+  --eco-nav-hover: #1a2230;
+  --eco-app-bg: #0c1119;
+  --eco-surface: #141a24;
+  --eco-surface-2: #181f2b;
+  --eco-surface-3: #1d2533;
+  --eco-line: #263041;
+  --eco-line-2: #323d50;
+  --eco-line-strong: #4b586e;
+  --eco-text: #e4e9f1;
+  --eco-text-2: #b1bbca;
+  --eco-text-3: #7f8a9c;
+  --eco-grid-head-bg: #1a2230;
+  --eco-grid-head-fg: #c3ccda;
+  --eco-grid-row-alt: #161d28;
+  --eco-grid-row-hover: #1c2636;
+  --eco-grid-row-sel: #1d3357;
+  --eco-grid-row-sel-line: #3b6cc2;
+  --eco-grid-total-bg: #2a2616;
+  --eco-grid-frozen-shadow: 6px 0 6px -6px rgba(0, 0, 0, .6);
+  --eco-ok: #3fbf74;   --eco-ok-soft: #173325;
+  --eco-warn: #e6a53a; --eco-warn-soft: #362a12;
+  --eco-bad: #f06a60;  --eco-bad-soft: #3a1a1a;
+  --eco-info: #6aa1ff; --eco-info-soft: #172743;
+  --eco-shadow-pop: 0 10px 28px rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .4);
+  --eco-shadow-dialog: 0 24px 56px rgba(0, 0, 0, .6);
+  --eco-overlay: rgba(0, 0, 0, .55);
+}
+:root[data-theme="dark"][data-product="mes"] { --eco-accent: #4f8ff0; --eco-accent-strong: #7aabf5; --eco-accent-soft: #172a4a; --eco-accent-line: #2d4f86; }
+:root[data-theme="dark"][data-product="hr"] { --eco-accent: #2bb3a1; --eco-accent-strong: #5fd0c1; --eco-accent-soft: #10302c; --eco-accent-line: #1e6158;
+  --eco-grid-row-sel: #133a36; --eco-grid-row-sel-line: #2a8b7e; --eco-grid-row-hover: #182a2b; }
+
+/* Station and board modes (data-mode) change the frame, not these tokens: their screens size themselves for touch
+ * and for distance (GMES docs/design/06 §6.2 rule 6). */

@@ -60,3 +60,9 @@ MIZAN_DIR=.cache/mizan HR_DIR=.cache/hr-system node scripts/mutations.mjs   # ك
 
 تشغيل يدوي: `apps/mes-server` (`GMES_COMPANY_ID=<uuid> npm start -w apps/mes-server`، المنفذ 4700) و
 `apps/link-mizan` (متغيرات `LINK_*` في `src/main.ts`). قواعد العمل في [CLAUDE.md](CLAUDE.md)، والتاريخ في [HISTORY.md](HISTORY.md).
+
+## الواجهة (مرحلة UX — 2026-09-28)
+هيكل التطبيق وقوالب الشاشات (EXE3010، MDM1010، SYS9010، EXE2020، DSH5010) على **بيانات تجريبية مُعلنة**، مبنية من مجموعة
+الواجهة الموحدة `packages/eco-ui` (ADR-029). التشغيل: `GMES_COMPANY_ID=<uuid> npm start -w apps/mes-server` ثم افتح
+`http://localhost:4700/`. الصور وقائمة القبول البصري: [docs/ux/visual-acceptance.md](docs/ux/visual-acceptance.md).
+تطوير الوحدات متوقف حتى يعتمد المالك الشكل.
