@@ -44,9 +44,11 @@ export interface Config {
 }
 
 export interface Caller {
-  /** Name of the API key / device / link that made the request. */
+  /** Name of the API key / device / link that made the request, or the login of the signed-in person. */
   name: string;
   scopes: ReadonlySet<string>;
+  /** Set when a person signed in through the screens (a session), absent for API keys. */
+  user?: { id: string; login: string; role: string };
 }
 
 export interface Ctx {
@@ -80,6 +82,8 @@ export interface RouteKit {
   http: FastifyInstance;
   /** Resolve the caller of a request and require one of the scopes (checked on the server, always). */
   require(req: FastifyRequest, scope: string): Caller;
+  /** Who is calling, if anyone (for routes open to everyone, such as the sign-in state). */
+  caller(req: FastifyRequest): Caller | null;
 }
 
 export interface AppModule {

@@ -30,7 +30,12 @@ const MUTATIONS = [
   { name: 'a screen parses text as HTML', file: 'apps/mes-web/screens/exe3010.js', from: 'ui.clear(detailBody, head,', to: 'detailBody.innerHTML = ""; ui.clear(detailBody, head,', suite: 'apps/mes-server' },
   { name: 'the screens allow scripts from anywhere', file: 'apps/mes-server/src/web.ts', from: "script-src 'self'; style-src", to: "script-src 'self' 'unsafe-inline'; style-src", suite: 'apps/mes-server' },
   { name: 'an Arabic text of the screens is missing', file: 'apps/mes-web/i18n/ar.json', from: '"cancel": "إلغاء",\n', to: '', suite: 'apps/mes-server' },
-  { name: 'a screen hides that its data is invented', file: 'apps/mes-web/screens/sys9010.js', from: 'headExtra: sampleNote(),', to: 'headExtra: null,', suite: 'apps/mes-server' },
+  { name: 'a screen goes back to invented data', file: 'apps/mes-web/screens/home.js', from: 'import * as ui from "/eco-ui/eco-ui.js";', to: 'import * as ui from "/eco-ui/eco-ui.js";\nimport { lines } from "../data.js";', suite: 'apps/mes-server' },
+  { name: 'a locked account can still sign in', file: 'apps/mes-server/src/modules/system/users.ts', from: "if (u.status === 'locked') throw", to: "if (false) throw", suite: 'apps/mes-server' },
+  { name: 'the failed-password count is rolled back with the refusal', file: 'apps/mes-server/src/modules/system/users.ts', from: '        return lock;\n      });', to: '        if (!lock) wrong();\n        return lock;\n      });', suite: 'apps/mes-server' },
+  { name: 'an operator is given every permission', file: 'apps/mes-server/src/modules/system/roles.ts', from: "OPERATOR: [...READ, 'exe.orders.write', 'oee.stops.write'],", to: "OPERATOR: ['*'],", suite: 'apps/mes-server' },
+  { name: 'a line may be stopped twice at the same time', file: 'apps/mes-server/src/modules/oee/index.ts', from: 'if (same) conflict(', to: 'if (false) conflict(', suite: 'apps/mes-server' },
+  { name: 'a work order may run on a line that does not exist', file: 'apps/mes-server/src/modules/exe/index.ts', from: "if (!line || line.type !== 'line') fail('line.unknown'", to: "if (false) fail('line.unknown'", suite: 'apps/mes-server' },
   { name: 'transient failures advance the cursor', file: 'apps/link-mizan/src/link.ts', from: 'if (!(err instanceof BusinessError)) throw err;', to: 'if (!(err instanceof BusinessError) && !(err instanceof TransientError)) throw err;', suite: 'apps/link-mizan' },
 ];
 

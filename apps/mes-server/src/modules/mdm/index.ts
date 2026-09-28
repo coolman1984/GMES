@@ -4,6 +4,7 @@ import type { MdmService, MirrorEmployee, MirrorItem, MirrorWarehouse, SnapshotR
 import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
+import { plantMigration, plantNode, plantNodes, plantRoutes } from './plant.js';
 
 /**
  * Master data manufacturing READS: items and warehouses.
@@ -27,7 +28,7 @@ const zLocalWarehouse = z.object({ code: z.string().trim().min(1).max(20), nameE
 export const mdmModule: AppModule = {
   id: 'mdm',
   dependsOn: ['system'],
-  scopes: ['mdm.items.read', 'mdm.items.write', 'mdm.stations.write'],
+  scopes: ['mdm.items.read', 'mdm.items.write', 'mdm.stations.write', 'mdm.plant.read', 'mdm.plant.write'],
   migrations: [
     {
       id: '001_mirrors',
@@ -133,6 +134,7 @@ export const mdmModule: AppModule = {
         );
       `,
     },
+    plantMigration,
   ],
 
   setup(ctx) {
@@ -145,6 +147,8 @@ export const mdmModule: AppModule = {
         const row = await (t ?? ctx.db).get<MirrorWarehouse>('SELECT * FROM mdm_warehouse WHERE id = ?', [id]);
         return row ?? notFound('warehouse', id);
       },
+      plantNode: (code, t) => plantNode(t ?? ctx.db, code),
+      plantNodes: (type, t) => plantNodes(t ?? ctx.db, type),
       applyItem: (t, s) => apply(ctx, t, 'item', s),
       applyWarehouse: (t, s) => apply(ctx, t, 'warehouse', s),
       applyEmployee: (t, s) => applyWorkforce(ctx, t, 'employee', s),
@@ -174,7 +178,9 @@ export const mdmModule: AppModule = {
     ctx.services.provide('mdm', service);
   },
 
-  routes({ http, require }, ctx) {
+  routes(kit, ctx) {
+    const { http, require } = kit;
+    plantRoutes(kit, ctx);
     http.get('/api/items', async (req) => {
       require(req, 'mdm.items.read');
       return ctx.db.all('SELECT * FROM mdm_item ORDER BY code');

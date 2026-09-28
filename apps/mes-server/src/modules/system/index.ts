@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { AppError } from '../../kernel/errors.js';
 import type { AppModule, Caller, Ctx } from '../../kernel/modules.js';
+import { sessionCaller, userRoutes, usersMigration } from './users.js';
 
 /**
  * Keys for links (other apps' connectors), station devices and administrators.
@@ -21,8 +22,10 @@ export async function addKey(ctx: Ctx, name: string, scopes: string[], key = new
   return key;
 }
 
+/** An API key (x-eco-key) when one is sent, else the session of a person signed in through the screens. */
 export async function resolveCaller(ctx: Ctx, req: FastifyRequest): Promise<Caller | null> {
   const header = req.headers['x-eco-key'];
+  if (header === undefined) return sessionCaller(ctx, req);
   if (typeof header !== 'string' || !header.startsWith('gk_')) return null;
   const h = hash(header);
   const row = await ctx.db.get<{ name: string; key_hash: Uint8Array; scopes: string; active: number }>(
@@ -33,7 +36,7 @@ export async function resolveCaller(ctx: Ctx, req: FastifyRequest): Promise<Call
 }
 
 export function requireScope(caller: Caller | null, scope: string): Caller {
-  if (!caller) throw new AppError(401, 'auth.required', 'A valid x-eco-key header is required');
+  if (!caller) throw new AppError(401, 'auth.required', 'Sign in, or send a valid x-eco-key header');
   const [mod] = scope.split('.');
   if (!caller.scopes.has(scope) && !caller.scopes.has(`${mod}.*`) && !caller.scopes.has('*')) {
     throw new AppError(403, 'auth.forbidden', `This key may not ${scope}`);
@@ -43,6 +46,10 @@ export function requireScope(caller: Caller | null, scope: string): Caller {
 
 export const systemModule: AppModule = {
   id: 'system',
+  scopes: ['sys.users.read', 'sys.users.write', 'sys.audit.read'],
+  routes(kit, ctx) {
+    userRoutes(kit, ctx, kit.caller as (req: object) => Caller | null);
+  },
   migrations: [
     {
       id: '001_keys',
@@ -66,5 +73,6 @@ export const systemModule: AppModule = {
         );
       `,
     },
+    usersMigration,
   ],
 };

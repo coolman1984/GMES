@@ -1,99 +1,128 @@
 // MDM1010 Factory Structure — the TEMPLATE of every master-data screen: tree on the start side, the record and its
-// children on the other, one toolbar, edit in a dialog.
+// children on the other, one toolbar, edit in a dialog. The plant model is manufacturing's own (docs/ecosystem/02).
 import * as ui from "/eco-ui/eco-ui.js";
-import { factory } from "../data.js";
-import { t, name, statusLabel, sampleNote } from "../common.js";
+import { api, can, name, session, showError, t } from "../common.js";
 
 const { h } = ui;
 const TYPE_ICON = { plant: "factory", area: "layers", line: "activity", station: "cpu", equipment: "wrench" };
 const CHILD = { plant: "area", area: "line", line: "station", station: "equipment" };
 
 export default function create({ shell }) {
-  const byId = new Map();
-  const count = (n) => (n.children || []).reduce((a, c) => a + 1 + count(c), 0);
-  const toNode = (n, parent) => { byId.set(n.id, { ...n, parent }); return { id: n.id, label: n.code + "  " + name(n), icon: TYPE_ICON[n.type], badge: n.children && n.children.length ? n.children.length : null, children: (n.children || []).map((c) => toNode(c, n.id)) }; };
-  const nodes = factory.map((n) => toNode(n, null));
-  let current = byId.get("P1/ASM/P1/ASM/ASM-02") || null;
-  const firstLine = [...byId.values()].find((n) => n.type === "line" && n.code === "ASM-02");
-  current = firstLine || byId.get("P1");
+  const plant = session().plant;
+  const canEdit = can("mdm.plant.write");
+  let byId = new Map(), nodes = [], current = null, tr = null;
+  const kids = (id) => [...byId.values()].filter((n) => n.parent_id === id).sort((a, b) => a.code.localeCompare(b.code));
+  const count = (id) => kids(id).reduce((a, c) => a + 1 + count(c.id), 0);
+  const toNode = (n) => ({ id: n.id, label: n.code + "  " + name(n) + (n.active ? "" : "  (" + t("rs.inactive") + ")"), icon: TYPE_ICON[n.type],
+    badge: kids(n.id).length || null, children: kids(n.id).map(toNode) });
 
-  const filter = ui.input({ type: "search", placeholder: t("mdm.filter"), onInput: () => drawTree() });
+  let q = "";
   const treeHost = h("div", { class: "mes-tree-host" });
-  let tr;
   function drawTree() {
-    const q = filter.value.trim().toLowerCase();
-    const keep = (n) => { const kids = (n.children || []).map(keep).filter(Boolean); return !q || n.label.toLowerCase().includes(q) || kids.length ? { ...n, children: kids } : null; };
-    tr = ui.tree(q ? nodes.map(keep).filter(Boolean) : nodes, { key: "MDM1010", expanded: ["P1", "P1/ASM", firstLine && firstLine.parent].filter(Boolean), selected: current && current.id,
+    const keep = (n) => { const c = (n.children || []).map(keep).filter(Boolean); return !q || n.label.toLowerCase().includes(q) || c.length ? { ...n, children: c } : null; };
+    const shown = q ? nodes.map(keep).filter(Boolean) : nodes;
+    if (!shown.length) { ui.clear(treeHost, ui.empty({ icon: "sitemap", title: t("mdm.empty"), text: canEdit ? t("mdm.empty_help") : null })); tr = null; return; }
+    const expanded = [];
+    for (let p = current; p; p = p.parent_id ? byId.get(p.parent_id) : null) expanded.push(p.id);
+    tr = ui.tree(shown, { key: "MDM1010", expanded: expanded.concat(nodes.map((n) => n.id)), selected: current && current.id,
       onSelect: (n) => { current = byId.get(n.id); drawRecord(); } });
     if (q) tr.expandAll();
     ui.clear(treeHost, tr);
   }
   const side = h("div", { class: "mes-side" },
-    h("div", { class: "mes-side-head" }, ui.searchBox({ placeholder: t("mdm.filter"), onInput: (v) => { filter.value = v; drawTree(); } }),
-      ui.button({ icon: "expand", kind: "ghost", size: "sm", title: t("mdm.expand"), onClick: () => tr.expandAll() }),
-      ui.button({ icon: "minus", kind: "ghost", size: "sm", title: t("mdm.collapse"), onClick: () => tr.collapseAll() })),
+    h("div", { class: "mes-side-head" }, ui.searchBox({ placeholder: t("mdm.filter"), onInput: (v) => { q = v.trim().toLowerCase(); drawTree(); } }),
+      ui.button({ icon: "expand", kind: "ghost", size: "sm", title: t("mdm.expand"), onClick: () => tr && tr.expandAll() }),
+      ui.button({ icon: "minus", kind: "ghost", size: "sm", title: t("mdm.collapse"), onClick: () => tr && tr.collapseAll() })),
     treeHost,
     h("div", { class: "mes-side-foot" }, ["plant", "area", "line", "station", "equipment"].map((ty) => h("span", {}, ui.icon(TYPE_ICON[ty], 12), t("type." + ty)))));
 
   const record = h("div", { class: "mes-record" });
   const childGrid = ui.grid([
-    { key: "state", label: t("c.state"), type: "status", width: 112, label_of: (s) => statusLabel(s) },
     { key: "code", label: t("c.code"), type: "code", width: 150 },
     { key: "name", label: t("c.name"), width: 220 },
     { key: "type", label: t("c.type"), width: 100, value: (r) => t("type." + r.type) },
     { key: "children", label: t("c.children"), type: "number", width: 90 },
     { key: "status", label: t("c.record_status"), width: 120, render: (r) => ui.badge(t("rs." + r.status), r.status === "active" ? "ok" : "neutral") },
-  ], { rowKey: "id", selection: "single", layoutKey: "MDM1010-children", onOpen: (r) => { current = byId.get(r.id); tr.select(r.id); drawRecord(); } });
+  ], { rowKey: "id", selection: "single", layoutKey: "MDM1010-children", onOpen: (r) => { current = byId.get(r.id); drawTree(); drawRecord(); } });
 
   function drawRecord() {
     const n = current;
-    if (!n) { ui.clear(record, ui.empty({ icon: "sitemap", title: t("mdm.none") })); return; }
-    const parent = n.parent ? byId.get(n.parent) : null;
-    const path = []; for (let p = n; p; p = p.parent ? byId.get(p.parent) : null) path.unshift(p.code);
-    const kids = (n.children || []).map((c) => ({ id: c.id, code: c.code, name: name(c), type: c.type, state: c.state || "run", children: count(c), status: c.status }));
-    childGrid.setRows(kids);
+    act.edit.disabled = !n || !canEdit; act.add.disabled = !canEdit || (n ? !CHILD[n.type] : false); act.toggle.disabled = !n || !canEdit;
+    if (n) ui.clear(act.toggle.querySelector(".eco-btn-label"), document.createTextNode(n.active ? t("mdm.deactivate") : t("mdm.activate")));
+    if (!n) { ui.clear(record, ui.empty({ icon: "sitemap", title: nodes.length ? t("mdm.none") : t("mdm.empty"), text: canEdit && !nodes.length ? t("mdm.empty_help") : null,
+      action: canEdit && !nodes.length ? ui.button({ label: t("mdm.add", { type: t("type.plant") }), icon: "plus", kind: "primary", onClick: () => edit(null, "plant", null) }) : null })); return; }
+    const parent = n.parent_id ? byId.get(n.parent_id) : null;
+    const path = []; for (let p = n; p; p = p.parent_id ? byId.get(p.parent_id) : null) path.unshift(p.code);
+    const rows = kids(n.id).map((c) => ({ id: c.id, code: c.code, name: name(c), type: c.type, children: count(c.id), status: c.active ? "active" : "inactive" }));
+    childGrid.setRows(rows);
     childGrid.setEmptyText(t("mdm.no_children"));
+    const ops = n.type === "line" ? [[t("mdm.capacity"), n.capacity_per_shift ? h("span", {}, ui.ltr(ui.fmtNumber(n.capacity_per_shift)), " ", t("mdm.per_shift")) : null],
+      [t("mdm.day_start"), ui.ltr(plant.productionDayStart)], [t("mdm.stations"), ui.ltr(String(kids(n.id).length))]]
+      : n.type === "equipment" ? [[t("mdm.serial"), n.serial ? ui.ltr(n.serial) : null], [t("mdm.vendor"), n.vendor], [t("mdm.installed"), n.installed_on ? ui.ltr(n.installed_on) : null]]
+      : [[t("c.children"), ui.ltr(String(kids(n.id).length))], [t("mdm.all_below"), ui.ltr(String(count(n.id)))], [t("mdm.day_start"), ui.ltr(plant.productionDayStart)], [t("mdm.tz"), ui.ltr(plant.timeZone)]];
     ui.clear(record,
       h("div", { class: "mes-record-head" },
         h("span", { class: "mes-record-icon" }, ui.icon(TYPE_ICON[n.type], 20)),
         h("div", { class: "mes-record-titles" }, h("div", { class: "mes-record-path" }, ui.ltr(path.join(" / "))), h("h2", { text: name(n) })),
-        n.state ? ui.statusChip(n.state, statusLabel(n.state)) : null, ui.badge(t("rs." + n.status), n.status === "active" ? "ok" : "neutral")),
+        ui.badge(t("rs." + (n.active ? "active" : "inactive")), n.active ? "ok" : "neutral")),
       h("div", { class: "mes-record-grid" },
         ui.section(t("mdm.general"), ui.props([
-          [t("c.code"), ui.ltr(n.code)], [t("c.name") + " (EN)", n.en], [t("c.name") + " (AR)", h("span", { dir: "rtl", text: n.ar })], [t("c.type"), t("type." + n.type)],
-          [t("mdm.parent"), parent ? h("a", { href: "#", text: parent.code + " · " + name(parent), onclick: (ev) => { ev.preventDefault(); current = parent; tr.select(parent.id); drawRecord(); } }) : null],
+          [t("c.code"), ui.ltr(n.code)], [t("c.name") + " (EN)", n.name_en], [t("c.name") + " (AR)", h("span", { dir: "rtl", text: n.name_ar })], [t("c.type"), t("type." + n.type)],
+          [t("mdm.parent"), parent ? h("a", { href: "#", text: parent.code + " · " + name(parent), onclick: (ev) => { ev.preventDefault(); current = parent; drawTree(); drawRecord(); } }) : null],
         ])),
-        ui.section(t("mdm.operation"), ui.props(n.type === "line" ? [
-          [t("mdm.capacity"), h("span", {}, ui.ltr(ui.fmtNumber(n.capacity)), " ", t("mdm.per_shift"))], [t("mdm.calendar"), "CAL-3S · " + t("mdm.three_shifts")],
-          [t("mdm.day_start"), ui.ltr("07:00")], [t("mdm.stations"), ui.ltr(String((n.children || []).length))],
-        ] : n.type === "equipment" ? [[t("mdm.serial"), ui.ltr(n.serial)], [t("mdm.vendor"), n.vendor], [t("mdm.installed"), ui.ltr(n.installed)], [t("mdm.maint"), t("planned_screen")]]
-          : [[t("c.children"), ui.ltr(String((n.children || []).length))], [t("mdm.all_below"), ui.ltr(String(count(n)))], [t("mdm.day_start"), ui.ltr("07:00")], [t("mdm.tz"), ui.ltr("Africa/Cairo")]]))),
-      h("div", { class: "mes-record-children" }, h("div", { class: "mes-subhead" }, h("strong", { text: t("mdm.children_of", { type: CHILD[n.type] ? t("type_pl." + CHILD[n.type]) : "—" }) }), h("span", { class: "eco-count", text: String(kids.length) }), h("span", { class: "eco-grow" }),
-        CHILD[n.type] ? ui.button({ label: t("mdm.add", { type: t("type." + CHILD[n.type]) }), icon: "plus", size: "sm", onClick: () => edit(null, CHILD[n.type]) }) : null), childGrid.el));
-    act.edit.disabled = false; act.add.disabled = !CHILD[n.type];
+        ui.section(t("mdm.operation"), ui.props(ops))),
+      h("div", { class: "mes-record-children" }, h("div", { class: "mes-subhead" }, h("strong", { text: t("mdm.children_of", { type: CHILD[n.type] ? t("type_pl." + CHILD[n.type]) : "—" }) }), h("span", { class: "eco-count", text: String(rows.length) }), h("span", { class: "eco-grow" }),
+        CHILD[n.type] && canEdit && n.active ? ui.button({ label: t("mdm.add", { type: t("type." + CHILD[n.type]) }), icon: "plus", size: "sm", onClick: () => edit(null, CHILD[n.type], n) }) : null), childGrid.el));
   }
-  function edit(n, type) {
-    const code = ui.input({ value: n ? n.code : "", dir: "ltr", readonly: !!n }), en = ui.input({ value: n ? n.en : "" }), ar = ui.input({ value: n ? n.ar : "", dir: "rtl" });
-    const st = ui.select({ options: [["active", t("rs.active")], ["inactive", t("rs.inactive")]], value: n ? n.status : "active" });
+
+  function edit(n, type, parent) {
+    const ty = n ? n.type : type;
+    const code = ui.input({ value: n ? n.code : "", dir: "ltr", readonly: !!n }), en = ui.input({ value: n ? n.name_en : "" }), ar = ui.input({ value: n ? n.name_ar : "", dir: "rtl" });
+    const cap = ui.input({ type: "number", value: n && n.capacity_per_shift ? String(n.capacity_per_shift) : "", min: "1", step: "1" });
+    const serial = ui.input({ value: n ? n.serial || "" : "", dir: "ltr" }), vendor = ui.input({ value: n ? n.vendor || "" : "" }), inst = ui.input({ type: "date", value: n ? n.installed_on || "" : "" });
     const err = h("div", { class: "eco-span-2" });
-    ui.dialog({ title: n ? t("mdm.edit_title", { code: n.code }) : t("mdm.add", { type: t("type." + type) }), subtitle: n ? t("type." + n.type) : t("mdm.under", { code: current.code }), icon: TYPE_ICON[type || n.type],
-      body: h("div", { class: "eco-form" }, ui.field(t("c.code"), code, { required: true, hint: n ? t("mdm.code_fixed") : t("mdm.code_hint") }), ui.field(t("c.record_status"), st),
-        ui.field(t("c.name") + " (EN)", en, { required: true }), ui.field(t("c.name") + " (AR)", ar), err),
-      actions: [{ label: t("cancel"), kind: "ghost", value: false }, { label: t("save"), kind: "primary", icon: "save", onClick: () => {
+    ui.dialog({ title: n ? t("mdm.edit_title", { code: n.code }) : t("mdm.add", { type: t("type." + ty) }), subtitle: n ? t("type." + ty) : parent ? t("mdm.under", { code: parent.code }) : null, icon: TYPE_ICON[ty],
+      body: h("div", { class: "eco-form" }, ui.field(t("c.code"), code, { required: true, hint: n ? t("mdm.code_fixed") : t("mdm.code_hint") }), h("div"),
+        ui.field(t("c.name") + " (EN)", en, { required: true }), ui.field(t("c.name") + " (AR)", ar),
+        ty === "line" ? ui.field(t("mdm.capacity") + " (" + t("mdm.per_shift") + ")", cap, { hint: t("mdm.capacity_hint") }) : null,
+        ty === "equipment" ? [ui.field(t("mdm.serial"), serial), ui.field(t("mdm.vendor"), vendor), ui.field(t("mdm.installed"), inst)] : null, err),
+      actions: [{ label: t("cancel"), kind: "ghost", value: false }, { label: t("save"), kind: "primary", icon: "save", onClick: async () => {
         if (!code.value.trim() || !en.value.trim()) { ui.clear(err, ui.banner("bad", t("err.required"))); return false; }
-        ui.toast({ kind: "ok", title: t("saved"), text: t("sample.nothing_saved") });
+        const details = { nameEn: en.value, nameAr: ar.value, ...(ty === "line" ? { capacityPerShift: cap.value ? Number(cap.value) : null } : {}),
+          ...(ty === "equipment" ? { serial: serial.value || null, vendor: vendor.value || null, installedOn: inst.value || null } : {}) };
+        try {
+          if (n) await api("PATCH", `/api/plant/${n.id}`, { ...details, version: n.version });
+          else { const r = await api("POST", "/api/plant", { code: code.value, type: ty, parentId: parent ? parent.id : null, ...details }); await load(r.id); ui.toast({ kind: "ok", title: t("saved"), text: r.code }); return; }
+        } catch (e) { showError(e, err); return false; }
+        await load(n.id);
+        ui.toast({ kind: "ok", title: t("saved"), text: n.code });
       } }] });
   }
+  async function toggle() {
+    const n = current;
+    if (n.active && !(await ui.confirm({ title: t("mdm.deactivate"), text: t("mdm.deactivate_text", { code: n.code }), danger: true, okLabel: t("mdm.deactivate") }))) return;
+    try { await api("PATCH", `/api/plant/${n.id}`, { active: !n.active, version: n.version }); } catch (e) { showError(e); return; }
+    await load(n.id);
+  }
   const act = {
-    add: ui.button({ label: t("mdm.new_child"), icon: "plus", onClick: () => CHILD[current.type] && edit(null, CHILD[current.type]) }),
-    edit: ui.button({ label: t("edit"), icon: "edit", onClick: () => edit(current) }),
+    add: ui.button({ label: t("mdm.new_child"), icon: "plus", disabled: !canEdit, onClick: () => (current ? CHILD[current.type] && edit(null, CHILD[current.type], current) : edit(null, "plant", null)) }),
+    edit: ui.button({ label: t("edit"), icon: "edit", disabled: true, onClick: () => edit(current) }),
+    toggle: ui.button({ label: t("mdm.deactivate"), icon: "lock", disabled: true, onClick: () => toggle() }),
   };
-  const sc = ui.screen({ code: "MDM1010", title: t("scr.MDM1010"), path: [t("m.master"), t("m.plant_model")], shell, headExtra: sampleNote(),
-    toolbar: [act.add, act.edit, ui.button({ label: t("mdm.deactivate"), icon: "lock", onClick: async () => {
-      if (await ui.confirm({ title: t("mdm.deactivate"), text: t("mdm.deactivate_text", { code: current.code }), danger: true, okLabel: t("mdm.deactivate") })) ui.toast({ kind: "ok", text: t("sample.nothing_saved") });
-    } })],
-    standard: { export: () => childGrid.exportCSV("MDM1010-" + current.code), exportLabel: t("export"), print: () => print(), printLabel: t("print") },
+  const sc = ui.screen({ code: "MDM1010", title: t("scr.MDM1010"), path: [t("m.master"), t("m.plant_model")], shell,
+    toolbar: [act.add, act.edit, act.toggle, ui.sep(), ui.button({ label: t("mdm.add", { type: t("type.plant") }), icon: "factory", kind: "ghost", disabled: !canEdit, onClick: () => edit(null, "plant", null) })],
+    standard: { inquiry: () => load(current && current.id), inquiryLabel: t("refresh"), export: () => childGrid.exportCSV("MDM1010-" + (current ? current.code : "plant")), exportLabel: t("export"), print: () => print(), printLabel: t("print") },
     body: ui.split(side, record, { key: "MDM1010:side", initial: 320, min: 220, second: false }) });
-  drawTree(); drawRecord();
+
+  async function load(selectId) {
+    let list;
+    try { list = await api("GET", "/api/plant"); } catch (e) { showError(e); return; }
+    byId = new Map(list.map((n) => [n.id, n]));
+    nodes = list.filter((n) => !n.parent_id).map(toNode);
+    current = (selectId && byId.get(selectId)) || current && byId.get(current.id) || list.find((n) => n.type === "line") || list[0] || null;
+    drawTree(); drawRecord();
+  }
+  drawRecord();
+  load();
   return { el: sc.el };
 }

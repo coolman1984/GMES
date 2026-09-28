@@ -233,3 +233,14 @@ the `.ps1` files with `shell: pwsh`. `.gitattributes` pins LF for text and CRLF 
 **Rejected:** a service/installer now (V1 scope item, needs signing and update design); auto-creating an admin key in a
 plaintext file (breaks "shown once"); binding `0.0.0.0` by default (the screens have no login yet); keeping both `.sh` and
 `.ps1` (two implementations drift).
+
+### ADR-032 — People sign in; the plant model and downtime belong to manufacturing; boards read only the ledger
+**Context:** the owner accepted the shell and asked for the screens to work for real. The API knew only machine keys.
+**Decision:** local accounts in `sys_user` (scrypt, one role each; `ROLE_SCOPES` maps roles to the same scopes the keys use,
+so the server checks one way for both), sessions as a SHA-256 of a random token in an HttpOnly SameSite=Strict cookie; the
+first administrator is created from the screen while no account exists (no default password). The plant model is a single
+self-referencing table with a fixed parent type per level. Stoppages are append-only START/END facts (`oee_event`), one open
+per line/station. Boards and the start page compute only from the ledger and those facts; a figure that needs data the
+system does not hold yet (OEE, an hourly plan without capacity) is shown as "—", never estimated.
+**Rejected:** SSO/LDAP now (V2, design doc 07); a default admin/admin account; storing stoppages as a row updated at the end
+(a fact would be overwritten); keeping sample data beside real data "for the look" (a screen must never mix them).

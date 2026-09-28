@@ -51,6 +51,18 @@ export async function server(owner: 'mizan' | 'gmes' = 'mizan', person: 'hr' | '
   return { app, clock, keys, call, close: () => app.close() };
 }
 
+/** Signs a person in through the screens' API and returns a caller that sends their session cookie. */
+export async function signIn(s: TestServer, login: string, password: string) {
+  const r = await s.app.http.inject({ method: 'POST', url: '/api/auth/login', payload: { login, password } });
+  if (r.statusCode !== 200) throw new Error(`sign-in ${login}: ${r.body}`);
+  const cookie = String(r.headers['set-cookie']).split(';')[0]!;
+  const call = async (method: string, url: string, body?: unknown) => {
+    const res = await s.app.http.inject({ method: method as 'GET', url, payload: body as object, headers: { cookie } });
+    return { status: res.statusCode, body: res.body ? JSON.parse(res.body) : null };
+  };
+  return Object.assign(call, { cookie });
+}
+
 let seq = 0;
 /** A master-data snapshot from Mizan as the link sends it. */
 export function snapshot(type: 'eco.item.v1' | 'eco.warehouse.v1' | 'eco.employee.v1' | 'eco.attendance_day.v1' | 'eco.schedule_day.v1' | 'eco.qualification.v1', data: Record<string, unknown>, id?: string, source = MIZAN_SOURCE) {

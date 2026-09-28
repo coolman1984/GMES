@@ -39,8 +39,24 @@ export interface MirrorEmployee {
   version: number;
 }
 
+/** A node of the plant model (manufacturing owns it: docs/ecosystem/02, "line / station / equipment"). */
+export interface PlantNode {
+  id: string;
+  code: string;
+  type: 'plant' | 'area' | 'line' | 'station' | 'equipment';
+  parent_id: string | null;
+  name_en: string;
+  name_ar: string;
+  active: number;
+  capacity_per_shift: number | null;
+}
+
 export interface MdmService {
   item(id: string, t?: Db): Promise<MirrorItem>;
+  /** A plant-model node by its code, or undefined. */
+  plantNode(code: string, t?: Db): Promise<PlantNode | undefined>;
+  /** Every plant-model node of one type, ordered by code. */
+  plantNodes(type: PlantNode['type'], t?: Db): Promise<PlantNode[]>;
   warehouse(id: string, t?: Db): Promise<MirrorWarehouse>;
   /** Apply an owner's snapshot inside the caller's transaction. Refuses entities this installation owns itself. */
   applyItem(t: Db, snapshot: ItemV1): Promise<SnapshotResult>;
@@ -70,9 +86,29 @@ export interface EcoService {
   publish(t: Db, event: OutboxEvent): Promise<{ id: string; seq: number }>;
 }
 
+/** A stoppage of a line or station, derived from the append-only start/end facts of the oee module. */
+export interface Stoppage {
+  id: string;
+  line: string;
+  station: string | null;
+  reason: string;
+  productionDate: string;
+  startedAt: string;
+  startedBy: string;
+  endedAt: string | null;
+  endedBy: string | null;
+  minutes: number;
+}
+
+export interface OeeService {
+  /** Stoppages of a production day and/or line, or only the open ones, newest first; open ones have endedAt = null. */
+  stoppages(q: { date?: string; line?: string; openOnly?: boolean }): Promise<Stoppage[]>;
+}
+
 declare module '../kernel/modules.js' {
   interface ServiceMap {
     mdm: MdmService;
     eco: EcoService;
+    oee: OeeService;
   }
 }

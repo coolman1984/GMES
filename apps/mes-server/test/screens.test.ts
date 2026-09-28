@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { KIT_DIR, WEB_DIR } from '../src/web.js';
@@ -20,7 +20,7 @@ describe('the screens are served by the server itself (one address, one origin)'
     assert.match(page.headers['content-type'] as string, /text\/html/);
     assert.match(page.headers['content-security-policy'] as string, /script-src 'self';/);
     assert.match(page.body, /\/eco-ui\/tokens\.css/);
-    for (const url of ['/ui/app.js', '/ui/screens/exe3010.js', '/ui/i18n/ar.json', '/eco-ui/eco-ui.js', '/eco-ui/tokens.css']) {
+    for (const url of ['/ui/app.js', '/ui/auth.js', '/ui/common.js', '/ui/screens/exe3010.js', '/ui/screens/mdm1020.js', '/ui/i18n/ar.json', '/eco-ui/eco-ui.js', '/eco-ui/tokens.css']) {
       const r = await get(url);
       assert.equal(r.statusCode, 200, url);
       assert.equal(r.headers['x-content-type-options'], 'nosniff', url);
@@ -65,8 +65,16 @@ describe('the interface kit and the screens (UX phase, ADR-029)', () => {
     for (const s of ['planned', 'released', 'run', 'hold', 'done', 'closed', 'idle', 'setup', 'down']) assert.ok(`st.${s}` in en, s);
   });
 
-  test('every screen that shows invented data says so on the screen', () => {
-    for (const f of js(join(WEB_DIR, 'screens'))) assert.match(read(f), /sampleNote\(\)/, f);
+  test('no screen shows invented data: there is no sample file, and every screen reads the server', () => {
+    assert.equal(existsSync(join(WEB_DIR, 'data.js')), false, 'the sample data file is gone');
+    for (const f of js(WEB_DIR)) assert.doesNotMatch(read(f), /from\s+["'][./]*data\.js["']|Math\.random\(\)\s*\*/, f);
+    for (const f of js(join(WEB_DIR, 'screens'))) assert.match(read(f), /\bapi\("GET"/, f);
+  });
+
+  test('the screens send every change as a command with its own id (a retry is applied once)', () => {
+    for (const f of js(join(WEB_DIR, 'screens'))) {
+      for (const m of read(f).matchAll(/api\("POST", `?"?\/api\/(work-orders|stoppages)[^,]*,\s*\{([^}]*)/g)) assert.match(m[2]!, /commandId: commandId\(\)/, f + ': ' + m[0]);
+    }
   });
 
   test('every token the components use is defined, in the light and in the dark theme', () => {

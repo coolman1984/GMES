@@ -1,18 +1,23 @@
 // GMES — the application shell. The menu lists the whole screen catalogue (GMES docs/design/05 §5.2); screens not
 // built yet are shown, greyed, with their code, so the map of the product is visible from the first day.
+// Before the shell: the server says whether the installation has accounts and who is signed in (auth.js).
 import * as ui from "/eco-ui/eco-ui.js";
-import { loadLang, t, lang } from "./common.js";
-import { TODAY } from "./data.js";
+import { api, can, loadLang, session, setSession, t, lang, today } from "./common.js";
+import { changePasswordDialog, changePasswordPage, loginPage, setupPage } from "./auth.js";
 import home from "./screens/home.js";
 import exe3010 from "./screens/exe3010.js";
 import exe2020 from "./screens/exe2020.js";
 import mdm1010 from "./screens/mdm1010.js";
+import mdm1020 from "./screens/mdm1020.js";
 import sys9010 from "./screens/sys9010.js";
 import dsh5010 from "./screens/dsh5010.js";
 
-const VERSION = "0.2.0-shell";
-const BUILT = { HOME: [home, "home"], EXE3010: [exe3010, "clipboard"], EXE2020: [exe2020, "tablet"], MDM1010: [mdm1010, "sitemap"], SYS9010: [sys9010, "users"], DSH5010: [dsh5010, "monitor"] };
-const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.production", "m.shop_floor"], MDM1010: ["m.master", "m.plant_model"], SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"] };
+const VERSION = "0.3.0";
+// [factory, icon, scope needed to open it]
+const BUILT = { HOME: [home, "home", "exe.orders.read"], EXE3010: [exe3010, "clipboard", "exe.orders.read"], EXE2020: [exe2020, "tablet", "exe.orders.write"],
+  MDM1010: [mdm1010, "sitemap", "mdm.plant.read"], MDM1020: [mdm1020, "box", "mdm.items.read"], SYS9010: [sys9010, "users", "sys.users.read"], DSH5010: [dsh5010, "monitor", "exe.orders.read"] };
+const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.production", "m.shop_floor"], MDM1010: ["m.master", "m.plant_model"], MDM1020: ["m.master", "m.products"],
+  SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"] };
 
 // [group id, icon, [[subgroup key, [codes]]]]
 const MENU = [
@@ -26,17 +31,36 @@ const MENU = [
   ["system", "settings", [["m.security", ["SYS9010", "SYS9020", "SYS9090"]], ["m.devices", ["SYS9030", "SYS9040", "SYS9050"]], ["m.operations", ["SYS9060", "SYS9070", "SYS9100", "SYS9120"]]]],
 ];
 
-async function start() {
+async function boot() {
   ui.configure({ prefix: "gmes" });  // preferences are read below: the store must be named first
   const l = await loadLang(ui.prefs.get("lang", navigator.language && navigator.language.startsWith("ar") ? "ar" : "en"));
   ui.configure({ prefix: "gmes", product: "mes", lang: l, theme: ui.prefs.get("theme", "light"), density: ui.prefs.get("density", "compact") });
+  let state;
+  try { state = await api("GET", "/api/auth/state"); }
+  catch (e) {
+    document.body.replaceChildren(ui.h("main", { class: "mes-auth" }, ui.h("div", { class: "mes-auth-card" }, ui.banner("bad", t("err.no_server")),
+      ui.button({ label: t("retry"), icon: "refresh", onClick: () => location.reload() }))));
+    return;
+  }
+  const again = () => location.reload();
+  if (state.needsSetup) return setupPage(again);
+  if (!state.user) return loginPage(again);
+  if (state.user.mustChangePassword) return changePasswordPage(again, true);
+  setSession(state);
+  start();
+}
+
+function start() {
+  const me = session().user, plant = session().plant;
   const mode = ui.prefs.get("mode", "office");
   document.documentElement.dataset.mode = mode;
 
   const screens = {};
-  for (const [code, [factory, icon]] of Object.entries(BUILT)) {
+  for (const [code, [factory, icon, scope]] of Object.entries(BUILT)) {
+    if (!can(scope)) continue;  // a screen the role cannot use is shown greyed in the menu, like a screen not built yet
     screens[code] = { title: t("scr." + code), icon, path: (PATH[code] || []).map((k) => t(k)), create: factory, keywords: t("kw." + code) };
   }
+  if (!screens.HOME) screens.HOME = { title: t("scr.HOME"), icon: "home", create: () => ({ el: ui.empty({ icon: "lock", title: t("err.no_screens") }) }) };
   screens.HOME.hidden = true;
   screens.HOME.tabTitle = t("hm.tab");
   const menu = [{ id: "home", code: "HOME", label: t("hm.tab"), icon: "home" }].concat(MENU.map(([id, icon, subs]) => ({ id, label: t("g." + id), icon,
@@ -45,24 +69,29 @@ async function start() {
   const modeSwitch = ui.segmented({ size: "top", value: mode, options: [["office", t("mode.office"), "briefcase"], ["station", t("mode.station"), "tablet"], ["board", t("mode.board"), "monitor"]],
     onChange: (m) => setMode(m) });
   modeSwitch.classList.add("mes-modes");
+  const plantName = plant.node;
   const shell = ui.createShell({
     product: { name: "GMES", short: "GM", edition: t("edition") },
-    company: { name: t("plant.p1"), code: "P1", note: t("sample.title") },
-    user: { name: "Mohamed Adel", role: t("role.ADMIN"), detail: "m.adel · " + t("u.local") },
+    company: { name: plantName, code: plant.companyId.slice(0, 8), note: plant.companyId },
+    user: { name: me.name, role: t("role." + me.role), detail: me.login },
     menu, screens, home: "HOME", maxTabs: 10, searchExample: "EXE3010",
     topActions: [modeSwitch],
     onTheme: (th) => { ui.prefs.set("theme", th); ui.configure({ theme: th }); },
     onLanguage: (lg) => { ui.prefs.set("lang", lg); location.reload(); },
     onActivate: () => ui.prefs.set("tabs", [...document.querySelectorAll(".eco-view")].map((v) => v.dataset.code)),
-    userMenu: [{ label: t("signout"), icon: "logout", onSelect: () => ui.toast({ kind: "info", text: t("sample.nothing_saved") }) }],
+    userMenu: [
+      { label: t("auth.change_title"), icon: "key", onSelect: () => changePasswordDialog() },
+      { label: t("signout"), icon: "logout", onSelect: async () => { try { await api("POST", "/api/auth/logout"); } finally { location.reload(); } } },
+    ],
     shortcuts: [["F2", t("hm.tip_station")]],
   });
   document.body.replaceChildren(shell.el);
   const conn = ui.statusItem("wifi", ui.kitText("connected"), "is-ok");
   const clock = ui.statusItem("clock", ui.fmtTime());
-  shell.setStatus([conn, ui.statusItem("factory", "P1 · " + t("plant.p1")), ui.statusItem("calendar", t("st.prod_day") + " " + TODAY + " · " + t("f.shift") + " A"),
-    ui.statusItem("user", "m.adel"), clock, ui.statusItem("alert", t("sample.title"), "is-warn is-end"), ui.statusItem(null, "GMES " + VERSION + " · " + (lang() === "ar" ? "العربية" : "English"))]);
+  shell.setStatus([conn, ui.statusItem("factory", plantName), ui.statusItem("calendar", t("st.prod_day") + " " + today()),
+    ui.statusItem("user", me.login), clock, ui.statusItem(null, "GMES " + VERSION + " · " + (lang() === "ar" ? "العربية" : "English"), "is-end")]);
   setInterval(() => { clock.lastChild.textContent = ui.fmtTime(); }, 1000);
+  // the connection is observed, never assumed
   async function ping() {
     let ok = false;
     try { ok = (await fetch("/api/health", { cache: "no-store" })).ok; } catch (_) { ok = false; }
@@ -71,7 +100,7 @@ async function start() {
   }
   ping(); setInterval(ping, 15000);
 
-  shell.start(ui.prefs.get("tabs", []));
+  shell.start(ui.prefs.get("tabs", []).filter((c) => screens[c]));
   if (mode !== "office") setMode(mode);
   document.addEventListener("keydown", (ev) => { if (ev.key === "F2") { ev.preventDefault(); setMode(document.documentElement.dataset.mode === "station" ? "office" : "station"); } });
 
@@ -80,9 +109,9 @@ async function start() {
   function setMode(m) {
     ui.prefs.set("mode", m);
     document.documentElement.dataset.mode = m;
-    if (m === "station") shell.open("EXE2020");
-    else if (m === "board") shell.open("DSH5010");
+    if (m === "station" && screens.EXE2020) shell.open("EXE2020");
+    else if (m === "board" && screens.DSH5010) shell.open("DSH5010");
     modeSwitch.redraw(m);
   }
 }
-start();
+boot();

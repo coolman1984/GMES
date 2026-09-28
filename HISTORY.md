@@ -158,3 +158,27 @@
 - **Symptom:** testing the `.bat` with `cmd /c Start-GMES.bat` said "not recognized". **Cause:** this machine sets
   `NoDefaultCurrentDirectoryInExePath=1`, so `cmd` does not look in the current folder; a double-click passes the full path
   and is unaffected. **Lesson:** test the launcher the way it is really launched (full path).
+
+## Phase A — The screens work on the server: people, plant model, work orders, station, boards (2026-09-28)
+- **What (owner's decision, 2026-09-28: the shell is accepted, wire it):** sign-in with local accounts (scrypt passwords,
+  HttpOnly SameSite=Strict session cookie, 12 h), first administrator created from the screen, forced password change,
+  7 roles -> scopes, lock after 5 wrong passwords, append-only `sys_audit`; the plant model `mdm_plant_node`
+  (plant > area > line > station > equipment, codes never change, deactivate-not-delete, optimistic version); work orders
+  carry line / shift / priority and are listed from the ledger (`GET /api/work-orders`); the `oee` module keeps stoppages as
+  append-only START/END facts; `GET /api/boards/plant` and `/api/boards/line/:code` read only the ledger (no OEE until cycle
+  times exist; the hourly plan only from a line capacity). Screens: sign-in/setup, HOME, EXE3010, EXE2020, MDM1010, new
+  MDM1020 (items and warehouses), SYS9010, DSH5010 — `data.js` (the sample data) is deleted (ADR-032).
+  Tests: 14 new (users, plant, stoppages, boards) + 2 rewritten screen rules; 6 new planted bugs, 1 retired.
+- **Symptom (found while writing, proved by a planted bug):** five wrong passwords never locked an account. **Cause:** the
+  refusal was thrown inside the transaction that counted the failure, so the count was rolled back each time. **Fix:** commit
+  the count, then refuse. **Lesson:** an error raised inside a transaction undoes everything the transaction wrote — including
+  the record of the error.
+- **Symptom (found by a browser run over CDP):** opening `/#HOME` showed the last restored tab instead of the start page.
+  **Cause:** `createShell().start()` opened home first and the restored tabs after it. **Fix:** re-activate home when the
+  address asks for it (eco-ui; HR-System must re-copy the kit). **Lesson:** the address is the user's intent; restoring state
+  must not override it.
+- **Symptom:** PowerShell string replacement silently emptied `${...}` in TypeScript template literals. **Cause:** `$` is
+  interpolated in double-quoted PowerShell strings. **Fix:** source edits through the editor, not through shell strings.
+  **Lesson:** never pass code containing `$` through a double-quoted shell string.
+- **Open:** OEE needs cycle times (routing module); hold/release waits for QMS; the station books whole units (serial items
+  one per scan); the plant name shown is the installation node until a settings screen exists.

@@ -6,6 +6,7 @@ import { runCommand } from '../../kernel/commands.js';
 import type { Db } from '../../kernel/db.js';
 import { AppError, conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Caller, Ctx } from '../../kernel/modules.js';
+import { boardRoutes } from './boards.js';
 import { append, verify, type TxnType } from './ledger.js';
 
 /**
@@ -39,7 +40,11 @@ const zOperational = {
   station: z.string().trim().min(1).max(64).optional(),
 };
 
-const zCreate = z.object({ ...zOperational, code: z.string().trim().min(1).max(40).optional(), itemId: z.string(), plannedQty: zQty, warehouseId: z.string() });
+const zCreate = z.object({
+  ...zOperational, code: z.string().trim().min(1).max(40).optional(), itemId: z.string(), plannedQty: zQty, warehouseId: z.string(),
+  /** The line it runs on (a line of the plant model) and its priority (1 highest). */
+  line: z.string().trim().min(1).max(40).optional(), priority: z.number().int().min(1).max(3).optional(),
+});
 const zConsume = z.object({ ...zOperational, itemId: z.string(), qty: zQty, warehouseId: z.string(), lotNo: z.string().trim().min(1).max(64).optional() });
 const zComplete = z.object({ ...zOperational, qty: zQty, lotNo: z.string().trim().min(1).max(64).optional() });
 const zScrap = z.object({ ...zOperational, qty: zQty, reasonCode: z.string().trim().min(1).max(40) });
@@ -56,6 +61,10 @@ export interface WorkOrderRow {
   status: 'released' | 'completed' | 'closed';
   production_date: string;
   version: number;
+  line_code: string | null;
+  shift_code: string | null;
+  priority: number;
+  created_at: string;
 }
 
 export const exeModule: AppModule = {
@@ -107,9 +116,52 @@ export const exeModule: AppModule = {
         BEGIN SELECT RAISE(ABORT, 'exe: the production ledger is append-only'); END;
       `,
     },
+    {
+      id: '002_line_shift_priority',
+      up: `
+        -- where and when a work order is planned to run (the plant model's line code, the shift, 1 = highest priority)
+        ALTER TABLE exe_work_order ADD COLUMN line_code TEXT;
+        ALTER TABLE exe_work_order ADD COLUMN shift_code TEXT;
+        ALTER TABLE exe_work_order ADD COLUMN priority INTEGER NOT NULL DEFAULT 2 CHECK (priority BETWEEN 1 AND 3);
+        CREATE INDEX exe_work_order_day ON exe_work_order(production_date);
+        CREATE INDEX exe_work_order_line ON exe_work_order(line_code, status);
+      `,
+    },
   ],
 
-  routes({ http, require }, ctx) {
+  routes(kit, ctx) {
+    const { http, require } = kit;
+    boardRoutes(kit, ctx);
+
+    // The work orders of a period, with what the ledger says about each (the inquiry screen EXE3010).
+    http.get('/api/work-orders', async (req) => {
+      require(req, 'exe.orders.read');
+      const q = z.object({
+        from: zDate.optional(), to: zDate.optional(), status: z.enum(['released', 'completed', 'closed']).optional().or(z.literal('')),
+        line: z.string().optional(), item: z.string().optional(), code: z.string().optional(), shift: z.string().optional(),
+      }).parse(req.query);
+      const where: string[] = [];
+      const params: string[] = [];
+      if (q.from) { where.push('w.production_date >= ?'); params.push(q.from); }
+      if (q.to) { where.push('w.production_date <= ?'); params.push(q.to); }
+      if (q.status) { where.push('w.status = ?'); params.push(q.status); }
+      if (q.line) { where.push('w.line_code = ?'); params.push(q.line); }
+      if (q.shift) { where.push('w.shift_code = ?'); params.push(q.shift); }
+      if (q.code) { where.push('w.code LIKE ?'); params.push('%' + q.code.trim() + '%'); }
+      const rows = await ctx.db.all<WorkOrderRow & { first_at: string | null; last_at: string | null }>(
+        `SELECT w.*, (SELECT MIN(occurred_at) FROM exe_ledger l WHERE l.work_order_id = w.id AND l.txn_type IN ('COMPLETE', 'SCRAP', 'CONSUME')) first_at,
+                (SELECT MAX(occurred_at) FROM exe_ledger l WHERE l.work_order_id = w.id AND l.txn_type IN ('COMPLETE', 'SCRAP', 'CLOSE')) last_at
+         FROM exe_work_order w ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY w.production_date DESC, w.code DESC LIMIT 5001`, params);
+      if (rows.length > 5000) fail('query.too_wide', 'More than 5000 work orders match: narrow the production days or add a condition');
+      const mdm = ctx.services.get('mdm');
+      const items = new Map<string, MirrorItem>();
+      for (const r of rows) if (!items.has(r.item_id)) items.set(r.item_id, await mdm.item(r.item_id));
+      const text = (q.item ?? '').trim().toLowerCase();
+      return rows
+        .filter((r) => { const i = items.get(r.item_id)!; return !text || (i.code + ' ' + i.name_en + ' ' + i.name_ar).toLowerCase().includes(text); })
+        .map((r) => { const i = items.get(r.item_id)!; return { ...present(r), item: { id: i.id, code: i.code, name_en: i.name_en, name_ar: i.name_ar, uom: i.base_uom, tracking: i.tracking }, first_at: r.first_at, last_at: r.last_at }; });
+    });
+
     http.post('/api/work-orders', async (req) => {
       const caller = require(req, 'exe.orders.write');
       const input = zCreate.parse(req.body);
@@ -125,10 +177,15 @@ export const exeModule: AppModule = {
         const code = input.code ?? (await nextCode(t));
         if (await t.get('SELECT 1 FROM exe_work_order WHERE code = ?', [code])) conflict('wo.code_taken', `work order ${code} exists`);
         const pdate = input.productionDate ?? today(ctx);
+        if (input.line) {
+          const line = await mdm.plantNode(input.line, t);
+          if (!line || line.type !== 'line') fail('line.unknown', `${input.line} is not a line of the plant model`);
+          if (!line!.active) conflict('line.inactive', `line ${input.line} is inactive`);
+        }
         await t.run(
-          `INSERT INTO exe_work_order (id, code, item_id, warehouse_id, planned_qty, status, production_date, created_at)
-           VALUES (?, ?, ?, ?, ?, 'released', ?, ?)`,
-          [id, code, item.id, wh.id, input.plannedQty, pdate, ctx.clock.now().toISOString()],
+          `INSERT INTO exe_work_order (id, code, item_id, warehouse_id, planned_qty, status, production_date, created_at, line_code, shift_code, priority)
+           VALUES (?, ?, ?, ?, ?, 'released', ?, ?, ?, ?, ?)`,
+          [id, code, item.id, wh.id, input.plannedQty, pdate, ctx.clock.now().toISOString(), input.line ?? null, input.shift ?? null, input.priority ?? 2],
         );
         await line(ctx, t, caller, 'RELEASE', input, { work_order_id: id, item_id: item.id, warehouse_id: wh.id, qty: input.plannedQty, production_date: pdate });
         return { id, code };
@@ -141,7 +198,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const wo = await ctx.db.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id]);
       if (!wo) return notFound('work_order', id);
-      const lines = await ctx.db.all('SELECT seq, txn_type, item_id, warehouse_id, qty, lot_no, reason_code, user_name, production_date FROM exe_ledger WHERE work_order_id = ? ORDER BY seq', [id]);
+      const lines = await ctx.db.all('SELECT seq, txn_type, item_id, warehouse_id, qty, lot_no, reason_code, user_name, person_id, production_date, shift_code, occurred_at FROM exe_ledger WHERE work_order_id = ? ORDER BY seq', [id]);
       return { ...present(wo), ledger: lines.map((l: any) => ({ ...l, qty: formatQty(l.qty) })) };
     });
 

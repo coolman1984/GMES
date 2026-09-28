@@ -26,3 +26,8 @@ export function productionDate(now: Date, timeZone: string, dayStart: string): s
   if (local < dayStart) day.setUTCDate(day.getUTCDate() - 1);
   return day.toISOString().slice(0, 10);
 }
+
+/** The local hour (0-23) of a moment in the plant's time zone: the buckets of the hourly boards. */
+export function localHour(at: Date, timeZone: string): number {
+  return Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(at));
+}

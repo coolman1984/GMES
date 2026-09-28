@@ -211,3 +211,28 @@
 :root[data-mode="board"] .eco-top, :root[data-mode="station"] .eco-top { --eco-top-h: 40px; }
 :root[data-mode="station"] .eco-topsearch, :root[data-mode="board"] .eco-topsearch { visibility: hidden; }
 :root[data-mode="station"], :root[data-mode="board"] { --eco-fs: 12.5px; --eco-control-h: 26px; --eco-button-h: 26px; }
+
+/* phase A: the sign-in page, and the pickers that replaced the fixed line/work order on the station and the board */
+.mes-auth { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--eco-app-bg); }
+.mes-auth-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 14px; padding: 28px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius-lg);
+  background: var(--eco-surface); box-shadow: var(--eco-shadow-dialog); }
+.mes-auth-card h1 { font-size: 20px; margin: 0; }
+.mes-auth-card p { margin: -6px 0 0; }
+.mes-auth-brand { display: flex; align-items: center; gap: 10px; }
+.mes-auth-brand > div { display: flex; flex-direction: column; }
+.mes-auth-fields { display: flex; flex-direction: column; gap: 10px; }
+.mes-auth-fields .eco-input { width: 100%; }
+.mes-auth-card > .eco-btn { justify-content: center; height: 36px; }
+.mes-auth-lang { align-self: center; border: 0; background: none; color: var(--eco-accent); cursor: pointer; font: inherit; }
+.mes-auth-err:empty { display: none; }
+.st-where { align-items: center; }
+.st-pick { height: 40px; min-width: 150px; font: 700 18px var(--eco-mono); background: var(--eco-surface); color: var(--eco-text); border-radius: 6px; }
+.st-pick-wo { min-width: 260px; font-size: 20px; }
+.st-big:disabled { opacity: .45; cursor: not-allowed; }
+.bd-pick { height: 52px; font: 800 32px var(--eco-mono); background: transparent; color: inherit; border: 1px solid var(--eco-line); border-radius: 6px; padding: 0 8px; }
+.bd-pick option { color: var(--eco-text); background: var(--eco-surface); }
+.mes-col { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.mes-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mes-fill .eco-tabset { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mes-fill .eco-tabpanel { flex: 1; min-height: 0; display: flex; }
+.mes-fill .eco-tabpanel > .eco-grid { flex: 1; }
