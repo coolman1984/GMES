@@ -308,3 +308,19 @@ and marked removed by the repair fact.
 (a physical impossibility that would hide the recall); scrapping finished units from a hold (it would need a reversal in the
 production ledger and a contract for accounting: EXE2040); deleting a replaced part's genealogy row (the history of what was
 in the unit is the point of traceability); a PIN or "are you sure?" as signature (anyone at the keyboard can click it).
+
+### ADR-036 — Shipping: pallets, shipping orders and containers in manufacturing; the sale stays in accounting
+**Context:** a television plant ships in containers: finished sets are palletized, pallets pass an outgoing inspection, and
+a container is loaded for a shipping order and sealed. The owner asked for "container loading and every detail". The
+ownership table gives customers and sales to accounting; nothing covered the physical shipment.
+**Decision:** a `shp` module owns the physical side: packing specifications per product (units per pallet, pallets per
+container type), palletizing (one product per pallet, closed when full), shipping orders (customer as a NAME until
+`eco.party` exists; products and quantities), containers identified by ISO 6346 numbers with a checked check digit, and
+loading checks enforced on the server: only closed pallets, of an ordered product, never more than ordered, never more than
+the container holds (mixed products use fractions of each product's capacity), no unit on hold, and a PASSED outgoing
+inspection when the plant has an OQC plan for the product. Sealing dispatches: units and pallets become shipped and one
+`mes.shipment.dispatched.v1` (new additive contract, lines per product and warehouse, serials of serialised products) goes
+to accounting through the feed. Every fact is in a hash-chained shipping history.
+**Rejected:** creating customers in manufacturing (another app's master data); booking stock relief or an invoice here
+(accounting's decision and value); letting a container take any pallet and checking afterwards (the check at the door is
+the whole point); allowing mixed-product pallets (a TV plant ships one model per pallet; mixing breaks OQC lots).

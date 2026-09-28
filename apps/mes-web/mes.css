@@ -318,3 +318,22 @@
 .mes-fpy { display: flex; flex-wrap: wrap; gap: 4px; }
 .mes-fpy-op { display: inline-flex; gap: 5px; padding: 2px 7px; border-radius: 4px; background: var(--eco-surface-3); font: 600 11.5px var(--eco-mono); }
 .mes-fpy-op.is-ok { background: var(--eco-ok-soft); color: var(--eco-ok); } .mes-fpy-op.is-warn { background: var(--eco-warn-soft); color: var(--eco-warn); } .mes-fpy-op.is-bad { background: var(--eco-bad-soft); color: var(--eco-bad); }
+
+/* ---------- shipping (phase B3) ---------- */
+.shp-station .st-main { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); }
+.shp-title { font-size: 18px; color: #fff; }
+.shp-open { display: flex; flex-direction: column; gap: 6px; }
+.shp-pallets { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.shp-pallet { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.shp-pallet-top { display: flex; align-items: center; justify-content: space-between; } .shp-pallet-top b { font: 700 15px var(--eco-mono); }
+.shp-pallet .eco-progress { width: 100%; } .shp-pallet .eco-progress-track { height: 10px; }
+.shp-stock { display: flex; flex-direction: column; gap: 6px; }
+.shp-line { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 6px 0; }
+.shp-line b { font-family: var(--eco-mono); } .shp-line .eco-progress { width: 100%; } .shp-line small { grid-column: 2; }
+.shp-lines { padding: 6px 12px; }
+.shp-lines .shp-line { grid-template-columns: 110px minmax(0, 1fr) 180px; } .shp-lines .shp-line small { grid-column: auto; }
+.shp-container { margin-top: 10px; }
+.shp-cont-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 2px solid var(--eco-accent); border-radius: var(--eco-radius); background: var(--eco-accent-soft); }
+.shp-cont-card b { font: 700 20px var(--eco-mono); }
+.shp-cont-card > div { display: flex; flex-direction: column; }
+.shp-cont-nums { margin-inline-start: auto; display: grid !important; grid-template-columns: auto auto; gap: 0 8px; align-items: baseline; }

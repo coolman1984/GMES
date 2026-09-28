@@ -230,3 +230,15 @@
   **Lesson:** in a no-build front end the parser is the compiler: test that the code parses, not only what it contains.
 - **Discovery:** the first quality tests failed on serial numbers like "T01": the tracking module requires 4-40 characters
   (a scanner misread of 3 characters is more likely than a real serial). Kept; tests use realistic serials.
+
+## Phase B3 — Packing, pallets, shipping orders, container loading (2026-09-28)
+- **What:** `shp` module (ADR-036): packing specifications, palletizing (auto-close when full, unpack with reason), shipping
+  orders, containers with ISO 6346 check digits, loading checks (closed, OQC passed, not held, ordered, room left), sealing
+  and dispatch; new contract `mes.shipment.dispatched.v1` (additive; `link-mizan` skips it today with `eco.not_consumed`,
+  checked). Screens SHP1010, SHP2010 (palletizing station), SHP2020, SHP2030 (loading dock), SHP3010 (shipments, packing
+  list). Traceability now answers "which container, which customer" for any serial or lot. 4 tests, planted bugs.
+- **Discovery:** zod 4's `z.record(z.enum(...), …)` requires EVERY key of the enum; a packing specification naming only the
+  container types a plant uses was refused. **Fix:** `z.partialRecord`. **Lesson:** read the validation library's semantics
+  for maps; exhaustive and partial records are different types.
+- **Discovery:** "finished goods waiting" listed main boards (finished at SMD but components, never shipped on their own).
+  **Fix:** only products with a packing specification are finished goods for shipping.

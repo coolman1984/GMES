@@ -29,6 +29,11 @@ import qms2010 from "./screens/qms2010.js";
 import qms2020 from "./screens/qms2020.js";
 import qms2030 from "./screens/qms2030.js";
 import qms4010 from "./screens/qms4010.js";
+import shp1010 from "./screens/shp1010.js";
+import shp2010 from "./screens/shp2010.js";
+import shp2020 from "./screens/shp2020.js";
+import shp2030 from "./screens/shp2030.js";
+import shp3010 from "./screens/shp3010.js";
 
 const VERSION = "0.4.0";
 // [factory, icon, scope needed to open it]
@@ -39,13 +44,15 @@ const BUILT = { HOME: [home, "home", "exe.orders.read"], EXE3010: [exe3010, "cli
   TRC2010: [trc2010, "box", "trk.units.read"], TRC3010: [trc3010, "link", "trk.units.read"], TRC3020: [trc3020, "link", "trk.units.read"],
   MDM1030: [mdm1030, "scale", "eng.read"], MDM1040: [mdm1040, "layers", "eng.read"], MDM1050: [mdm1050, "list", "eng.read"], MDM1060: [mdm1060, "calendar", "eng.read"],
   QMS1010: [qms1010, "clipboard-check", "qms.read"], QMS1020: [qms1020, "alert", "qms.read"], QMS2010: [qms2010, "clipboard-check", "qms.read"],
-  QMS2020: [qms2020, "lock", "qms.read"], QMS2030: [qms2030, "wrench", "qms.read"], QMS4010: [qms4010, "chart", "qms.read"] };
+  QMS2020: [qms2020, "lock", "qms.read"], QMS2030: [qms2030, "wrench", "qms.read"], QMS4010: [qms4010, "chart", "qms.read"],
+  SHP1010: [shp1010, "box", "shp.read"], SHP2010: [shp2010, "scan", "shp.pack"], SHP2020: [shp2020, "archive", "shp.read"], SHP2030: [shp2030, "archive", "shp.load"], SHP3010: [shp3010, "list", "shp.read"] };
 const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.production", "m.shop_floor"], MDM1010: ["m.master", "m.plant_model"], MDM1020: ["m.master", "m.products"],
   SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"], EXE2010: ["m.production", "m.work_orders"], EXE3020: ["m.production", "m.shop_floor"], EXE3030: ["m.production", "m.shop_floor"],
   WIP3010: ["m.production", "m.wip"], WIP3020: ["m.production", "m.wip"], TRC2010: ["g.trace", "m.genealogy"], TRC3010: ["g.trace", "m.genealogy"], TRC3020: ["g.trace", "m.genealogy"],
   MDM1030: ["m.master", "m.products"], MDM1040: ["m.master", "m.products"], MDM1050: ["m.master", "m.products"], MDM1060: ["m.master", "m.plant_model"],
   QMS1010: ["g.quality", "m.inspection"], QMS1020: ["g.quality", "m.inspection"], QMS2010: ["g.quality", "m.inspection"], QMS2030: ["g.quality", "m.inspection"],
-  QMS2020: ["g.quality", "m.holds"], QMS4010: ["g.quality", "m.holds"] };
+  QMS2020: ["g.quality", "m.holds"], QMS4010: ["g.quality", "m.holds"],
+  SHP1010: ["g.shipping", "m.shipping"], SHP2010: ["g.shipping", "m.shipping"], SHP2020: ["g.shipping", "m.shipping"], SHP2030: ["g.shipping", "m.shipping"], SHP3010: ["g.shipping", "m.shipping"] };
 
 // [group id, icon, [[subgroup key, [codes]]]]
 const MENU = [
@@ -53,6 +60,7 @@ const MENU = [
   ["quality", "shield", [["m.inspection", ["QMS1010", "QMS1020", "QMS2010", "QMS2030"]], ["m.holds", ["QMS2020", "QMS4010"]]]],
   ["efficiency", "gauge", [["m.downtime", ["OEE2010", "OEE4010", "OEE4020"]]]],
   ["trace", "link", [["m.genealogy", ["TRC2010", "TRC3010", "TRC3020"]]]],
+  ["shipping", "archive", [["m.shipping", ["SHP2020", "SHP2010", "SHP2030", "SHP3010", "SHP1010"]]]],
   ["reports", "chart", [["m.reports", ["RPT4010", "RPT4020", "RPT4030"]], ["m.labels", ["LBL1010", "LBL2010"]]]],
   ["boards", "monitor", [["m.boards", ["DSH5010", "DSH5020"]]]],
   ["master", "database", [["m.plant_model", ["MDM1010", "MDM1060"]], ["m.products", ["MDM1020", "MDM1030", "MDM1040", "MDM1050"]]]],

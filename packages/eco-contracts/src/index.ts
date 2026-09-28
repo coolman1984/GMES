@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import { zAckV1 } from './ack.js';
 import { zEnvelope } from './envelope.js';
 import { zAttendanceDayV1, zEmployeeV1, zItemV1, zQualificationV1, zScheduleDayV1, zWarehouseV1 } from './master.js';
-import { zMaterialConsumedV1, zProductionCompletedV1, zProductionScrappedV1, zWorkOrderClosedV1 } from './mes.js';
+import { zMaterialConsumedV1, zProductionCompletedV1, zProductionScrappedV1, zShipmentDispatchedV1, zWorkOrderClosedV1 } from './mes.js';
 
 export * from './quantity.js';
 export * from './ids.js';
@@ -27,6 +27,7 @@ export const CONTRACTS = {
   'mes.production.completed.v1': zProductionCompletedV1,
   'mes.production.scrapped.v1': zProductionScrappedV1,
   'mes.work_order.closed.v1': zWorkOrderClosedV1,
+  'mes.shipment.dispatched.v1': zShipmentDispatchedV1,
 } as const satisfies Record<string, z.ZodType>;
 
 export type ContractType = keyof typeof CONTRACTS;
