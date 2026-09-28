@@ -1001,20 +1001,23 @@ export function grid(columns, opts = {}) {
   // Excel-like auto-fit: a column is as wide as its header and its widest value (sampled), within limits. A width the
   // person set by dragging is kept (saved layout) unless they ask to fit again (double-click the border, or the menu).
   let measure = null;
-  function textWidth(t, bold) {
+  function textWidth(t, bold, mono) {
     measure = measure || document.createElement("canvas").getContext("2d");
     const cs = getComputedStyle(root.isConnected ? root : document.body);  // a grid not on the page yet measures with the page font
-    measure.font = (bold ? "600 " : "400 ") + cs.fontSize + " " + cs.fontFamily;
+    const family = mono ? getComputedStyle(document.documentElement).getPropertyValue("--eco-mono") || "monospace" : cs.fontFamily;
+    measure.font = (bold ? "600 " : "400 ") + cs.fontSize + " " + family;
     return measure.measureText(t).width;
   }
   function fit(list, force) {
     const sample = view.length > 400 ? view.filter((_, i) => i % Math.ceil(view.length / 400) === 0) : view;
+    const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--eco-page-pad")) > 16 ? 30 : 20;  // cell padding of the look
     for (const c of list) {
       if ((c.userWidth && !force) || c.fit === false) continue;
-      const head = textWidth(c.label || "", true) + 40;  // + sort mark, filter and menu buttons
+      // the header is written in small capitals with spacing in the modern look: measure it as such, + sort, filter and menu buttons
+      const head = textWidth(String(c.label || "").toUpperCase(), true) * 1.12 + pad + 46;
       let body = 0;
-      for (const r of sample) body = Math.max(body, textWidth(text(c, r), false));
-      const extra = c.type === "status" ? 44 : c.type === "progress" ? 60 : c.render ? 36 : 24;
+      for (const r of sample) body = Math.max(body, textWidth(text(c, r), false, c.type === "code"));
+      const extra = pad + (c.type === "status" ? 40 : c.type === "progress" ? 60 : c.render ? 34 : 6);
       c.width = Math.round(Math.min(c.maxWidth || 420, Math.max(c.minWidth || 56, head, body + extra)));
       if (force) c.userWidth = true;
     }
