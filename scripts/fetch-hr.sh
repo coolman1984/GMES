@@ -3,7 +3,7 @@
 # (black box: the real Python application and its publisher, over HTTP).
 set -eu
 HR_REPO="${HR_REPO:-https://github.com/coolman1984/HR-System.git}"
-HR_PIN="${HR_PIN:-8dcfe4fb961dce4ffd83d31b9a676e44caebabb7}"
+HR_PIN="${HR_PIN:-45ec34af2477d9d53aa0ce751a241545e5d3bba3}"
 DEST="${HR_DIR:-$(dirname "$0")/../.cache/hr-system}"
 if [ ! -d "$DEST/.git" ]; then git clone --quiet "$HR_REPO" "$DEST"; fi
 git -C "$DEST" fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*'
