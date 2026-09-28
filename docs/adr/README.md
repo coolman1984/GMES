@@ -218,3 +218,18 @@ React أو إطار واجهة (خطوة بناء في كل منتج)؛ تصمي
 بلا متطلبات = نفس السلوك السابق.
 **مرفوض:** نشر التكليفات والورديات ليحسب التصنيع الخطة بنفسه (حقيقتان لنفس اليوم)؛ أن يخزن HR متطلبات المحطات (المحطة ملك التصنيع)؛
 إيقاف المصنع عند غياب HR (المرآة الأخيرة تكفي وعمرها ظاهر).
+
+### ADR-031 — One-click start, PowerShell-only tooling, standalone by default
+**Context:** the owner works on Windows and wants to start the product with one click, and never wants bash. The repository
+shipped `.sh` helpers and its suite had only run on Linux.
+**Decision:** `Start-GMES.bat` is a two-line wrapper (Windows does not run `.ps1` on double-click); all logic is in
+`scripts/*.ps1` (Windows PowerShell 5.1 and PowerShell 7, ASCII only). Configuration lives in `data/config.json`
+(created on the first run, never committed): company id (generated UUID), port, host, plant name, time zone, production-day
+start, `itemOwner`, `personOwner`. Defaults are a **standalone plant**: `itemOwner: "gmes"` so items and warehouses can be
+created without Mizan (`docs/ecosystem/02-truth-ownership.md` keeps Mizan as the owner when it is installed; the switch is one word), and
+`host: "127.0.0.1"` so nothing is reachable from the network until the owner opts in. No key is created automatically:
+keys are shown once and stored as hashes, so `scripts/new-key.ps1` makes them on request. `.sh` scripts are removed; CI runs
+the `.ps1` files with `shell: pwsh`. `.gitattributes` pins LF for text and CRLF for `.bat`/`.ps1`.
+**Rejected:** a service/installer now (V1 scope item, needs signing and update design); auto-creating an admin key in a
+plaintext file (breaks "shown once"); binding `0.0.0.0` by default (the screens have no login yet); keeping both `.sh` and
+`.ps1` (two implementations drift).

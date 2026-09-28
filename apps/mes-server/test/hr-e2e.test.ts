@@ -1,5 +1,5 @@
 /**
- * End to end, black box: the REAL HR-System (Python, pinned by scripts/fetch-hr.sh) processes the
+ * End to end, black box: the REAL HR-System (Python, pinned by scripts/fetch-hr.ps1) processes the
  * synthetic workforce files and publishes through its own eco_publisher.py to a real manufacturing
  * server over HTTP. Covers docs/ecosystem/05 scenario S9 (who worked, and may they work).
  */
@@ -18,9 +18,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const HR = [process.env.HR_DIR, resolve(here, '../../../.cache/hr-system'), resolve(here, '../../../../hr-system')]
   .find((d) => d && existsSync(join(d, 'eco_publisher.py')));
 const PY = process.env.PYTHON ?? 'python3';
-if (!HR && process.env.ECO_E2E_REQUIRED === '1') throw new Error('ECO_E2E_REQUIRED=1 but no HR-System checkout: run scripts/fetch-hr.sh');
+if (!HR && process.env.ECO_E2E_REQUIRED === '1') throw new Error('ECO_E2E_REQUIRED=1 but no HR-System checkout: run scripts/fetch-hr.ps1');
 
-describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-System checkout (run scripts/fetch-hr.sh or set HR_DIR)' }, () => {
+describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-System checkout (run scripts/fetch-hr.ps1 or set HR_DIR)' }, () => {
   const company = newUuidv7();
   const hrData = mkdtempSync(join(tmpdir(), 'hr-e2e-'));
   const mesDb = join(mkdtempSync(join(tmpdir(), 'gmes-hr-e2e-')), 'gmes.db');

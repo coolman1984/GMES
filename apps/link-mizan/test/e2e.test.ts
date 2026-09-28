@@ -18,9 +18,9 @@ import { MizanAdmin, MizanProcess, mesServer, mizanDir } from './harness.js';
 
 const DIR = mizanDir();
 const required = process.env.ECO_E2E_REQUIRED === '1';
-if (!DIR && required) throw new Error('ECO_E2E_REQUIRED=1 but no Mizan checkout: run scripts/fetch-mizan.sh');
+if (!DIR && required) throw new Error('ECO_E2E_REQUIRED=1 but no Mizan checkout: run scripts/fetch-mizan.ps1');
 
-describe('manufacturing <-> Mizan, end to end', { skip: DIR ? false : 'no Mizan checkout (run scripts/fetch-mizan.sh or set MIZAN_DIR)' }, () => {
+describe('manufacturing <-> Mizan, end to end', { skip: DIR ? false : 'no Mizan checkout (run scripts/fetch-mizan.ps1 or set MIZAN_DIR)' }, () => {
   const company = newUuidv7();
   const mizan = new MizanProcess(DIR ?? '');
   let admin: MizanAdmin;

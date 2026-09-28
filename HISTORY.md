@@ -136,3 +136,25 @@
   sent; `/api/schedule?date=`. Tests: 2 in `hr-boundary`, 1 end to end with the real HR-System; 3 planted bugs (ADR-030).
 - **Discovery (in HR, recorded there):** HR's standard-library validator refused the first contract with an `enum`;
   it fails loudly on unknown keywords by design and was taught `enum`. The generated schemas here are unchanged in form.
+
+## Phase L1 — One-click start and a Windows-clean test run (2026-09-28)
+- **What:** `Start-GMES.bat` -> `scripts/start.ps1` (Node check, `npm ci` only when `package-lock.json` changes, first-run
+  `data/config.json`, start, wait for `/api/health`, open the browser, already-running detection, stop on close);
+  `scripts/new-key.ps1`; `scripts/test.ps1` (the whole definition of done); `fetch-mizan.ps1` / `fetch-hr.ps1` replace the
+  `.sh` scripts; CI calls them with `shell: pwsh`; PowerShell only for all tooling (ADR-031).
+- **Symptom:** on a fresh Windows checkout `npm test` failed in `eco-contracts` (`contracts.test.ts`, schema comparison).
+  **Cause:** git's `core.autocrlf=true` checked the generated `*.schema.json` out with CRLF; the test compares them byte for
+  byte with LF output. **Fix:** `.gitattributes` (`* text=auto eol=lf`; `.bat`/`.ps1` stay CRLF). **Lesson:** a test that
+  compares generated files byte for byte must pin the line endings of the files it compares.
+- **Symptom:** `boundaries.test.ts` failed on Windows listing every module import as a violation. **Cause:** it compared
+  `path.relative()` results (backslashes on Windows) with `/`-separated prefixes. **Fix:** the test normalises separators
+  (the rule itself is unchanged). **Lesson:** compare paths in one normal form; the suite had only ever run on Linux.
+- **Symptom:** the 6 HR end-to-end tests were "cancelled", not failed. **Cause:** they start `python3`, which on Windows is
+  the Microsoft Store stub. **Fix:** `scripts/test.ps1` picks a real Python (`PYTHON` overrides). **Lesson:** "0 failed"
+  is not "all passed" — read the cancelled/skipped counts (41 tests, 35 passing, 6 cancelled).
+- **Symptom (found by running the launcher, not by reading it):** `start.ps1` refused a valid `port`. **Cause:** PowerShell 7
+  reads JSON integers as `Int64`, and the check was `-isnot [int]`. **Fix:** parse with `[int]::TryParse`. **Lesson:**
+  validate the value, not its runtime type.
+- **Symptom:** testing the `.bat` with `cmd /c Start-GMES.bat` said "not recognized". **Cause:** this machine sets
+  `NoDefaultCurrentDirectoryInExePath=1`, so `cmd` does not look in the current folder; a double-click passes the full path
+  and is unaffected. **Lesson:** test the launcher the way it is really launched (full path).

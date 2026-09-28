@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildApp, type App } from '../../mes-server/src/app.js';
 import { addKey } from '../../mes-server/src/modules/system/index.js';
 
-/** Where the real Mizan lives: MIZAN_DIR, else .cache/mizan (scripts/fetch-mizan.sh), else a sibling checkout. */
+/** Where the real Mizan lives: MIZAN_DIR, else .cache/mizan (scripts/fetch-mizan.ps1), else a sibling checkout. */
 export function mizanDir(): string | null {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [process.env.MIZAN_DIR, resolve(here, '../../../.cache/mizan'), resolve(here, '../../../../coolman1984/accounting-sys')];

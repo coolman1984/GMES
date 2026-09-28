@@ -45,24 +45,31 @@
 2. **نواة صغيرة ثابتة + وحدات تتركب فوقها زي الميكانو**، وكلها بتتكلم مع النواة
    بعقود واضحة، فأي وحدة تتضاف أو تتشال من غير ما تكسر الباقي.
 
-## التشغيل والاختبار (للمطورين)
+## Start it (one click, Windows)
 
-يحتاج **Node.js 22.13+**.
+Double-click **`Start-GMES.bat`**. It checks Node.js 22.13+, installs the dependencies on the first run, creates
+`data\config.json` (company id, port, plant name, time zone, who owns items), starts the server and opens
+`http://localhost:4700/`. Close the window (or press Ctrl+C) to stop it. Run it again while it is running and it just
+opens the browser. Everything is PowerShell (`scripts\start.ps1`); there are no `.sh` scripts.
 
-```bash
-npm ci
-npm run typecheck
-sh scripts/fetch-mizan.sh                       # ميزان الحقيقي (إصدار مثبت)
-sh scripts/fetch-hr.sh                          # HR-System الحقيقي (إصدار مثبت، يحتاج Python)
-MIZAN_DIR=.cache/mizan HR_DIR=.cache/hr-system ECO_E2E_REQUIRED=1 npm test
-MIZAN_DIR=.cache/mizan HR_DIR=.cache/hr-system node scripts/mutations.mjs   # كل خطأ مزروع لازم يتمسك
+`data\config.json` defaults to a standalone plant: `itemOwner: "gmes"` (items and warehouses are created here),
+`host: "127.0.0.1"` (this computer only; use `"0.0.0.0"` to let station terminals on the network connect).
+Set `itemOwner` to `"mizan"` when Mizan accounting is connected, `personOwner` to `"hr"` when HR-System is.
+API keys: `.\scripts\new-key.ps1 -Name station-3 -Scopes 'exe.orders.write,exe.orders.read,mdm.items.read'` (printed once).
+
+## Test (developers)
+
+Needs **Node.js 22.13+** (and Python 3.10+ for the HR-System test). The whole definition of done in one command:
+
+```powershell
+.\scripts\test.ps1            # typecheck + all tests against the pinned real Mizan and HR-System + planted bugs
+.\scripts\test.ps1 -Quick     # typecheck + tests that need no other application
 ```
 
-تشغيل يدوي: `apps/mes-server` (`GMES_COMPANY_ID=<uuid> npm start -w apps/mes-server`، المنفذ 4700) و
-`apps/link-mizan` (متغيرات `LINK_*` في `src/main.ts`). قواعد العمل في [CLAUDE.md](CLAUDE.md)، والتاريخ في [HISTORY.md](HISTORY.md).
+`scripts\fetch-mizan.ps1` and `scripts\fetch-hr.ps1` download the pinned versions into `.cache\`.
+Manual run: `apps/link-mizan` reads `LINK_*` variables (see `src/main.ts`). Rules for changes are in [CLAUDE.md](CLAUDE.md), the history in [HISTORY.md](HISTORY.md).
 
 ## الواجهة (مرحلة UX — 2026-09-28)
 هيكل التطبيق وقوالب الشاشات (EXE3010، MDM1010، SYS9010، EXE2020، DSH5010) على **بيانات تجريبية مُعلنة**، مبنية من مجموعة
-الواجهة الموحدة `packages/eco-ui` (ADR-029). التشغيل: `GMES_COMPANY_ID=<uuid> npm start -w apps/mes-server` ثم افتح
-`http://localhost:4700/`. الصور وقائمة القبول البصري: [docs/ux/visual-acceptance.md](docs/ux/visual-acceptance.md).
+الواجهة الموحدة `packages/eco-ui` (ADR-029). التشغيل: `Start-GMES.bat` (يفتح `http://localhost:4700/`). الصور وقائمة القبول البصري: [docs/ux/visual-acceptance.md](docs/ux/visual-acceptance.md).
 تطوير الوحدات متوقف حتى يعتمد المالك الشكل.

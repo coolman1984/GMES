@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative as relativeNative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { MODULES, ordered } from '../src/app.js';
 
+// Paths are compared with '/' whatever the operating system (Windows gives '\').
+const relative = (from: string, to: string) => relativeNative(from, to).split(sep).join('/');
 const src = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? files(join(dir, f)) : [join(dir, f)]));
 

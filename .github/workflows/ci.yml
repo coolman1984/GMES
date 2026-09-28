@@ -14,12 +14,14 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       # The pinned, real Mizan the end-to-end tests talk to over HTTP.
-      - run: sh scripts/fetch-mizan.sh
+      - run: ./scripts/fetch-mizan.ps1
+        shell: pwsh
       # The pinned, real HR-System (Python, standard library) the HR <-> manufacturing test runs.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: sh scripts/fetch-hr.sh
+      - run: ./scripts/fetch-hr.ps1
+        shell: pwsh
       - run: npm test
         env:
           ECO_E2E_REQUIRED: '1'

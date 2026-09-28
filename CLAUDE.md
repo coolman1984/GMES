@@ -24,16 +24,20 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 | `apps/mes-web` | The screens: shell + screen templates on sample data (UX phase), served by `mes-server` (`src/web.ts`) |
 | `packages/eco-ui` | The ecosystem's one interface kit (tokens, shell, grid, dialogs); HR-System copies it unchanged (ADR-029) |
 | `apps/link-mizan` | Mizan's agent: mirrors items/warehouses, applies manufacturing facts through Mizan's existing API |
-| `scripts/fetch-mizan.sh` | The pinned real Mizan the end-to-end tests run against |
-| `scripts/fetch-hr.sh` | The pinned real HR-System (Python) the HR end-to-end test runs against |
+| `Start-GMES.bat` → `scripts/start.ps1` | One-click start: checks Node, installs, creates `data/config.json`, starts the server, opens the browser (ADR-031) |
+| `scripts/new-key.ps1` | Creates an API key (printed once, stored as a hash) |
+| `scripts/test.ps1` | The definition of done in one command (typecheck, all tests against the pinned real apps, planted bugs) |
+| `scripts/fetch-mizan.ps1` | The pinned real Mizan the end-to-end tests run against |
+| `scripts/fetch-hr.ps1` | The pinned real HR-System (Python) the HR end-to-end test runs against |
 | `scripts/mutations.mjs` | Planted bugs every test run must catch |
 
 A module imports only `kernel/`, `contracts/`, `@eco/contracts` and its own folder (`test/boundaries.test.ts`).
 
 ## Definition of done
-1. `npm run typecheck` and `npm test` pass — with `ECO_E2E_REQUIRED=1`, a Mizan checkout (`sh scripts/fetch-mizan.sh`) and an HR-System checkout (`sh scripts/fetch-hr.sh`, needs Python 3.10+).
+1. `npm run typecheck` and `npm test` pass — with `ECO_E2E_REQUIRED=1`, a Mizan checkout (`scripts/fetch-mizan.ps1`) and an HR-System checkout (`scripts/fetch-hr.ps1`, needs Python 3.10+). `scripts/test.ps1` does all of it.
 2. `node scripts/mutations.mjs` reports every planted bug caught; a new rule gets a new mutation.
 3. `HISTORY.md` entry (Symptom / Cause / Fix / Lesson) for every bug or discovery, in the same commit.
 4. An ADR in `docs/adr/README.md` for every structural choice, with the alternatives rejected.
 5. Ecosystem docs (`docs/ecosystem/*`) updated when ownership, contracts, ids or scenarios change.
 6. Never touch the other repositories from here; propose changes there, in their own rules.
+7. Tooling is PowerShell only (`.ps1`, plus the `.bat` that merely calls it). No `.sh` scripts: the owner works on Windows.
