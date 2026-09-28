@@ -7,6 +7,13 @@ import { api, ApiError, commandId, hhmm, name, num, session, t } from "../common
 
 const { h } = ui;
 const SCRAP = [["dimension", "gauge"], ["surface", "eye"], ["short_shot", "minus"], ["contamination", "alert"], ["assembly", "wrench"], ["other", "more"]];
+// the reasons that fit the kind of line (its area's code); any other area gets the general list above
+const SCRAP_BY_AREA = {
+  SMD: [["solder", "zap"], ["component", "cpu"], ["function", "x-octagon"], ["other", "more"]],
+  INJ: [["short_shot", "minus"], ["surface", "eye"], ["dimension", "gauge"], ["contamination", "alert"], ["other", "more"]],
+  LCM: [["panel", "monitor"], ["cosmetic", "eye"], ["function", "x-octagon"], ["contamination", "alert"], ["other", "more"]],
+  MAIN: [["function", "x-octagon"], ["cosmetic", "eye"], ["assembly", "wrench"], ["panel", "monitor"], ["other", "more"]],
+};
 const STOP = [["material", "box"], ["breakdown", "x-octagon"], ["changeover", "refresh"], ["quality", "shield"], ["break", "clock"], ["other", "more"]];
 
 export default function create() {
@@ -87,6 +94,7 @@ export default function create() {
       const nodes = await api("GET", "/api/plant");
       S.lines = nodes.filter((n) => n.type === "line" && n.active);
       S.allStations = nodes.filter((n) => n.type === "station" && n.active);
+      S.areaOf = Object.fromEntries(S.lines.map((l) => [l.code, (nodes.find((n) => n.id === l.parent_id) || {}).code]));
     } catch (e) { refused(e, t("scr.MDM1010")); return; }
     if (!S.lines.length) { feedback("warn", t("st.no_lines"), t("hint.no_lines"), "sitemap"); draw(); return; }
     if (!S.lines.some((l) => l.code === S.line)) S.line = S.lines[0].code;
@@ -158,7 +166,7 @@ export default function create() {
   }
   function reasons(kind) {
     if (blocked() || (kind === "scrap" && !S.wo)) return;
-    const list = kind === "scrap" ? SCRAP : STOP;
+    const list = kind === "scrap" ? SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP : STOP;
     const d = ui.dialog({ title: kind === "scrap" ? t("st.scrap_why") : t("st.stop_why"), icon: kind === "scrap" ? "x-octagon" : "pause", width: 720,
       body: h("div", { class: "st-reasons" }, list.map(([r, ic]) => h("button", { type: "button", class: "st-reason st-reason-" + kind, onclick: () => {
         d.close();

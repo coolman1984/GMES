@@ -47,10 +47,15 @@ async function boot() {
   if (!state.user) return loginPage(again);
   if (state.user.mustChangePassword) return changePasswordPage(again, true);
   setSession(state);
-  start();
+  // the plant's own name from the plant model (the installation node name until one exists)
+  let plantName = state.plant.node;
+  if (can("mdm.plant.read")) {
+    try { const p = (await api("GET", "/api/plant")).find((n) => n.type === "plant" && n.active); if (p) plantName = p.code + " · " + (l === "ar" ? p.name_ar : p.name_en); } catch (_) { /* the node name stays */ }
+  }
+  start(plantName);
 }
 
-function start() {
+function start(plantName) {
   const me = session().user, plant = session().plant;
   const mode = ui.prefs.get("mode", "office");
   document.documentElement.dataset.mode = mode;
@@ -69,7 +74,6 @@ function start() {
   const modeSwitch = ui.segmented({ size: "top", value: mode, options: [["office", t("mode.office"), "briefcase"], ["station", t("mode.station"), "tablet"], ["board", t("mode.board"), "monitor"]],
     onChange: (m) => setMode(m) });
   modeSwitch.classList.add("mes-modes");
-  const plantName = plant.node;
   const shell = ui.createShell({
     product: { name: "GMES", short: "GM", edition: t("edition") },
     company: { name: plantName, code: plant.companyId.slice(0, 8), note: plant.companyId },

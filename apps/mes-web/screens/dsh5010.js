@@ -30,7 +30,9 @@ export default function create() {
     const current = b.date === today() ? b.hours.findIndex((x) => x.hour === nowHour) : -1;
     const lastActive = b.hours.map((x, i) => (x.good || x.scrap ? i : -1)).reduce((a, i) => Math.max(a, i), -1);
     const hrs = b.hours.slice(0, Math.max(current, lastActive, 7) + 1);
-    const planSoFar = b.planPerHour ? b.planPerHour * hrs.length : null;
+    // the plan counts only the hours already passed (today) or worked (a past day), not the empty bars drawn ahead
+    const elapsed = b.date === today() ? current + 1 : lastActive + 1;
+    const planSoFar = b.planPerHour ? b.planPerHour * Math.max(0, elapsed) : null;
     const gap = planSoFar === null ? null : b.good - planSoFar;
     const scrapPct = b.good + b.scrap ? (b.scrap / (b.good + b.scrap)) * 100 : 0;
     shiftEl.textContent = t("st.prod_day") + " " + b.date;

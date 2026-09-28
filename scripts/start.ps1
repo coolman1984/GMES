@@ -7,11 +7,18 @@
   Do not open the browser.
 .PARAMETER Reinstall
   Reinstall the dependencies (npm ci) even if nothing changed.
+.PARAMETER Demo
+  Run the DEMONSTRATION plant instead: its own folder (data-demo), port 4701 and company id; built on the first run
+  (14 invented production days of a TV plant). The real plant's data folder is never touched.
+.PARAMETER Reseed
+  With -Demo: throw the demonstration database away and build a fresh one (its days end at this minute).
 #>
 [CmdletBinding()]
 param(
   [switch]$NoBrowser,
-  [switch]$Reinstall
+  [switch]$Reinstall,
+  [switch]$Demo,
+  [switch]$Reseed
 )
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\common.ps1"
@@ -19,7 +26,24 @@ Set-Location -LiteralPath $script:Root
 
 $nodeExe = Assert-Node
 Install-Dependencies -Force:$Reinstall
-$cfg = Get-GmesConfig
+if ($Demo) {
+  $demoDir = Join-Path $script:Root 'data-demo'
+  $cfg = Get-GmesConfig -DataDir $demoDir -Defaults @{ companyId = '0192f7c4-0000-7000-8000-00000000d3e0'; port = 4701; node = 'eg-tv-demo'; itemOwner = 'gmes'; personOwner = 'none' }
+  $db = Join-Path $demoDir 'gmes.db'
+  if ($Reseed -and (Test-Path -LiteralPath $db)) {
+    if (Test-GmesRunning $cfg.port) { Fail "Close the running demo (port $($cfg.port)) before -Reseed." }
+    foreach ($f in @('gmes.db', 'gmes.db-wal', 'gmes.db-shm', 'DEMO-LOGINS.txt')) { $p = Join-Path $demoDir $f; if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force } }
+  }
+  if (-not (Test-Path -LiteralPath $db)) {
+    Write-Host 'Building the demonstration plant (about 20 seconds) ...'
+    Push-Location -LiteralPath (Join-Path $script:Root 'apps\mes-server')
+    try { Invoke-Native 'Building the demo' $nodeExe @('--disable-warning=ExperimentalWarning', '--import', 'tsx', 'scripts/seed-demo.ts', $demoDir) } finally { Pop-Location }
+  }
+  Write-Host ''
+  Write-Host "Demo logins: $(Join-Path $demoDir 'DEMO-LOGINS.txt')" -ForegroundColor Cyan
+} else {
+  $cfg = Get-GmesConfig
+}
 Set-GmesEnvironment $cfg
 
 $browseHost = 'localhost'

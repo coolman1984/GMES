@@ -182,3 +182,15 @@
   **Lesson:** never pass code containing `$` through a double-quoted shell string.
 - **Open:** OEE needs cycle times (routing module); hold/release waits for QMS; the station books whole units (serial items
   one per scan); the plant name shown is the installation node until a settings screen exists.
+
+## Kit — Mizan's look and grid ideas in eco-ui (2026-09-28, ADR-033)
+- **What:** the opt-in `data-look="modern"` (Mizan's visual language, fonts carried in `src/fonts/`), per-column filters,
+  grouping and presets in `grid()`, filter chips and presets in `screen()`, `donut`, `kpiStrip`, `healthBanner`, `steps`,
+  `advice`, actions in the screen search. GMES stays on the classic look; HR-System re-copies the kit and uses modern.
+- **Discovery:** a grouped grid mixes group headers with rows, so the row index the grid used for clicks, keys and selection
+  (an index into the visible rows) no longer pointed at a row. **Fix:** the grid draws "lines" (headers + rows); `cursor` and
+  `data-i` count lines, `view` stays the rows only (count, export, select-all). **Lesson:** when a list starts to hold two
+  kinds of item, rename the index it is addressed by, or every old caller silently addresses the wrong kind.
+- **Discovery:** the kit's light "modern" tokens come after the dark classic ones in the file; with equal specificity the
+  light values would win in dark mode. **Fix:** the dark modern block uses one more attribute (`[data-look][data-theme]`) and
+  redefines every colour. **Lesson:** in a token file, order is a rule too: write down which block must win and why.

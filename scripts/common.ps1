@@ -38,10 +38,12 @@ function Install-Dependencies([switch]$Force) {
 }
 
 # data\config.json: created on the first run, then owned by the person who runs the plant.
-function Get-GmesConfig {
-  $dataDir = Join-Path $script:Root 'data'
+# -DataDir / -Defaults: the demonstration plant keeps its own folder, port and company id (scripts\start.ps1 -Demo).
+function Get-GmesConfig([string]$DataDir = (Join-Path $script:Root 'data'), [hashtable]$Defaults = @{}) {
+  $dataDir = $DataDir
   New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
   $file = Join-Path $dataDir 'config.json'
+  $overrides = $Defaults
   $defaults = [ordered]@{
     companyId          = [guid]::NewGuid().ToString().ToLowerInvariant()
     port               = 4700
@@ -52,6 +54,7 @@ function Get-GmesConfig {
     itemOwner          = 'gmes'           # gmes: items and warehouses are created here; mizan: they come from accounting
     personOwner        = 'none'           # hr: people come from HR-System; none: no people registry
   }
+  foreach ($k in $overrides.Keys) { $defaults[$k] = $overrides[$k] }
   if (-not (Test-Path -LiteralPath $file)) {
     ($defaults | ConvertTo-Json) | Set-Content -LiteralPath $file -Encoding Ascii
     Write-Host "First run: created $file (company id $($defaults.companyId))."

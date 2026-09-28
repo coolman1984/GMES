@@ -244,3 +244,18 @@ per line/station. Boards and the start page compute only from the ledger and tho
 system does not hold yet (OEE, an hourly plan without capacity) is shown as "—", never estimated.
 **Rejected:** SSO/LDAP now (V2, design doc 07); a default admin/admin account; storing stoppages as a row updated at the end
 (a fact would be overwritten); keeping sample data beside real data "for the look" (a screen must never mix them).
+
+### ADR-033 — Mizan's look and grid ideas enter the kit as an opt-in "modern" look
+**Context:** the owner asked for HR-System to take Mizan's design, look and good ideas. Mizan is React + Vite; HR-System is
+standard-library Python with no build step and copies this kit unchanged (ADR-029), so the React code cannot be moved.
+**Decision:** the ideas enter `packages/eco-ui` once, for every product: a second look `data-look="modern"` (Mizan's tokens:
+white canvas, hairline borders, pill buttons, 8/16/22 px corners, layered shadows, a light translucent top bar, sun/moon pill,
+Inter + IBM Plex Sans Arabic carried in `src/fonts/` under the SIL OFL, so nothing is downloaded at run time), chosen per product
+and switchable per person (user menu, Ctrl+K). The grid gains Mizan's DataGrid features: a filter on every column (values, number
+range, date range), grouping with counts and sums, presets, filter chips with one-click removal. New parts: `donut`, `kpiStrip`,
+`healthBanner`, `steps`, `advice` (a finding with reason, what to do and its rule). `screen()` takes an optional subtitle and help;
+the screen search also runs actions (the product's `commands`, theme, look, language). The classic look stays the default:
+**GMES keeps classic**; HR-System defaults to modern.
+**Rejected:** copying Mizan's React front end into HR (breaks ADR-029, adds a Node build to a Python installer, splits the
+ecosystem's look); styling HR alone in `hr.css` (HR and GMES would drift); making modern the default for everyone now (the
+owner approved the dense G-MES philosophy for the shop floor).

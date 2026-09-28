@@ -236,3 +236,6 @@
 .mes-fill .eco-tabset { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .mes-fill .eco-tabpanel { flex: 1; min-height: 0; display: flex; }
 .mes-fill .eco-tabpanel > .eco-grid { flex: 1; }
+/* the line board header: the big line picker must not squeeze the title and the day onto two lines */
+.bd-pick { max-width: 640px; }
+.bd-title span, .bd-shift { white-space: nowrap; }
