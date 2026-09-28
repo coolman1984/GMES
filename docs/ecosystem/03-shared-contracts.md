@@ -49,6 +49,8 @@
 | `eco.site.v1` | id, code, name, timezone, production_day_start, version, active | التصنيع | مسودة |
 | **`eco.employee.v1`** | id (UUIDv5 من رقم الموظف), code, display_name?, employment_status, active, hire/termination_date?, department/position/plant_code?, version, origin — **بلا بيانات شخصية** | **HR-System** | **مُنفَّذ** (يحل محل مسودة `eco.person.v1` التي لم تُنفَّذ أبدًا) |
 | **`eco.attendance_day.v1`** | id, code (Attendance_ID), employee ref, work_date, status, scheduled_shift_code?, roster?, leave?, worked_minutes?, version, origin | **HR-System** | **مُنفَّذ** |
+| **`eco.schedule_day.v1`** | id (hr:schedule:<emp>:<date>), employee ref, work_date, status (work/rest/holiday/unscheduled), shift_code?, start?, end? (وقت محلي؛ الليلية يوم عمل واحد)، paid_minutes، source?, version, origin | **HR-System** | **مُنفَّذ** |
+| **`eco.qualification.v1`** | id (hr:qualification:<emp>-<skill>), employee ref, skill_code, skill_name?, level 1–4, certified_on, expires_on?, active, version, origin | **HR-System** | **مُنفَّذ** |
 | `eco.shift.v1` | id, code, start, end, break_minutes, crosses_midnight, version (من `SCH_01_ShiftDefinitions`) | HR-System | مسودة (تحل محل `eco.shift_pattern.v1`) |
 | `eco.skill.v1` / `eco.employee_skill.v1` | كتالوج المهارات ومستوى كل موظف وصلاحيته (`SKL_*`) | HR-System | مسودة |
 | `hr.payroll_period.v1` | period, إجماليات لكل مركز تكلفة وحساب (رواتب، مساهمات، استقطاعات، صافي مستحق) — **بلا تفاصيل موظف** | HR-System → ميزان | مسودة |

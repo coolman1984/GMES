@@ -1,4 +1,4 @@
-import type { AttendanceDayV1, EmployeeV1, ItemV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, EmployeeV1, ItemV1, QualificationV1, ScheduleDayV1, WarehouseV1 } from '@eco/contracts';
 import type { Db } from '../kernel/db.js';
 
 /** A master-data row as manufacturing holds it (a mirror of the owner, or its own in fallback mode). */
@@ -47,12 +47,14 @@ export interface MdmService {
   applyWarehouse(t: Db, snapshot: WarehouseV1): Promise<SnapshotResult>;
   applyEmployee(t: Db, snapshot: EmployeeV1): Promise<SnapshotResult>;
   applyAttendanceDay(t: Db, snapshot: AttendanceDayV1): Promise<SnapshotResult>;
+  applyScheduleDay(t: Db, snapshot: ScheduleDayV1): Promise<SnapshotResult>;
+  applyQualification(t: Db, snapshot: QualificationV1): Promise<SnapshotResult>;
   /**
    * The person a production command names, checked against the HR mirror when HR owns people
    * (ownership.person = 'hr'). With 'none' (manufacturing alone, or rollback) the reference is
    * carried unchecked, exactly as before the HR boundary existed.
    */
-  resolvePerson(t: Db, ref: { id: string; code: string } | undefined): Promise<{ id: string; code: string } | undefined>;
+  resolvePerson(t: Db, ref: { id: string; code: string } | undefined, at?: { station?: string; date: string }): Promise<{ id: string; code: string } | undefined>;
 }
 
 export interface OutboxEvent {

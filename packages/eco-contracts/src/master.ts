@@ -81,3 +81,47 @@ export const zAttendanceDayV1 = z.object({
   origin: zOrigin,
 });
 export type AttendanceDayV1 = z.infer<typeof zAttendanceDayV1>;
+
+/**
+ * One employee's PLANNED day (phase 3 of HR-System: shifts, calendars, assignments, day changes), as HR resolved it.
+ * OWNER: HR. Manufacturing mirrors it to know who is expected on which shift; it never plans people itself.
+ * The mirror keeps working when HR is unreachable and shows how old it is (last-known-good, not a second truth).
+ * An overnight shift has ONE work date, the day it starts; `start`/`end` are local plant times.
+ * Identity: UUIDv5(company id, "hr:schedule:<Employee_ID>:<work date>").
+ */
+export const zScheduleDayV1 = z.object({
+  id: zUuid,
+  employee: zRef,
+  work_date: zDate,
+  status: z.enum(['work', 'rest', 'holiday', 'unscheduled']),
+  shift_code: zCode.optional(),
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
+  end: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
+  paid_minutes: z.number().int().min(0).max(1440),
+  /** Where the plan came from: a day change, a temporary or a regular assignment. */
+  source: z.enum(['override', 'temporary', 'regular']).optional(),
+  version: z.number().int().positive(),
+  origin: zOrigin,
+});
+export type ScheduleDayV1 = z.infer<typeof zScheduleDayV1>;
+
+/**
+ * A person's qualification for a skill (phase 5 of HR-System). OWNER: HR (who is qualified). Which skill a station
+ * needs is MANUFACTURING's configuration; manufacturing refuses to book a person on a station without a valid
+ * qualification at the required level. `active` false = withdrawn (moved to HR's Recycle Bin): refuse from now on.
+ * Identity: UUIDv5(company id, "hr:qualification:<Employee_ID>-<skill code>").
+ */
+export const zQualificationV1 = z.object({
+  id: zUuid,
+  employee: zRef,
+  skill_code: zCode,
+  skill_name: z.string().min(1).max(200).optional(),
+  /** 1 learner, 2 works with help, 3 independent, 4 can train others. */
+  level: z.number().int().min(1).max(4),
+  certified_on: zDate,
+  expires_on: zDate.optional(),
+  active: z.boolean(),
+  version: z.number().int().positive(),
+  origin: zOrigin,
+});
+export type QualificationV1 = z.infer<typeof zQualificationV1>;

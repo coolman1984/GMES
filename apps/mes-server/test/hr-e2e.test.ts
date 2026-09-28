@@ -107,6 +107,34 @@ describe('HR-System -> manufacturing, end to end', { skip: HR ? false : 'no HR-S
     assert.equal((await publish()).sent, 0);
   });
 
+  test('HR plans shifts and qualifies people; manufacturing mirrors the plan and turns away the unqualified (phases 3 and 5)', async () => {
+    const today = hr('from datetime import date; print(date.today().isoformat())').trim();
+    hr([
+      'import os', 'from hr_core.registry import Registry', `r = Registry(os.environ['EXCEL_APP_DATA_DIR'], '${company}')`,
+      "e = r.get('employee', 'E000001')",
+      "r.commit('e2e', 'plan', [r.op_put('shift', 'DAY', {'name': 'Day', 'start_time': '07:00', 'end_time': '15:00', 'break_minutes': 30, 'grace_minutes': 10}), " +
+        "r.op_put('work_calendar', 'EG', {'name': 'Egypt', 'rest_days': '', 'holidays': ''})])",
+      `r.commit('e2e', 'assign', [r.op_put('shift_assignment', 'E000001-${today}-R', {'employee_id': e['id'], 'shift_id': r.get('shift', 'DAY')['id'], ` +
+        `'calendar_id': r.get('work_calendar', 'EG')['id'], 'kind': 'regular', 'valid_from': '${today}'})])`,
+      "r.commit('e2e', 'skill', [r.op_put('skill', 'WELD', {'name': 'MIG welding', 'validity_months': None})])",
+      "r.commit('e2e', 'qualify', [r.op_put('employee_skill', 'E000001-WELD', {'employee_id': e['id'], 'skill_id': r.get('skill', 'WELD')['id'], 'level': 3, 'certified_on': '2026-01-01'})])",
+    ].join('\n'));
+    const r = await publish();
+    assert.equal(r.stopped_by, undefined, JSON.stringify(r));
+    assert.equal(r.rejected, 0, JSON.stringify(r));
+    const plan = (await call('GET', `/api/schedule?date=${today}`)).body;
+    assert.deepEqual(plan.map((d: any) => [d.employee_code, d.status, d.shift_code]), [['E000001', 'work', 'DAY']]);
+    assert.ok((await call('GET', '/api/workforce/status')).body.qualifications.rows >= 1);
+    assert.equal((await call('PUT', '/api/stations/WELD-01/requirements', [{ skillCode: 'WELD', minLevel: 2 }])).status, 200);
+    const wo = (await call('GET', '/api/items')).body.find((i: any) => i.code === 'FG');
+    const wh = (await call('POST', '/api/warehouses', { code: 'W2', nameEn: 'W2', nameAr: 'W2' })).body.id;
+    const order = (await call('POST', '/api/work-orders', { commandId: 'hr-e2e-q-create', itemId: wo.id, plannedQty: '2', warehouseId: wh }, opKey)).body.id;
+    const book = (n: number, code: string) => call('POST', `/api/work-orders/${order}/complete`, { commandId: `hr-e2e-q-${n}`, qty: '1', station: 'WELD-01', person: { id: hrId(company, 'employee', code), code } }, opKey);
+    assert.equal((await book(1, 'E000001')).status, 200);
+    assert.equal((await book(2, 'E000002')).body.error.code, 'person.not_qualified');
+    assert.equal((await publish()).sent, 0, 'nothing changed, nothing sent');
+  });
+
   test('manufacturing down while HR works: HR keeps its outbox, then delivers once, without duplicates', async () => {
     await app.close();
     hr(`import engine; engine.process_file('sample/HR_Attendance_Delta_Demo.xlsx')`); // HR keeps working: a correction + a new day

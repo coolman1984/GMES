@@ -35,6 +35,8 @@ const zOperational = {
   productionDate: zDate.optional(),
   shift: z.string().min(1).max(20).optional(),
   person: zPerson,
+  /** The station where the work is booked: its skill requirements are checked against HR's qualifications. */
+  station: z.string().trim().min(1).max(64).optional(),
 };
 
 const zCreate = z.object({ ...zOperational, code: z.string().trim().min(1).max(40).optional(), itemId: z.string(), plannedQty: zQty, warehouseId: z.string() });
@@ -112,7 +114,7 @@ export const exeModule: AppModule = {
       const caller = require(req, 'exe.orders.write');
       const input = zCreate.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'CreateWorkOrder', request: req.body }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person);
+        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const mdm = ctx.services.get('mdm');
         const item = await mdm.item(input.itemId, t);
         if (!item.active) fail('item.inactive', `item ${item.code} is not active`);
@@ -148,7 +150,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const input = zConsume.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'ConsumeMaterial', request: { id, ...(req.body as object) } }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person);
+        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const wo = await openOrder(t, id);
         const mdm = ctx.services.get('mdm');
         const item = await mdm.item(input.itemId, t);
@@ -179,7 +181,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const input = zComplete.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'ReportCompletion', request: { id, ...(req.body as object) } }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person);
+        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const wo = await openOrder(t, id);
         conserve(wo, input.qty);
         const product = await ctx.services.get('mdm').item(wo.item_id, t);
@@ -211,7 +213,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const input = zScrap.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'RecordScrap', request: { id, ...(req.body as object) } }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person);
+        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const wo = await openOrder(t, id);
         conserve(wo, input.qty);
         const product = await ctx.services.get('mdm').item(wo.item_id, t);
@@ -236,7 +238,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const input = zClose.parse(req.body);
       const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'CloseWorkOrder', request: { id, ...(req.body as object) } }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person);
+        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
         const wo = await t.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id]);
         if (!wo) return notFound('work_order', id);
         if (wo.status === 'closed') conflict('wo.closed', `work order ${wo.code} is already closed`);

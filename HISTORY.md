@@ -127,3 +127,12 @@
 - **Open:** the colours are still ours; the side-by-side comparison with real G-MES screenshots waits for the owner's
   redacted screenshots (`docs/ux/visual-acceptance.md`). The product name "GMES" is close to Samsung's "G-MES" while
   design doc 06 §6.1 asks for an own name — a decision for the owner.
+
+## Phase W1 — HR's plan and qualifications reach the shop floor (2026-09-28)
+- **What:** `eco.schedule_day.v1` and `eco.qualification.v1` (contracts + generated schemas); mirrors `mdm_schedule_day`,
+  `mdm_qualification`; manufacturing's own `mdm_station_requirement` (`PUT /api/stations/<code>/requirements`, scope
+  `mdm.stations.write`); commands may name a `station` and are refused with `person.not_qualified` when HR has not
+  qualified the person validly at the level on that production day; `/api/workforce/status` shows the age of what HR
+  sent; `/api/schedule?date=`. Tests: 2 in `hr-boundary`, 1 end to end with the real HR-System; 3 planted bugs (ADR-030).
+- **Discovery (in HR, recorded there):** HR's standard-library validator refused the first contract with an `enum`;
+  it fails loudly on unknown keywords by design and was taught `enum`. The generated schemas here are unchanged in form.

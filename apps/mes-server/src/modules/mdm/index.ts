@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AttendanceDayV1, EmployeeV1, ItemV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, EmployeeV1, ItemV1, QualificationV1, ScheduleDayV1, WarehouseV1 } from '@eco/contracts';
 import type { MdmService, MirrorEmployee, MirrorItem, MirrorWarehouse, SnapshotResult } from '../../contracts/services.js';
 import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
@@ -27,7 +27,7 @@ const zLocalWarehouse = z.object({ code: z.string().trim().min(1).max(20), nameE
 export const mdmModule: AppModule = {
   id: 'mdm',
   dependsOn: ['system'],
-  scopes: ['mdm.items.read', 'mdm.items.write'],
+  scopes: ['mdm.items.read', 'mdm.items.write', 'mdm.stations.write'],
   migrations: [
     {
       id: '001_mirrors',
@@ -94,6 +94,45 @@ export const mdmModule: AppModule = {
         CREATE INDEX mdm_attendance_emp_day ON mdm_attendance_day(employee_id, work_date);
       `,
     },
+    {
+      id: '003_plan_and_qualifications',
+      up: `
+        -- HR's planned days and qualifications (read-only mirrors; last-known-good when HR is unreachable)
+        CREATE TABLE mdm_schedule_day (
+          id           TEXT PRIMARY KEY,
+          employee_id  TEXT NOT NULL,
+          work_date    TEXT NOT NULL,
+          status       TEXT NOT NULL,
+          shift_code   TEXT,
+          start_at     TEXT,
+          end_at       TEXT,
+          paid_minutes INTEGER NOT NULL,
+          version      INTEGER NOT NULL,
+          mirrored_at  TEXT NOT NULL
+        );
+        CREATE INDEX mdm_schedule_emp_day ON mdm_schedule_day(employee_id, work_date);
+        CREATE TABLE mdm_qualification (
+          id           TEXT PRIMARY KEY,
+          employee_id  TEXT NOT NULL,
+          skill_code   TEXT NOT NULL,
+          level        INTEGER NOT NULL,
+          certified_on TEXT NOT NULL,
+          expires_on   TEXT,
+          active       INTEGER NOT NULL,
+          version      INTEGER NOT NULL,
+          mirrored_at  TEXT NOT NULL
+        );
+        CREATE INDEX mdm_qualification_emp ON mdm_qualification(employee_id, skill_code);
+        -- Manufacturing's OWN configuration: which skill (HR's skill code) a station needs, at which level.
+        CREATE TABLE mdm_station_requirement (
+          station_code TEXT NOT NULL,
+          skill_code   TEXT NOT NULL,
+          min_level    INTEGER NOT NULL CHECK (min_level BETWEEN 1 AND 4),
+          set_at       TEXT NOT NULL,
+          PRIMARY KEY (station_code, skill_code)
+        );
+      `,
+    },
   ],
 
   setup(ctx) {
@@ -110,11 +149,24 @@ export const mdmModule: AppModule = {
       applyWarehouse: (t, s) => apply(ctx, t, 'warehouse', s),
       applyEmployee: (t, s) => applyWorkforce(ctx, t, 'employee', s),
       applyAttendanceDay: (t, s) => applyWorkforce(ctx, t, 'attendance_day', s),
-      async resolvePerson(t, ref) {
+      applyScheduleDay: (t, s) => applyWorkforce(ctx, t, 'schedule_day', s),
+      applyQualification: (t, s) => applyWorkforce(ctx, t, 'qualification', s),
+      async resolvePerson(t, ref, at) {
         if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;
         const e = await t.get<MirrorEmployee>('SELECT * FROM mdm_employee WHERE id = ?', [ref.id]);
         if (!e) return fail('person.unknown', `employee ${ref.code} is not known to manufacturing yet (HR has not published it, or the id is wrong)`);
         if (!e.active) return conflict('person.inactive', `employee ${e.code} is ${e.employment_status} in HR and cannot be booked on production`);
+        if (at?.station) {
+          // A station that needs skills takes only people HR has qualified, at the level, on that production day.
+          const needs = await t.all<{ skill_code: string; min_level: number }>('SELECT skill_code, min_level FROM mdm_station_requirement WHERE station_code = ? ORDER BY skill_code', [at.station]);
+          for (const n of needs) {
+            const q = await t.get<{ level: number; certified_on: string; expires_on: string | null; active: number }>(
+              'SELECT level, certified_on, expires_on, active FROM mdm_qualification WHERE employee_id = ? AND skill_code = ?', [e.id, n.skill_code]);
+            const why = !q || !q.active ? 'has no qualification' : q.level < n.min_level ? `is level ${q.level}, the station needs ${n.min_level}`
+              : q.certified_on > at.date ? `is qualified only from ${q.certified_on}` : q.expires_on && q.expires_on < at.date ? `was qualified until ${q.expires_on}` : null;
+            if (why) conflict('person.not_qualified', `employee ${e.code} ${why} for ${n.skill_code}, which station ${at.station} needs (HR records qualifications)`);
+          }
+        }
         // HR's code wins over whatever the client sent next to the id.
         return { id: e.id, code: e.code };
       },
@@ -130,6 +182,39 @@ export const mdmModule: AppModule = {
     http.get('/api/employees', async (req) => {
       require(req, 'mdm.items.read');
       return ctx.db.all('SELECT id, code, display_name, employment_status, active, department_code, position_code, version, mirrored_at FROM mdm_employee ORDER BY code');
+    });
+    // Which skills a station needs: manufacturing's own configuration (HR only says who is qualified).
+    http.get('/api/stations/:code/requirements', async (req) => {
+      require(req, 'mdm.items.read');
+      return ctx.db.all('SELECT skill_code, min_level, set_at FROM mdm_station_requirement WHERE station_code = ? ORDER BY skill_code', [(req.params as { code: string }).code]);
+    });
+    http.put('/api/stations/:code/requirements', async (req) => {
+      require(req, 'mdm.stations.write');
+      const station = z.string().trim().min(1).max(64).parse((req.params as { code: string }).code);
+      const list = z.array(z.object({ skillCode: z.string().trim().min(1).max(64), minLevel: z.number().int().min(1).max(4) })).max(50).parse(req.body);
+      const now = ctx.clock.now().toISOString();
+      await ctx.db.tx(async (t) => {
+        await t.run('DELETE FROM mdm_station_requirement WHERE station_code = ?', [station]);  // configuration, not a production fact
+        for (const r of list) await t.run('INSERT INTO mdm_station_requirement (station_code, skill_code, min_level, set_at) VALUES (?, ?, ?, ?)', [station, r.skillCode, r.minLevel, now]);
+      });
+      return { station, requirements: list.length };
+    });
+    // The plan and the qualifications as last received from HR, with their age: HR may be down, the factory is not.
+    http.get('/api/workforce/status', async (req) => {
+      require(req, 'mdm.items.read');
+      const now = ctx.clock.now().getTime();
+      const out: Record<string, { rows: number; lastReceived: string | null; ageMinutes: number | null }> = {};
+      for (const [k, table] of [['employees', 'mdm_employee'], ['schedule', 'mdm_schedule_day'], ['qualifications', 'mdm_qualification']] as const) {
+        const r = await ctx.db.get<{ n: number; last: string | null }>(`SELECT COUNT(*) n, MAX(mirrored_at) last FROM ${table}`);
+        out[k] = { rows: r!.n, lastReceived: r!.last, ageMinutes: r!.last ? Math.floor((now - Date.parse(r!.last)) / 60000) : null };
+      }
+      return out;
+    });
+    http.get('/api/schedule', async (req) => {
+      require(req, 'mdm.items.read');
+      const q = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(req.query);
+      return ctx.db.all(`SELECT e.code employee_code, s.work_date, s.status, s.shift_code, s.start_at, s.end_at, s.paid_minutes, s.mirrored_at
+        FROM mdm_schedule_day s JOIN mdm_employee e ON e.id = s.employee_id WHERE s.work_date = ? ORDER BY e.code`, [q.date]);
     });
     http.get('/api/warehouses', async (req) => {
       require(req, 'mdm.items.read');
@@ -178,10 +263,11 @@ export const mdmModule: AppModule = {
 };
 
 /** HR mirrors: accepted only when HR owns people here, only from HR, and only when the version is newer. */
-async function applyWorkforce(ctx: Ctx, t: Db, kind: 'employee' | 'attendance_day', s: EmployeeV1 | AttendanceDayV1): Promise<SnapshotResult> {
+async function applyWorkforce(ctx: Ctx, t: Db, kind: 'employee' | 'attendance_day' | 'schedule_day' | 'qualification',
+  s: EmployeeV1 | AttendanceDayV1 | ScheduleDayV1 | QualificationV1): Promise<SnapshotResult> {
   if ((ctx.config.ownership.person ?? 'none') !== 'hr') fail('mdm.not_mirror', 'this installation has no HR owner configured (ownership.person = none)');
   if (s.origin.app !== 'hr') fail('mdm.wrong_owner', `${kind} snapshot from ${s.origin.app}, but people are owned by hr`);
-  const table = kind === 'employee' ? 'mdm_employee' : 'mdm_attendance_day';
+  const table = { employee: 'mdm_employee', attendance_day: 'mdm_attendance_day', schedule_day: 'mdm_schedule_day', qualification: 'mdm_qualification' }[kind];
   const cur = await t.get<{ version: number }>(`SELECT version FROM ${table} WHERE id = ?`, [s.id]);
   if (cur && cur.version >= s.version) return cur.version === s.version ? 'unchanged' : 'stale';
   const now = ctx.clock.now().toISOString();
@@ -194,6 +280,24 @@ async function applyWorkforce(ctx: Ctx, t: Db, kind: 'employee' | 'attendance_da
          department_code = :dept, position_code = :pos, version = :v, mirrored_at = :now`,
       { id: e.id, code: e.code, name: e.display_name ?? null, status: e.employment_status, active: e.active ? 1 : 0, dept: e.department_code ?? null,
         pos: e.position_code ?? null, v: e.version, key: e.origin.key, now },
+    );
+  } else if (kind === 'schedule_day') {
+    const d = s as ScheduleDayV1;
+    await t.run(
+      `INSERT INTO mdm_schedule_day (id, employee_id, work_date, status, shift_code, start_at, end_at, paid_minutes, version, mirrored_at)
+       VALUES (:id, :emp, :day, :status, :shift, :start, :end, :paid, :v, :now)
+       ON CONFLICT(id) DO UPDATE SET employee_id = :emp, work_date = :day, status = :status, shift_code = :shift, start_at = :start, end_at = :end,
+         paid_minutes = :paid, version = :v, mirrored_at = :now`,
+      { id: d.id, emp: d.employee.id, day: d.work_date, status: d.status, shift: d.shift_code ?? null, start: d.start ?? null, end: d.end ?? null, paid: d.paid_minutes, v: d.version, now },
+    );
+  } else if (kind === 'qualification') {
+    const q = s as QualificationV1;
+    await t.run(
+      `INSERT INTO mdm_qualification (id, employee_id, skill_code, level, certified_on, expires_on, active, version, mirrored_at)
+       VALUES (:id, :emp, :skill, :level, :from, :to, :active, :v, :now)
+       ON CONFLICT(id) DO UPDATE SET employee_id = :emp, skill_code = :skill, level = :level, certified_on = :from, expires_on = :to, active = :active,
+         version = :v, mirrored_at = :now`,
+      { id: q.id, emp: q.employee.id, skill: q.skill_code, level: q.level, from: q.certified_on, to: q.expires_on ?? null, active: q.active ? 1 : 0, v: q.version, now },
     );
   } else {
     const a = s as AttendanceDayV1;

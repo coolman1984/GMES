@@ -78,7 +78,7 @@ function setAttrs(e, attrs) {
     if (v === null || v === undefined || v === false) continue;
     if (k === "class") e.className = Array.isArray(v) ? v.filter(Boolean).join(" ") : v;
     else if (k === "text") e.textContent = v;
-    else if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+    else if (k === "style" && typeof v === "object") for (const [p, x] of Object.entries(v)) { if (p.startsWith("--")) e.style.setProperty(p, x); else e.style[p] = x; }
     else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2), v);
     else if (k === "value") e.value = v;
     else if (k === "checked") e.checked = !!v;
@@ -591,7 +591,8 @@ export function grid(columns, opts = {}) {
   const saved = o.layoutKey ? prefs.get("grid:" + o.layoutKey, null) : null;
   let cols = applyLayout(base, saved);
   let rows = o.rows || [], view = [], sort = saved && saved.sort ? saved.sort : [], quick = "", selected = new Set(), cursor = -1, state = o.rows ? "ready" : "idle", stateText = "";
-  const RH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--eco-row-h")) || 26;
+  // rowHeight: a grid whose cells hold more than a line (a roster, a matrix) sets its own height; the others follow the density
+  const RH = () => o.rowHeight || parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--eco-row-h")) || 26;
 
   const scroller = h("div", { class: "eco-grid-scroll", tabindex: "0", role: "grid", "aria-multiselectable": o.selection === "multi" ? "true" : null });
   const head = h("div", { class: "eco-grid-head", role: "row" });
@@ -705,7 +706,7 @@ export function grid(columns, opts = {}) {
       const r = view[i], id = r[o.rowKey], isSel = selected.has(id);
       const st = o.rowStatus ? o.rowStatus(r) : null;
       const row = h("div", { class: ["eco-gr", i % 2 && "is-alt", isSel && "is-sel", i === cursor && "is-cursor", st && "eco-row-" + st], role: "row", "aria-selected": String(isSel),
-        style: { top: i * rh + "px", gridTemplateColumns: tpl, height: rh + "px" }, "data-i": String(i) });
+        style: { top: i * rh + "px", gridTemplateColumns: tpl, height: rh + "px", "--eco-row-h": rh + "px" }, "data-i": String(i) });
       if (o.selection === "multi") {
         const cb = h("input", { type: "checkbox", class: "eco-check", checked: isSel, tabindex: "-1" });
         cb.addEventListener("click", (ev) => { ev.stopPropagation(); cb.checked ? selected.add(id) : selected.delete(id); cursor = i; changed(); });

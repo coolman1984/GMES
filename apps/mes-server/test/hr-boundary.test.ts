@@ -67,4 +67,52 @@ describe('people are owned by HR: manufacturing mirrors and checks, never edits'
     assert.equal(ok.status, 200);
     await s.close();
   });
+
+  test('a station that needs a skill takes only people HR qualified, at the level, on that day (phase 5 gate)', async () => {
+    const s = await stocked('hr');
+    const ref = (code: string) => ({ id: hrId(COMPANY, 'employee', code), code });
+    const qual = (emp: string, extra: Record<string, unknown> = {}) => ({ id: hrId(COMPANY, 'qualification', `${emp}-WELD`), employee: ref(emp), skill_code: 'WELD',
+      level: 3, certified_on: '2026-01-01', expires_on: '2026-12-31', active: true, version: 1, origin: { app: 'hr', type: 'qualification', key: `${emp}-WELD` }, ...extra });
+    const r = await s.call('POST', '/eco/v1/inbox', { events: [
+      ...['E1', 'E2', 'E3', 'E4', 'E5'].map((c) => snapshot('eco.employee.v1', employee(c), undefined, HR_SOURCE)),
+      snapshot('eco.qualification.v1', qual('E1'), undefined, HR_SOURCE),
+      snapshot('eco.qualification.v1', qual('E2', { level: 1 }), undefined, HR_SOURCE),
+      snapshot('eco.qualification.v1', qual('E3', { expires_on: '2026-06-30' }), undefined, HR_SOURCE),
+      snapshot('eco.qualification.v1', qual('E4', { active: false }), undefined, HR_SOURCE),
+    ] }, s.keys.link);
+    assert.ok(r.body.results.every((x: any) => x.result === 'applied'), JSON.stringify(r.body));
+    const set = await s.call('PUT', '/api/stations/ASM-02-ST20/requirements', [{ skillCode: 'WELD', minLevel: 2 }]);
+    assert.equal(set.status, 200, JSON.stringify(set.body));
+    const wo = (await s.call('POST', '/api/work-orders', { commandId: 'q-create', itemId: s.chair, plannedQty: '9', warehouseId: s.main })).body.id;
+    const book = (n: number, emp: string, station?: string) => s.call('POST', `/api/work-orders/${wo}/complete`,
+      { commandId: `q-done-${n}`, qty: '1', person: ref(emp), station, productionDate: '2026-09-28' }, s.keys.operator);
+    assert.equal((await book(1, 'E1', 'ASM-02-ST20')).status, 200);
+    const why = async (n: number, emp: string) => (await book(n, emp, 'ASM-02-ST20')).body.error;
+    assert.match((await why(2, 'E2')).message, /level 1, the station needs 2/);
+    assert.match((await why(3, 'E3')).message, /qualified until 2026-06-30/);
+    assert.match((await why(4, 'E4')).message, /no qualification/);
+    assert.equal((await why(5, 'E5')).code, 'person.not_qualified');
+    assert.equal((await book(6, 'E5', 'PACK-01')).status, 200, 'a station without requirements takes anybody HR says may work');
+    assert.equal((await book(7, 'E5')).status, 200, 'without a station, nothing more is asked than before');
+    const lines = (await s.call('GET', `/api/work-orders/${wo}`)).body.ledger;
+    assert.equal(lines.filter((l: any) => l.txn_type === 'COMPLETE').length, 3, 'refused bookings leave no trace');
+    assert.equal((await s.call('PUT', '/api/stations/X/requirements', [{ skillCode: 'WELD', minLevel: 2 }], s.keys.operator)).status, 403, 'operators do not configure stations');
+    await s.close();
+  });
+
+  test('the plan from HR is mirrored with its age: last-known-good when HR is away, never a stop', async () => {
+    const s = await server('mizan', 'hr');
+    const day = { id: hrId(COMPANY, 'schedule', 'E1:2026-10-01'), employee: { id: hrId(COMPANY, 'employee', 'E1'), code: 'E1' }, work_date: '2026-10-01',
+      status: 'work', shift_code: 'NIGHT', start: '2026-10-01T23:00', end: '2026-10-02T07:00', paid_minutes: 450, source: 'regular', version: 1,
+      origin: { app: 'hr', type: 'schedule', key: 'E1:2026-10-01' } };
+    const r = await s.call('POST', '/eco/v1/inbox', { events: [snapshot('eco.employee.v1', employee('E1'), undefined, HR_SOURCE), snapshot('eco.schedule_day.v1', day, undefined, HR_SOURCE)] }, s.keys.link);
+    assert.ok(r.body.results.every((x: any) => x.result === 'applied'), JSON.stringify(r.body));
+    const plan = (await s.call('GET', '/api/schedule?date=2026-10-01')).body;
+    assert.deepEqual([plan[0].employee_code, plan[0].shift_code, plan[0].end_at], ['E1', 'NIGHT', '2026-10-02T07:00']);
+    s.clock.set('2026-09-27T10:00:00.000Z');
+    const st = (await s.call('GET', '/api/workforce/status')).body;
+    assert.equal(st.schedule.rows, 1);
+    assert.equal(st.schedule.ageMinutes, 120, 'the age of what HR last sent is visible');
+    await s.close();
+  });
 });
