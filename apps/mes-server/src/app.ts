@@ -5,14 +5,16 @@ import { openSqlite, type Database } from './kernel/db.js';
 import { AppError } from './kernel/errors.js';
 import { Services, type AppModule, type Config, type Ctx } from './kernel/modules.js';
 import { ecoModule } from './modules/eco/index.js';
+import { engModule } from './modules/eng/index.js';
 import { exeModule } from './modules/exe/index.js';
 import { mdmModule } from './modules/mdm/index.js';
 import { oeeModule } from './modules/oee/index.js';
+import { trkModule } from './modules/trk/index.js';
 import { requireScope, resolveCaller, systemModule } from './modules/system/index.js';
 import { serveScreens } from './web.js';
 
 /** Installed modules. Removing one (and what depends on it) must leave a working app. */
-export const MODULES: AppModule[] = [systemModule, mdmModule, ecoModule, oeeModule, exeModule];
+export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule];
 
 export interface App {
   http: FastifyInstance;

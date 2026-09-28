@@ -11,13 +11,31 @@ import mdm1010 from "./screens/mdm1010.js";
 import mdm1020 from "./screens/mdm1020.js";
 import sys9010 from "./screens/sys9010.js";
 import dsh5010 from "./screens/dsh5010.js";
+import exe2010 from "./screens/exe2010.js";
+import exe3020 from "./screens/exe3020.js";
+import exe3030 from "./screens/exe3030.js";
+import wip3010 from "./screens/wip3010.js";
+import wip3020 from "./screens/wip3020.js";
+import trc2010 from "./screens/trc2010.js";
+import trc3010 from "./screens/trc3010.js";
+import trc3020 from "./screens/trc3020.js";
+import mdm1030 from "./screens/mdm1030.js";
+import mdm1040 from "./screens/mdm1040.js";
+import mdm1050 from "./screens/mdm1050.js";
+import mdm1060 from "./screens/mdm1060.js";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 // [factory, icon, scope needed to open it]
 const BUILT = { HOME: [home, "home", "exe.orders.read"], EXE3010: [exe3010, "clipboard", "exe.orders.read"], EXE2020: [exe2020, "tablet", "exe.orders.write"],
-  MDM1010: [mdm1010, "sitemap", "mdm.plant.read"], MDM1020: [mdm1020, "box", "mdm.items.read"], SYS9010: [sys9010, "users", "sys.users.read"], DSH5010: [dsh5010, "monitor", "exe.orders.read"] };
+  MDM1010: [mdm1010, "sitemap", "mdm.plant.read"], MDM1020: [mdm1020, "box", "mdm.items.read"], SYS9010: [sys9010, "users", "sys.users.read"], DSH5010: [dsh5010, "monitor", "exe.orders.read"],
+  EXE2010: [exe2010, "calendar-check", "exe.orders.read"], EXE3020: [exe3020, "history", "trk.units.read"], EXE3030: [exe3030, "table", "exe.ledger.read"],
+  WIP3010: [wip3010, "dashboard", "trk.units.read"], WIP3020: [wip3020, "clock", "trk.units.read"],
+  TRC2010: [trc2010, "box", "trk.units.read"], TRC3010: [trc3010, "link", "trk.units.read"], TRC3020: [trc3020, "link", "trk.units.read"],
+  MDM1030: [mdm1030, "scale", "eng.read"], MDM1040: [mdm1040, "layers", "eng.read"], MDM1050: [mdm1050, "list", "eng.read"], MDM1060: [mdm1060, "calendar", "eng.read"] };
 const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.production", "m.shop_floor"], MDM1010: ["m.master", "m.plant_model"], MDM1020: ["m.master", "m.products"],
-  SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"] };
+  SYS9010: ["m.system", "m.security"], DSH5010: ["m.boards"], EXE2010: ["m.production", "m.work_orders"], EXE3020: ["m.production", "m.shop_floor"], EXE3030: ["m.production", "m.shop_floor"],
+  WIP3010: ["m.production", "m.wip"], WIP3020: ["m.production", "m.wip"], TRC2010: ["g.trace", "m.genealogy"], TRC3010: ["g.trace", "m.genealogy"], TRC3020: ["g.trace", "m.genealogy"],
+  MDM1030: ["m.master", "m.products"], MDM1040: ["m.master", "m.products"], MDM1050: ["m.master", "m.products"], MDM1060: ["m.master", "m.plant_model"] };
 
 // [group id, icon, [[subgroup key, [codes]]]]
 const MENU = [

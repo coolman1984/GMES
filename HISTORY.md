@@ -194,3 +194,25 @@
 - **Discovery:** the kit's light "modern" tokens come after the dark classic ones in the file; with equal specificity the
   light values would win in dark mode. **Fix:** the dark modern block uses one more attribute (`[data-look][data-theme]`) and
   redefines every colour. **Lesson:** in a token file, order is a rule too: write down which block must win and why.
+
+## Phase B1 — Engineering and the serial flow of a television plant (2026-09-28)
+- **What (owner's order: finish GMES with a realistic TV plant):** `eng` module (routings, bills of materials as frozen
+  revisions, production shifts and calendar, units of measure), `trk` module (serial units along their routing, repair loop,
+  key parts, material lots on stations, genealogy, WIP, traceability both ways), `kernel/chain.ts` (hash-chained fact tables),
+  `/api/ledger` (the production ledger, filtered). Screens: EXE2010 release plan, EXE2020 serial mode, EXE3020 unit history,
+  EXE3030 transactions, WIP3010/3020, TRC2010/3010/3020, MDM1030/1040/1050/1060 (ADR-034). 11 new tests, 10 new planted bugs.
+- **Symptom (found by the new test, before any demo):** a finished order booked 0.004 screws instead of 4. **Cause:** the
+  backflush divided by 1000 a quantity that was already in thousandths (units are a count, `qty_per` is in thousandths).
+  **Fix:** `units * qty_per`. **Lesson:** when two numbers in one formula carry different scales, name the scale in the code;
+  a planted bug now reintroduces the division and must be caught.
+- **Discovery (design):** the last unit of an order makes the order `completed`, after which the ledger refuses consumption.
+  Booking material only when a lot is unloaded would therefore lose it for finished orders. **Fix:** everything a work order
+  used is booked just BEFORE its final unit (lots used from station loads, and backflushed BOM lines); a planted bug moves the
+  booking after the final fact and is caught.
+- **Symptom (found in a real browser, not by the tests):** most new inquiry screens showed "Cannot read properties of undefined
+  (reading 'length')". **Cause:** the shared screen builder passed `presets: undefined` to the grid, which replaced the grid's
+  default `[]` (a spread of an options object copies undefined values). **Fix:** pass the key only when defined. **Lesson:** a
+  default in `{ ...defaults, ...opts }` is lost to an explicit `undefined`; screens are opened in a real browser before a push.
+- **Symptom:** in the browser run the whole application slid sideways after about ten tabs. **Cause:** the tab strip called
+  `scrollIntoView`, which also scrolls every scrollable ancestor — an `overflow: hidden` frame can still be scrolled that way.
+  **Fix (eco-ui):** the tab strip scrolls itself only. HR-System must re-copy the kit. **Lesson:** `scrollIntoView` is not local.

@@ -20,8 +20,8 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 | Path | What |
 |---|---|
 | `packages/eco-contracts` | Ecosystem contracts (zod) → generated JSON Schemas in `schemas/` (run `npm run schemas`) |
-| `apps/mes-server` | Manufacturing kernel: `kernel/` (db port, commands, clock), `contracts/` (sockets between modules), `modules/` (system, mdm, eco, exe) |
-| `apps/mes-web` | The screens: shell + screen templates on sample data (UX phase), served by `mes-server` (`src/web.ts`) |
+| `apps/mes-server` | Manufacturing kernel: `kernel/` (db port, commands, clock, hash-chained fact tables), `contracts/` (sockets between modules), `modules/` (system, mdm, eng, eco, oee, exe, trk, …) |
+| `apps/mes-web` | The screens (`screens/<CODE>.js`, shared builders in `views.js`), served by `mes-server` (`src/web.ts`); every screen reads the server |
 | `packages/eco-ui` | The ecosystem's one interface kit (tokens, shell, grid, dialogs); HR-System copies it unchanged (ADR-029) |
 | `apps/link-mizan` | Mizan's agent: mirrors items/warehouses, applies manufacturing facts through Mizan's existing API |
 | `Start-GMES.bat` → `scripts/start.ps1` | One-click start: checks Node, installs, creates `data/config.json`, starts the server, opens the browser (ADR-031) |

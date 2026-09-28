@@ -4,6 +4,7 @@
 // Every press is a command to the server with its own id; the counters show what the ledger holds, not local counts.
 import * as ui from "/eco-ui/eco-ui.js";
 import { api, ApiError, commandId, hhmm, name, num, session, t } from "../common.js";
+// (serial mode: GMES docs/design/05 flow 3 with a routing: scan the unit, then its key parts; FAIL sends it to repair)
 
 const { h } = ui;
 const SCRAP = [["dimension", "gauge"], ["surface", "eye"], ["short_shot", "minus"], ["contamination", "alert"], ["assembly", "wrench"], ["other", "more"]];
@@ -24,8 +25,8 @@ export default function create() {
   const conn = h("span", { class: "st-conn" });
   const offline = h("div", { class: "st-offline", hidden: true }, ui.icon("x-octagon", 28), h("span", { text: t("st.offline") }));
   const lineSel = ui.select({ options: [], onChange: (v) => { S.line = v; S.station = ""; ui.prefs.set("station:line", v); ui.prefs.set("station:station", ""); loadLine(); } });
-  const stationSel = ui.select({ options: [], placeholder: t("st.whole_line"), onChange: (v) => { S.station = v; ui.prefs.set("station:station", v); loadStop().then(draw); } });
-  const woSel = ui.select({ options: [], onChange: (v) => { S.wo = S.orders.find((o) => o.id === v) || null; draw(); scan.focus(); } });
+  const stationSel = ui.select({ options: [], placeholder: t("st.whole_line"), onChange: (v) => { S.station = v; ui.prefs.set("station:station", v); Promise.all([loadStop(), loadStation()]).then(draw); } });
+  const woSel = ui.select({ options: [], onChange: (v) => { S.wo = S.orders.find((o) => o.id === v) || null; loadStation().then(draw); scan.focus(); } });
   lineSel.classList.add("st-pick"); stationSel.classList.add("st-pick"); woSel.classList.add("st-pick", "st-pick-wo");
   const progressHost = h("div", { class: "st-wo-progress" });
   const itemHost = h("div", { class: "st-wo-item" });
@@ -37,9 +38,15 @@ export default function create() {
   scan.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && scan.value.trim()) { onScan(scan.value.trim()); scan.value = ""; } });
 
   const big = (kind, ic, label, onClick) => h("button", { type: "button", class: "st-big st-big-" + kind, onclick: onClick }, ui.icon(ic, 38), h("span", { text: label }));
+  // serial mode (the order follows a routing): every unit is scanned; the station is the operation it performs
+  const modeBox = h("div", { class: "st-mode", hidden: true });
+  const loadsBox = h("div", { class: "st-loads", hidden: true });
+  const serialBtns = [big("good", "check", t("st.pass"), () => setMode("pass")), big("scrap", "x-octagon", t("st.fail"), () => pickDefect()),
+    big("rework", "x", t("st.scrap_unit"), () => pickScrap())];
+  serialBtns.forEach((b) => b.classList.add("st-serial-only"));
   const buttons = h("div", { class: "st-buttons" },
     big("good", "check", t("st.good"), () => book("good", 1)), big("rework", "plus", t("st.good_qty"), () => goodQty()), big("scrap", "x", t("st.scrap"), () => reasons("scrap")),
-    big("stop", "pause", t("st.stop"), () => (S.stop ? resume() : reasons("stop"))));
+    serialBtns, big("stop", "pause", t("st.stop"), () => (S.stop ? resume() : reasons("stop"))));
 
   const el = h("div", { class: "st" },
     offline,
@@ -51,11 +58,16 @@ export default function create() {
     stopBar,
     h("div", { class: "st-main" },
       h("section", { class: "st-scan" }, h("label", { class: "st-scan-label" }, ui.icon("scan", 22), h("span", { text: t("st.scan") })), scan, lastBox),
-      h("aside", { class: "st-side" }, counters, h("div", { class: "st-events-head", text: t("st.recent") }), events)),
+      h("aside", { class: "st-side" }, modeBox, counters, loadsBox, h("div", { class: "st-events-head", text: t("st.recent") }), events)),
     buttons);
 
   const blocked = () => !S.online || S.busy;
+  const serial = () => !!(S.wo && S.wo.routing_id);
   function draw() {
+    const sm = serial();
+    el.classList.toggle("is-serial", sm);
+    modeBox.hidden = !sm; loadsBox.hidden = !sm || !S.station;
+    if (sm) drawSerial();
     const wo = S.wo;
     ui.clear(itemHost, wo ? [h("small", { text: t("c.item") }), h("b", { text: name(wo.item) }), h("span", {}, ui.ltr(wo.item.code))] : h("span", { class: "eco-muted", text: t("st.no_wo") }));
     const planned = wo ? num(wo.planned_qty) : 0, good = wo ? num(wo.completed_qty) : 0, scrap = wo ? num(wo.scrapped_qty) : 0, open = wo ? num(wo.open_qty) : 0;
@@ -109,6 +121,7 @@ export default function create() {
     ui.clear(stationSel, [h("option", { value: "", text: t("st.whole_line") })].concat(S.stations.map((s) => h("option", { value: s.code, text: s.code + " · " + name(s) }))));
     stationSel.value = S.station;
     await Promise.all([loadOrders(), loadStop()]);
+    await loadStation();
     feedback("ok", t("st.ready"), t("st.ready_help"), "scan");
     draw();
   }
@@ -133,6 +146,7 @@ export default function create() {
 
   function onScan(code) {
     if (blocked()) return;
+    if (serial() && !S.orders.some((o) => o.code.toLowerCase() === code.toLowerCase())) { serialScan(code); return; }
     const hit = S.orders.find((o) => o.code.toLowerCase() === code.toLowerCase());
     if (hit) { S.wo = hit; woSel.value = hit.id; feedback("ok", t("st.wo_selected", { code: hit.code }), name(hit.item), "clipboard"); log("ok", "clipboard", hit.code); draw(); return; }
     if (!S.wo) { feedback("warn", t("st.no_wo"), t("st.scan_wo_first"), "clipboard"); return; }
@@ -196,6 +210,106 @@ export default function create() {
     } catch (e) { refused(e, t("st.resume")); }
     finally { S.busy = false; draw(); scan.focus(); }
   }
+
+  // ------------------------------------------------------------------ serial mode
+  S.mode = "pass"; S.defect = null; S.scrapReason = null; S.pending = null; S.expected = []; S.loads = [];
+  function setMode(m) { S.mode = m; if (m === "pass") { S.defect = null; S.scrapReason = null; } S.pending = null; draw(); scan.focus(); }
+  function drawSerial() {
+    const station = S.stations.find((x) => x.code === S.station);
+    const op = station ? station.code.slice(S.line.length + 1) : null;
+    const tone = S.mode === "fail" ? "bad" : S.mode === "scrap" ? "warn" : "ok";
+    ui.clear(modeBox, h("div", { class: "st-mode-card st-r-" + tone },
+      h("small", { text: op ? t("st.operation") + " " + op : t("st.pick_station") }),
+      h("b", { text: S.mode === "pass" ? t("st.mode_pass") : S.mode === "fail" ? t("st.mode_fail", { defect: S.defect }) : t("st.mode_scrap", { reason: t("scrap." + S.scrapReason) }) }),
+      S.pending ? h("span", { class: "st-pending" }, ui.icon("scan", 16), t("st.scan_part", { part: S.pending.need[0].code + " · " + name(S.pending.need[0]), serial: S.pending.serial })) : null,
+      S.mode !== "pass" || S.pending ? ui.button({ label: t("cancel"), size: "sm", onClick: () => setMode("pass") }) : null));
+    ui.clear(loadsBox, h("div", { class: "st-events-head", text: t("st.materials") }),
+      S.expected.filter((x) => x.scan === "lot").map((x) => {
+        const l = S.loads.find((y) => y.item_id === x.item_id);
+        return h("div", { class: "st-load" + (l ? "" : " is-missing") }, ui.icon(l ? "box" : "alert", 16), h("span", { text: x.code }), h("b", {}, ui.ltr(l ? l.lot_no : t("st.not_loaded"))),
+          l ? h("small", {}, ui.ltr(String(l.units))) : null, ui.button({ label: l ? t("st.change_lot") : t("st.load"), size: "sm", onClick: () => loadLot(x, l) }));
+      }), S.expected.some((x) => x.scan === "serial") ? h("div", { class: "st-load" }, ui.icon("tag", 16), h("span", { text: t("st.key_parts") }),
+        h("b", { text: S.expected.filter((x) => x.scan === "serial").map((x) => x.code).join(", ") })) : null);
+  }
+  async function loadStation() {
+    if (!serial() || !S.station) { S.expected = []; S.loads = []; return; }
+    try { const r = await api("GET", "/api/stations/" + encodeURIComponent(S.station) + "/loads"); S.expected = r.expected; S.loads = r.open; } catch (e) { refused(e, t("st.materials")); }
+  }
+  async function serialScan(code) {
+    if (!S.station) { feedback("warn", t("st.pick_station"), t("st.pick_station_help"), "cpu"); return; }
+    if (S.stop) { feedback("warn", t("st.rej_stopped"), t("st.rej_stopped_help"), "pause"); return; }
+    if (S.mode === "scrap") return scrapSerial(code);
+    const needParts = S.mode === "pass" ? S.expected.filter((x) => x.scan === "serial") : [];
+    if (S.pending) {   // a key part of the unit scanned just before
+      S.pending.parts.push({ serial: code, itemId: S.pending.need[0].item_id });
+      S.pending.need.shift();
+      if (S.pending.need.length) { draw(); return; }
+      const p = S.pending; S.pending = null;
+      return postScan(p.serial, p.parts);
+    }
+    if (needParts.length) { S.pending = { serial: code, need: needParts.slice(), parts: [] }; feedback("warn", t("st.unit_scanned", { serial: code }), t("st.now_parts"), "scan"); draw(); return; }
+    return postScan(code, []);
+  }
+  async function postScan(code, parts) {
+    S.busy = true; draw();
+    const failing = S.mode === "fail";
+    try {
+      const r = await api("POST", "/api/units/scan", { commandId: commandId(), station: S.station, serial: code, workOrderId: S.wo.id, result: failing ? "fail" : "pass",
+        ...(failing ? { defectCode: S.defect } : {}), ...(parts.length ? { parts } : {}) });
+      const txt = code + " · " + r.op.code;
+      if (r.result === "fail") { feedback("bad", t("st.failed", { serial: code }), t("st.to_repair", { defect: S.defect }), "x-octagon"); log("bad", "x", txt + " · " + S.defect); setMode("pass"); }
+      else if (r.result === "complete") { feedback("ok", t("st.unit_done", { serial: code }), t("st.unit_done_help"), "check-circle"); log("ok", "check", txt + " · " + t("st.unit_done_short")); }
+      else { feedback("ok", t("st.passed", { serial: code }), r.next ? t("st.next_op", { op: r.next.code + " · " + name(r.next) }) : "", "check-circle"); log("ok", "check", txt); }
+      await Promise.all([loadOrders(S.wo.id), loadStation()]);
+    } catch (e) { refused(e, code); }
+    finally { S.busy = false; draw(); scan.focus(); }
+  }
+  async function scrapSerial(code) {
+    S.busy = true; draw();
+    try {
+      await api("POST", "/api/units/" + encodeURIComponent(code) + "/scrap", { commandId: commandId(), reasonCode: S.scrapReason, station: S.station });
+      feedback("bad", t("st.scrapped", { serial: code }), t("scrap." + S.scrapReason), "x-octagon"); log("bad", "x", code + " · " + t("scrap." + S.scrapReason));
+      setMode("pass");
+      await loadOrders(S.wo.id);
+    } catch (e) { refused(e, code); }
+    finally { S.busy = false; draw(); scan.focus(); }
+  }
+  async function pickDefect() {
+    if (blocked()) return;
+    let list = [];
+    try { list = (await api("GET", "/api/defect-codes?active=1")).map((d) => [d.code, name(d), d.category]); }
+    catch (_) { list = (SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP).map(([r]) => [r.toUpperCase(), t("scrap." + r), ""]); }
+    const d = ui.dialog({ title: t("st.fail_why"), icon: "x-octagon", width: 820,
+      body: h("div", { class: "st-reasons" }, list.map(([c, label]) => h("button", { type: "button", class: "st-reason st-reason-scrap", onclick: () => { d.close(); S.mode = "fail"; S.defect = c; S.pending = null; draw(); scan.focus(); } },
+        h("b", {}, ui.ltr(c)), h("span", { text: label })))) });
+    d.el.classList.add("st-dialog");
+  }
+  function pickScrap() {
+    if (blocked()) return;
+    const list = SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP;
+    const d = ui.dialog({ title: t("st.scrap_why"), icon: "x", width: 720,
+      body: h("div", { class: "st-reasons" }, list.map(([r, ic]) => h("button", { type: "button", class: "st-reason st-reason-scrap", onclick: () => { d.close(); S.mode = "scrap"; S.scrapReason = r; S.pending = null; draw(); scan.focus(); } },
+        ui.icon(ic, 34), h("span", { text: t("scrap." + r) })))) });
+    d.el.classList.add("st-dialog");
+  }
+  async function loadLot(x, current) {
+    let whs = [];
+    try { whs = (await api("GET", "/api/warehouses")).filter((w) => w.active); } catch (e) { refused(e, t("st.load")); return; }
+    const lot = ui.input({ dir: "ltr", placeholder: t("c.lot") });
+    const wh = ui.select({ options: whs.map((w) => [w.id, w.code + " · " + name(w)]), value: ((whs.find((w) => w.is_default) || whs[0]) || {}).id });
+    const err = h("div");
+    ui.dialog({ title: t("st.load") + " · " + x.code, subtitle: S.station, icon: "box", body: h("div", { class: "eco-form" },
+      current ? ui.banner("info", t("st.unload_first", { lot: current.lot_no })) : null, ui.field(t("c.lot"), lot, { required: true }), ui.field(t("f.warehouse"), wh), err),
+    actions: [{ label: t("cancel"), kind: "ghost", value: false }, { label: t("st.load"), kind: "primary", icon: "check", onClick: async () => {
+      try {
+        if (current) await api("POST", `/api/loads/${current.id}/unload`, { commandId: commandId() });
+        const r = await api("POST", "/api/stations/" + encodeURIComponent(S.station) + "/loads", { commandId: commandId(), itemId: x.item_id, lotNo: lot.value, warehouseId: wh.value });
+        log(r.verified ? "ok" : "warn", "box", x.code + " · " + r.lot + (r.verified ? "" : " · " + t("unit.unverified")));
+      } catch (e) { showErr(e, err); return false; }
+      await loadStation(); draw();
+    } }] });
+  }
+  const showErr = (e, box) => ui.clear(box, ui.banner("bad", e.message));
 
   // the connection is observed, never assumed: the real server's health every 10 s
   async function ping() {

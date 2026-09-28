@@ -259,3 +259,32 @@ the screen search also runs actions (the product's `commands`, theme, look, lang
 **Rejected:** copying Mizan's React front end into HR (breaks ADR-029, adds a Node build to a Python installer, splits the
 ecosystem's look); styling HR alone in `hr.css` (HR and GMES would drift); making modern the default for everyone now (the
 owner approved the dense G-MES philosophy for the shop floor).
+
+### ADR-034 — Engineering revisions are frozen; serial units follow their routing with their own hash-chained history
+**Context:** the owner asked for the rest of the product with a realistic television plant: every TV has a serial, passes a
+sequence of stations (panel loading, main board, function test, packing), fails and is repaired, and must be traceable to its
+parts and material lots. The production ledger (`exe_ledger`) holds QUANTITIES, which accounting receives; nothing held units.
+**Decision:**
+1. A new `eng` module owns the manufacturing facet of an item (ownership table: "BOM, routing, cycle time: manufacturing"):
+   routings and bills of materials as revisions. A draft is edited; approving freezes it (the server refuses, and database
+   triggers refuse, any change to its lines) and makes the previous approved revision obsolete. A work order stores the ids of
+   the approved revisions it was released with: a frozen revision IS the snapshot, no copy is kept. The plant's production
+   shifts and calendar live here too (the plant's working time; people's rosters stay HR-System's).
+2. An operation is performed on a line at the station named `<line code>-<operation code>`: routing and plant model meet by
+   code, never by a copied list of stations.
+3. A new `trk` module keeps serial units: `trk_event`, append-only and hash-chained (shared helper `kernel/chain.ts`), is the
+   unit history; `trk_unit`, `trk_genealogy` and the load counters are its projections. The route is enforced on the server
+   (first operation creates the unit; skipping a required operation, moving a held unit, scanning a unit in repair, a unit that
+   already passed, and starting more units than planned are refused). A FAIL goes to repair and returns to the SAME test.
+4. The two histories stay separate but are joined in the same transaction: a unit's last operation books ONE `COMPLETE` of
+   quantity 1 (lot = serial) in the production ledger; a scrapped unit ONE `SCRAP`. A health check proves units == ledger per
+   order. Consumption is booked before the order's final unit (lots used from station loads, and backflushed material that no
+   station scans), because accounting relies on consumption preceding the final completion.
+5. Key parts are scanned where the BOM says (`scan: serial`): a unit made here becomes `consumed` into its parent; a bought-in
+   serial is accepted once and marked not verified. Material lots are loaded on stations (`scan: lot`); a lot nobody registered
+   is accepted and marked not verified (ownership: supplier lots belong to accounting when it is connected).
+**Rejected:** adding unit transaction types to `exe_ledger` (SQLite cannot change its CHECK without rebuilding the audited
+ledger table, and adding fields would change the hash of every old line; accounting does not need unit moves); copying the
+routing into each order (a frozen revision is already immutable); one row per unit updated in place without history (a
+changed status would erase what happened); per-unit consumption lines (a million ledger lines a month for screws);
+multi-line routings with station lists (a code rule is simpler and cannot drift).

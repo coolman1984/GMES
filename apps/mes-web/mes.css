@@ -239,3 +239,66 @@
 /* the line board header: the big line picker must not squeeze the title and the day onto two lines */
 .bd-pick { max-width: 640px; }
 .bd-title span, .bd-shift { white-space: nowrap; }
+/* ---------- serial flow (phase B1): station serial mode, unit history, routings, WIP, planning ---------- */
+.st-serial-only { display: none; }
+.st.is-serial .st-serial-only { display: flex; }
+.st.is-serial .st-buttons > .st-big:not(.st-serial-only):not(.st-big-stop) { display: none; }
+.st-mode-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--eco-radius); border: 2px solid var(--c); background: var(--eco-surface); --c: var(--st-run); }
+.st-mode-card.st-r-bad { --c: var(--st-down); } .st-mode-card.st-r-warn { --c: var(--st-idle); }
+.st-mode-card b { font-size: 18px; color: var(--c); }
+.st-mode-card small { color: var(--eco-text-3); font-weight: 600; letter-spacing: .02em; }
+.st-pending { display: flex; gap: 6px; align-items: center; font-weight: 600; color: var(--eco-warn); }
+.st-loads { display: flex; flex-direction: column; gap: 6px; }
+.st-load { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.st-load b { font-family: var(--eco-mono); } .st-load small { margin-inline-start: auto; color: var(--eco-text-3); }
+.st-load.is-missing { border-color: var(--eco-bad); background: var(--eco-bad-soft); }
+.st-reason b { font: 700 18px var(--eco-mono); }
+
+.mes-route { list-style: none; display: flex; flex-wrap: wrap; gap: 0; margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--eco-line); }
+.mes-route li { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 86px; padding: 0 6px; text-align: center; --c: var(--eco-line-2); }
+.mes-route li::before { content: ""; position: absolute; top: 10px; inset-inline-start: -50%; width: 100%; height: 2px; background: var(--c); z-index: 0; }
+.mes-route li:first-child::before { display: none; }
+.mes-route-dot { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--eco-surface); border: 2px solid var(--c); color: #fff; }
+.mes-route li b { font: 650 12px var(--eco-mono); margin-top: 4px; } .mes-route li small { color: var(--eco-text-3); font-size: var(--eco-fs-xs); }
+.mes-route-done { --c: var(--st-run) !important; } .mes-route-done .mes-route-dot { background: var(--st-run); }
+.mes-route-next { --c: var(--eco-accent) !important; } .mes-route-next .mes-route-dot { box-shadow: 0 0 0 4px var(--eco-accent-soft); }
+.mes-route-repair { --c: var(--st-hold) !important; } .mes-route-repair .mes-route-dot { background: var(--st-hold); }
+.mes-route-scrapped { --c: var(--st-down) !important; } .mes-route-scrapped .mes-route-dot { background: var(--st-down); }
+.mes-route-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--eco-line); color: var(--eco-text-3); }
+.mes-op { padding: 2px 7px; border-radius: 4px; font: 650 11.5px var(--eco-mono); background: var(--eco-surface-3); color: var(--eco-text); }
+.mes-op-test { background: var(--eco-warn-soft); color: var(--eco-warn); } .mes-op-inspection { background: var(--eco-accent-soft); color: var(--eco-accent); } .mes-op-pack { background: var(--eco-ok-soft); color: var(--eco-ok); }
+.mes-fill-grid { flex: 1; min-height: 200px; display: flex; } .mes-fill-grid > .eco-grid { flex: 1; }
+.mes-rows { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow: auto; }
+.mes-rows-table { border-collapse: collapse; width: 100%; }
+.mes-rows-table th { text-align: start; font-size: var(--eco-fs-xs); color: var(--eco-text-3); padding: 2px 4px; }
+.mes-rows-table td { padding: 2px 4px; } .mes-rows-table td > * { width: 100%; }
+.mes-cal { display: flex; flex-direction: column; overflow: auto; }
+.mes-unit { display: flex; flex-direction: column; min-height: 0; height: 100%; overflow: auto; }
+.mes-unit > .eco-empty { margin: auto; }
+.mes-unit-head { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--eco-line); }
+.mes-unit-serial { font: 700 22px var(--eco-mono); letter-spacing: -.01em; }
+.mes-unit .eco-tabset { flex: 1; min-height: 260px; }
+.mes-serial-box { display: flex; align-items: center; gap: 6px; } .mes-serial-box input { width: 240px; font-family: var(--eco-mono); }
+.mes-trace-info { padding: 12px 14px; }
+.mes-ev-FAIL { background: var(--st-down) !important; } .mes-ev-REPAIR { background: var(--st-hold) !important; } .mes-ev-COMPLETE, .mes-ev-SHIP { background: var(--st-run) !important; } .mes-ev-HOLD { background: var(--st-hold) !important; }
+.mes-wip { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-wip-order { border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.mes-wip-order > header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--eco-line); }
+.mes-wip-order > header .eco-progress { width: 180px; }
+.mes-wip-route { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; padding: 10px 12px; }
+.mes-wip-op { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--eco-line); border-radius: 6px; background: var(--eco-surface-2); min-height: 76px; }
+.mes-wip-op small { font: 650 11px var(--eco-mono); color: var(--eco-text-3); } .mes-wip-name { font-size: var(--eco-fs-xs); color: var(--eco-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mes-wip-op b { font-size: 20px; color: var(--eco-text-3); } .mes-wip-op.has b { color: var(--eco-text); } .mes-wip-op.has { border-color: var(--eco-accent); background: var(--eco-accent-soft); }
+.mes-wip-op.is-repair { border-color: var(--st-hold); } .mes-wip-op.is-held { border-color: var(--st-down); background: var(--eco-bad-soft); }
+.mes-wip-tag { display: inline-flex; gap: 3px; align-items: center; font: 600 11px var(--eco-mono); } .mes-wip-tag.is-repair { color: var(--st-hold); } .mes-wip-tag.is-held { color: var(--st-down); }
+.mes-wip-age { font-size: var(--eco-fs-xs); color: var(--eco-text-3); }
+.mes-plan { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; overflow: auto; height: 100%; }
+.mes-plan-grid { display: flex; flex-direction: column; border: 1px solid var(--eco-line); border-radius: var(--eco-radius); background: var(--eco-surface); }
+.mes-plan-hd, .mes-plan-row { display: grid; grid-template-columns: 200px repeat(var(--shifts), minmax(0, 1fr)); }
+.mes-plan-hd span { padding: 6px 10px; font-weight: 650; font-size: var(--eco-fs-sm); color: var(--eco-text-2); border-bottom: 1px solid var(--eco-line); background: var(--eco-surface-2); }
+.mes-plan-row + .mes-plan-row { border-top: 1px solid var(--eco-line); }
+.mes-plan-line { display: flex; flex-direction: column; padding: 8px 10px; border-inline-end: 1px solid var(--eco-line); } .mes-plan-line b { font-family: var(--eco-mono); }
+.mes-plan-cell { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-inline-end: 1px solid var(--eco-line); min-height: 60px; }
+.mes-plan-cell.is-over { background: var(--eco-bad-soft); }
+.mes-plan-wo { display: flex; align-items: center; gap: 6px; font-size: var(--eco-fs-sm); } .mes-plan-wo b { font-family: var(--eco-mono); }
+.mes-plan-load .eco-progress { width: 100%; }
