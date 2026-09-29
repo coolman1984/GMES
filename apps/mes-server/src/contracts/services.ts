@@ -237,6 +237,8 @@ export interface ExeService {
   complete(t: Db, caller: Caller, woId: string, input: Booking & { qty: number; lotNo?: string }): Promise<{ ledgerSeq: number; status: string }>;
   scrap(t: Db, caller: Caller, woId: string, input: Booking & { qty: number; reasonCode: string }): Promise<{ ledgerSeq: number; status: string }>;
   consume(t: Db, caller: Caller, woId: string, input: Booking & { itemId: string; qty: number; warehouseId: string; lotNo?: string }): Promise<{ ledgerSeq: number }>;
+  /** Release a work order (planning releases its firmed orders through this). */
+  create(t: Db, caller: Caller, input: { commandId: string; itemId: string; qty: number; warehouseId: string; line?: string; productionDate?: string; dueDate?: string; priority?: number; plannedOrderId?: string; pegging?: unknown }): Promise<{ id: string; code: string }>;
 }
 
 /** A serial unit as the tracking module holds it (a projection of its unit events). */
