@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { AttendanceDayV1, EmployeeV1, ItemV1, QualificationV1, ScheduleDayV1, WarehouseV1 } from '@eco/contracts';
+import { parseQty, type AttendanceDayV1, type EmployeeV1, type ItemV1, type QualificationV1, type ScheduleDayV1, type WarehouseV1 } from '@eco/contracts';
+import { applyCommercial, applyItemPlanning, commercialMigration, commercialRoutes } from './commercial.js';
 import type { MdmService, MirrorEmployee, MirrorItem, MirrorWarehouse, SnapshotResult } from '../../contracts/services.js';
 import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
@@ -135,6 +136,7 @@ export const mdmModule: AppModule = {
       `,
     },
     plantMigration,
+    commercialMigration,
   ],
 
   setup(ctx) {
@@ -155,6 +157,11 @@ export const mdmModule: AppModule = {
       applyAttendanceDay: (t, s) => applyWorkforce(ctx, t, 'attendance_day', s),
       applyScheduleDay: (t, s) => applyWorkforce(ctx, t, 'schedule_day', s),
       applyQualification: (t, s) => applyWorkforce(ctx, t, 'qualification', s),
+      applyParty: (t, s) => applyCommercial(ctx, t, 'party', s),
+      applySalesOrder: (t, s) => applyCommercial(ctx, t, 'sales_order', s),
+      applyDemandPlan: (t, s) => applyCommercial(ctx, t, 'demand_plan', s),
+      applyStockPosition: (t, s) => applyCommercial(ctx, t, 'stock_position', s),
+      applyPurchaseOrder: (t, s) => applyCommercial(ctx, t, 'purchase_order', s),
       async resolvePerson(t, ref, at) {
         if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;
         const e = await t.get<MirrorEmployee>('SELECT * FROM mdm_employee WHERE id = ?', [ref.id]);
@@ -181,6 +188,7 @@ export const mdmModule: AppModule = {
   routes(kit, ctx) {
     const { http, require } = kit;
     plantRoutes(kit, ctx);
+    commercialRoutes(kit, ctx);
     http.get('/api/items', async (req) => {
       require(req, 'mdm.items.read');
       return ctx.db.all('SELECT * FROM mdm_item ORDER BY code');
@@ -336,6 +344,7 @@ async function apply(ctx: Ctx, t: Db, kind: 'item' | 'warehouse', s: ItemV1 | Wa
       { id: i.id, code: i.code, en: i.name.en, ar: i.name.ar, kind: i.kind, st: i.stock_tracked ? 1 : 0, tr: i.tracking, uom: i.base_uom,
         active: i.active ? 1 : 0, v: i.version, owner, oapp: i.origin.app, okey: i.origin.key, now },
     );
+    await applyItemPlanning(ctx, t, i);   // how the owner says the item is planned and bought (or none)
   } else {
     const w = s as WarehouseV1;
     await t.run(

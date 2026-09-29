@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { sourceOf, validateEvent, zAckV1, type AttendanceDayV1, type EmployeeV1, type Envelope, type ItemV1, type QualificationV1, type ScheduleDayV1, type WarehouseV1, companyOfSource } from '@eco/contracts';
+import {
+  sourceOf, validateEvent, zAckV1, companyOfSource,
+  type AttendanceDayV1, type DemandPlanV1, type EmployeeV1, type Envelope, type ItemV1, type PartyV1, type PurchaseOrderV1, type QualificationV1,
+  type SalesOrderV1, type ScheduleDayV1, type StockPositionV1, type WarehouseV1,
+} from '@eco/contracts';
 import type { EcoService } from '../../contracts/services.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { AppError } from '../../kernel/errors.js';
@@ -24,6 +28,7 @@ const APP = 'gmes';
  */
 export const ACCEPTED_TYPES = [
   'eco.item.v1', 'eco.warehouse.v1', 'eco.employee.v1', 'eco.attendance_day.v1', 'eco.schedule_day.v1', 'eco.qualification.v1',
+  'eco.party.v1', 'acc.sales_order.v1', 'acc.demand_plan.v1', 'acc.stock_position.v1', 'acc.purchase_order.v1',
 ] as const;
 
 export const ecoModule: AppModule = {
@@ -162,6 +167,11 @@ export const ecoModule: AppModule = {
             else if (env.type === 'eco.attendance_day.v1') r = await mdm.applyAttendanceDay(t, env.data as AttendanceDayV1);
             else if (env.type === 'eco.schedule_day.v1') r = await mdm.applyScheduleDay(t, env.data as ScheduleDayV1);
             else if (env.type === 'eco.qualification.v1') r = await mdm.applyQualification(t, env.data as QualificationV1);
+            else if (env.type === 'eco.party.v1') r = await mdm.applyParty(t, env.data as PartyV1);
+            else if (env.type === 'acc.sales_order.v1') r = await mdm.applySalesOrder(t, env.data as SalesOrderV1);
+            else if (env.type === 'acc.demand_plan.v1') r = await mdm.applyDemandPlan(t, env.data as DemandPlanV1);
+            else if (env.type === 'acc.stock_position.v1') r = await mdm.applyStockPosition(t, env.data as StockPositionV1);
+            else if (env.type === 'acc.purchase_order.v1') r = await mdm.applyPurchaseOrder(t, env.data as PurchaseOrderV1);
             else throw new AppError(400, 'eco.not_accepted', `manufacturing does not consume ${env.type}`);
             await t.run('INSERT INTO eco_inbox (source, event_id, type, result, received_at) VALUES (?, ?, ?, ?, ?)', [
               env.source, env.id, env.type, r, ctx.clock.now().toISOString(),

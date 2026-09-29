@@ -1,4 +1,4 @@
-import type { AttendanceDayV1, EmployeeV1, ItemV1, QualificationV1, ScheduleDayV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, DemandPlanV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
 import type { Db } from '../kernel/db.js';
 import type { Caller } from '../kernel/modules.js';
 
@@ -66,6 +66,12 @@ export interface MdmService {
   applyAttendanceDay(t: Db, snapshot: AttendanceDayV1): Promise<SnapshotResult>;
   applyScheduleDay(t: Db, snapshot: ScheduleDayV1): Promise<SnapshotResult>;
   applyQualification(t: Db, snapshot: QualificationV1): Promise<SnapshotResult>;
+  /** Accounting's commercial truth, mirrored read-only for planning (only from Mizan, only when it owns items here). */
+  applyParty(t: Db, snapshot: PartyV1): Promise<SnapshotResult>;
+  applySalesOrder(t: Db, snapshot: SalesOrderV1): Promise<SnapshotResult>;
+  applyDemandPlan(t: Db, snapshot: DemandPlanV1): Promise<SnapshotResult>;
+  applyStockPosition(t: Db, snapshot: StockPositionV1): Promise<SnapshotResult>;
+  applyPurchaseOrder(t: Db, snapshot: PurchaseOrderV1): Promise<SnapshotResult>;
   /**
    * The person a production command names, checked against the HR mirror when HR owns people
    * (ownership.person = 'hr'). With 'none' (manufacturing alone, or rollback) the reference is

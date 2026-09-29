@@ -65,7 +65,7 @@ export async function signIn(s: TestServer, login: string, password: string) {
 
 let seq = 0;
 /** A master-data snapshot from Mizan as the link sends it. */
-export function snapshot(type: 'eco.item.v1' | 'eco.warehouse.v1' | 'eco.employee.v1' | 'eco.attendance_day.v1' | 'eco.schedule_day.v1' | 'eco.qualification.v1', data: Record<string, unknown>, id?: string, source = MIZAN_SOURCE) {
+export function snapshot(type: string, data: Record<string, unknown>, id?: string, source = MIZAN_SOURCE) {
   seq++;
   return {
     specversion: '1.0', id: id ?? uuidv7(Date.UTC(2026, 8, 27) + seq, new Uint8Array(10).fill(seq & 0xff)), source, type,
