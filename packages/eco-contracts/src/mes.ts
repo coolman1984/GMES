@@ -75,9 +75,15 @@ export type WorkOrderClosedV1 = z.infer<typeof zWorkOrderClosedV1>;
  * (stock relief, invoice). Serials are listed for serialised items so a recall can reach the customer.
  */
 export const zShipmentDispatchedV1 = z.object({
-  shipment: z.object({ id: zUuid, code: zCode, customer: z.string().min(1).max(200), destination: z.string().max(200).optional() }),
+  shipment: z.object({
+    id: zUuid, code: zCode, customer: z.string().min(1).max(200), destination: z.string().max(200).optional(),
+    /** The customer as accounting knows it (eco.party.v1), when the shipping order was made from a sales order (added 2026-09-29). */
+    customer_party: zRef.optional(),
+  }),
   container: z.object({ id: zUuid, number: zCode, seal: zCode, type: zCode }),
   lines: z.array(z.object({
+    /** The sales order line this quantity delivers (acc.sales_order.v1), when known (added 2026-09-29, optional). */
+    sales_order: z.object({ id: zUuid, code: zCode, line_no: z.number().int().positive() }).optional(),
     item: zRef,
     qty: zPositiveDecimal,
     uom: zCode,
