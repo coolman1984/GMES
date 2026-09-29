@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { AppError } from '../../kernel/errors.js';
 import type { AppModule, Ctx, HealthCheck } from '../../kernel/modules.js';
 import { linkMizanCheck } from './link-health.js';
+import { peerRoutes, peersMigration, pushAll } from './peers.js';
 
 /**
  * The integration layer on manufacturing's side (ADR-016).
@@ -35,7 +36,7 @@ export const ACCEPTED_TYPES = [
 export const ecoModule: AppModule = {
   id: 'eco',
   dependsOn: ['system', 'mdm'],
-  scopes: ['eco.feed.read', 'eco.inbox.write', 'eco.acks.write', 'eco.events.read'],
+  scopes: ['eco.feed.read', 'eco.inbox.write', 'eco.acks.write', 'eco.events.read', 'eco.peers.manage'],
   migrations: [
     {
       id: '001_outbox_inbox_acks',
@@ -78,6 +79,7 @@ export const ecoModule: AppModule = {
         );
       `,
     },
+    peersMigration,
   ],
 
   setup(ctx) {
@@ -102,8 +104,10 @@ export const ecoModule: AppModule = {
     ctx.services.provide('eco', service);
   },
 
-  routes({ http, require }, ctx) {
+  routes(kit, ctx) {
+    const { http, require } = kit;
     const source = sourceOf(ctx.config.companyId, APP, ctx.config.node);
+    peerRoutes(kit, ctx, source, toEnvelope);
 
     http.get('/eco/v1/feed', async (req) => {
       require(req, 'eco.feed.read');
@@ -242,3 +246,16 @@ function toEnvelope(source: string, r: Row) {
 }
 
 export type { Ctx };
+
+/** The push loop of the running server (every 10 s by default; GMES_PUSH_LOOP=off stops it, e.g. for the scenario engine). */
+export function startPusher(ctx: Ctx, everyMs = 10_000): () => void {
+  const source = sourceOf(ctx.config.companyId, APP, ctx.config.node);
+  let busy = false;
+  const timer = setInterval(() => {
+    if (busy) return;
+    busy = true;
+    pushAll(ctx, source, toEnvelope).catch(() => undefined).finally(() => { busy = false; });
+  }, everyMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}
