@@ -18,6 +18,14 @@ import { linkMizanCheck } from './link-health.js';
  */
 const APP = 'gmes';
 
+/**
+ * The event types manufacturing's inbox applies. Everything else is refused with eco.not_accepted, whatever the contract:
+ * above all `hr.payroll_period.v1`, which carries money (a test checks that no accepted type does).
+ */
+export const ACCEPTED_TYPES = [
+  'eco.item.v1', 'eco.warehouse.v1', 'eco.employee.v1', 'eco.attendance_day.v1', 'eco.schedule_day.v1', 'eco.qualification.v1',
+] as const;
+
 export const ecoModule: AppModule = {
   id: 'eco',
   dependsOn: ['system', 'mdm'],
@@ -138,6 +146,10 @@ export const ecoModule: AppModule = {
         const env = v.data as Envelope;
         if (companyOfSource(env.source) !== ctx.config.companyId) {
           results.push({ id, result: 'rejected', code: 'eco.foreign_company', message: `event from another company: ${env.source}` });
+          continue;
+        }
+        if (!(ACCEPTED_TYPES as readonly string[]).includes(env.type)) {
+          results.push({ id, result: 'rejected', code: 'eco.not_accepted', message: `manufacturing does not consume ${env.type}` });
           continue;
         }
         try {

@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\common.ps1"
 
 $repo = if ($env:HR_REPO) { $env:HR_REPO } else { 'https://github.com/coolman1984/HR-System.git' }
-$pin = if ($env:HR_PIN) { $env:HR_PIN } else { '45ec34af2477d9d53aa0ce751a241545e5d3bba3' }
+$pin = if ($env:HR_PIN) { $env:HR_PIN } else { '83cee2de68e185630e968d1dec9d56c329677410' }
 $dest = if ($env:HR_DIR) { $env:HR_DIR } else { Join-Path (Join-Path $script:Root '.cache') 'hr-system' }
 
 if (-not (Test-Path -LiteralPath (Join-Path $dest '.git'))) { Invoke-Native 'git clone' 'git' @('clone', '--quiet', $repo, $dest) }

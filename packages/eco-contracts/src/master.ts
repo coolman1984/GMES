@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zCode, zDate, zName, zOrigin, zRef, zUuid } from './common.js';
+import { zCode, zDate, zDecimal, zName, zOrigin, zRef, zUuid } from './common.js';
 
 /**
  * Master-data contracts: a FULL snapshot of the entity as its owner sees it, with a version
@@ -25,6 +25,24 @@ export const zItemV1 = z.object({
   base_uom: zCode,
   /** Alternative units: 1 unit = factor base units, as an exact decimal string. */
   units: z.array(z.object({ code: zCode, factor: z.string() })).max(50),
+  /**
+   * How the item is planned and bought (added 2026-09-29, optional: older snapshots have none). Quantities and days only,
+   * never a price. OWNER: accounting (Mizan) unless manufacturing is the fallback owner of items.
+   */
+  planning: z.object({
+    material_type: z.enum(['raw', 'semi', 'finished', 'packaging', 'service']),
+    procurement: z.enum(['buy', 'make']),
+    /** Planned days from placing the order to the goods in the plant warehouse (buy items). */
+    lead_time_days: z.number().int().min(0).max(730),
+    /** Minimum order quantity; "0" = none. */
+    moq: zDecimal,
+    lot_rule: z.enum(['lot_for_lot', 'fixed', 'multiple']),
+    lot_size: zDecimal,
+    safety_stock: zDecimal,
+    default_supplier: zRef.optional(),
+    /** Days for the fast alternative (air freight); planning uses it to say what would still make the date. */
+    expedite_lead_time_days: z.number().int().min(0).max(730).optional(),
+  }).optional(),
 });
 export type ItemV1 = z.infer<typeof zItemV1>;
 
@@ -95,6 +113,8 @@ export const zScheduleDayV1 = z.object({
   work_date: zDate,
   status: z.enum(['work', 'rest', 'holiday', 'unscheduled']),
   shift_code: zCode.optional(),
+  /** The line (HR work centre = manufacturing's line code) the person works on that day, when HR knows it (added 2026-09-29). */
+  line: zCode.optional(),
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
   end: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).optional(),
   paid_minutes: z.number().int().min(0).max(1440),

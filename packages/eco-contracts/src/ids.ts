@@ -58,11 +58,18 @@ export const newUuidv7 = (): string => uuidv7(Date.now(), randomBytes(10));
 /** Global id of an entity owned by Mizan (integer keys). */
 export const mizanId = (
   companyId: string,
-  type: 'item' | 'warehouse' | 'lot' | 'party' | 'account' | 'sales_order' | 'demand_plan' | 'purchase_order' | 'stock_position',
+  type: 'item' | 'warehouse' | 'lot' | 'party' | 'account' | 'sales_order' | 'demand_plan' | 'purchase_order' | 'stock_position' | 'goods_receipt',
   localId: number | string,
 ): string =>
   uuidv5(companyId, `mizan:${type}:${localId}`);
 
 /** Global id of an entity owned by the HR system, whose own keys are stable text codes (E000001, TIM02-00001). */
-export const hrId = (companyId: string, type: 'employee' | 'attendance' | 'shift' | 'org_unit' | 'schedule' | 'qualification' | 'skill', code: string): string =>
+export const hrId = (companyId: string, type: 'employee' | 'attendance' | 'shift' | 'org_unit' | 'schedule' | 'qualification' | 'skill' | 'payroll_period', code: string): string =>
   uuidv5(companyId, `hr:${type}:${code}`);
+
+/** Global id of a labour-day snapshot made by manufacturing: one per person and production day. */
+export const laborId = (companyId: string, employeeCode: string, productionDate: string): string =>
+  uuidv5(companyId, `gmes:labor:${employeeCode}:${productionDate}`);
+
+/** Global id of an entity owned by Space Planner (its project ids are text). */
+export const spaceId = (companyId: string, type: 'layout', key: string): string => uuidv5(companyId, `space:${type}:${key}`);

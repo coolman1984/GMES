@@ -108,6 +108,85 @@
           "factor"
         ]
       }
+    },
+    "planning": {
+      "type": "object",
+      "properties": {
+        "material_type": {
+          "type": "string",
+          "enum": [
+            "raw",
+            "semi",
+            "finished",
+            "packaging",
+            "service"
+          ]
+        },
+        "procurement": {
+          "type": "string",
+          "enum": [
+            "buy",
+            "make"
+          ]
+        },
+        "lead_time_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 730
+        },
+        "moq": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,3}0*)?$"
+        },
+        "lot_rule": {
+          "type": "string",
+          "enum": [
+            "lot_for_lot",
+            "fixed",
+            "multiple"
+          ]
+        },
+        "lot_size": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,3}0*)?$"
+        },
+        "safety_stock": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,3}0*)?$"
+        },
+        "default_supplier": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "id",
+            "code"
+          ]
+        },
+        "expedite_lead_time_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 730
+        }
+      },
+      "required": [
+        "material_type",
+        "procurement",
+        "lead_time_days",
+        "moq",
+        "lot_rule",
+        "lot_size",
+        "safety_stock"
+      ]
     }
   },
   "required": [

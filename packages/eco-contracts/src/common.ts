@@ -24,7 +24,15 @@ export const zDecimal = z
   },
   'exact decimal string with at most 3 decimals',
 );
-export const zPositiveDecimal = zDecimal.refine((v) => parseQty(v) > 0, 'must be greater than zero');
+// zod runs every check even after one failed, so a value that is not a valid quantity reaches this one too: it must be
+// refused ("not greater than zero"), never thrown (an inbox request with a bad quantity must get a clean refusal).
+export const zPositiveDecimal = zDecimal.refine((v) => {
+  try {
+    return parseQty(v) > 0;
+  } catch {
+    return false;
+  }
+}, 'must be greater than zero');
 
 export const zQuantity = z.object({ value: zPositiveDecimal, uom: zCode });
 

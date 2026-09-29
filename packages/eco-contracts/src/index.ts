@@ -3,7 +3,10 @@ import { zAckV1 } from './ack.js';
 import { zEnvelope } from './envelope.js';
 import { zAttendanceDayV1, zEmployeeV1, zItemV1, zQualificationV1, zScheduleDayV1, zWarehouseV1 } from './master.js';
 import { zMaterialConsumedV1, zProductionCompletedV1, zProductionScrappedV1, zShipmentDispatchedV1, zWorkOrderClosedV1 } from './mes.js';
-import { zCrewRequirementV1, zDemandPlanV1, zPartyV1, zPurchaseOrderV1, zPurchaseRequisitionV1, zSalesOrderV1, zStockPositionV1, zSupplyPlanV1 } from './plan.js';
+import {
+  zCrewRequirementV1, zDemandPlanV1, zGoodsReceiptV1, zLaborDayV1, zLayoutSnapshotV1, zLotDecisionV1, zPartyV1, zPayrollPeriodV1, zPlantNodeV1,
+  zPurchaseOrderV1, zPurchaseRequisitionV1, zSalesOrderV1, zStockPositionV1, zSupplyPlanV1,
+} from './plan.js';
 
 export * from './quantity.js';
 export * from './ids.js';
@@ -38,6 +41,12 @@ export const CONTRACTS = {
   'mes.purchase_requisition.v1': zPurchaseRequisitionV1,
   'mes.supply_plan.v1': zSupplyPlanV1,
   'mes.crew_requirement.v1': zCrewRequirementV1,
+  'acc.goods_receipt.v1': zGoodsReceiptV1,
+  'mes.lot_decision.v1': zLotDecisionV1,
+  'mes.labor_day.v1': zLaborDayV1,
+  'hr.payroll_period.v1': zPayrollPeriodV1,
+  'eco.plant_node.v1': zPlantNodeV1,
+  'eco.layout.snapshot.v1': zLayoutSnapshotV1,
 } as const satisfies Record<string, z.ZodType>;
 
 export type ContractType = keyof typeof CONTRACTS;

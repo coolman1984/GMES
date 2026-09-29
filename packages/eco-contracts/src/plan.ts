@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zCode, zDate, zDecimal, zName, zOrigin, zPositiveDecimal, zRef, zTime, zUuid } from './common.js';
+import { zCode, zDate, zDecimal, zName, zOrigin, zPerformedBy, zPositiveDecimal, zRef, zTime, zUuid } from './common.js';
 
 /**
  * Plan-to-produce and order-to-cash contracts (2026-09-29, ADR-038).
@@ -188,3 +188,145 @@ export const zCrewRequirementV1 = z.object({
   origin: zOrigin,
 });
 export type CrewRequirementV1 = z.infer<typeof zCrewRequirementV1>;
+
+// ------------------------------------------------------------------ receiving and quality of material (2026-09-29)
+
+/**
+ * A posted goods receipt as accounting holds it. OWNER: accounting (Mizan). Manufacturing creates the material lots to
+ * inspect from it; a voided receipt withdraws them (refused if a lot was already used). No prices.
+ */
+export const zGoodsReceiptV1 = z.object({
+  ...snapshot,
+  purchase_order: zRef.optional(),
+  supplier: zRef,
+  receipt_date: zDate,
+  warehouse: zRef,
+  status: z.enum(['posted', 'voided']),
+  lines: z.array(z.object({
+    line_no: z.number().int().positive(),
+    item: zRef,
+    qty: zPositiveDecimal,
+    uom: zCode,
+    lot_no: z.string().min(1).max(64).optional(),
+    supplier_lot: z.string().min(1).max(64).optional(),
+    expiry: zDate.optional(),
+    po_line_no: z.number().int().positive().optional(),
+  })).min(1).max(500),
+});
+export type GoodsReceiptV1 = z.infer<typeof zGoodsReceiptV1>;
+
+/**
+ * What manufacturing's incoming inspection decided about a received material lot (or a hold / release afterwards).
+ * OWNER: manufacturing (quality). Accounting moves the rejected quantity out of usable stock and raises the supplier
+ * claim; it decides the money. Identity: a new UUIDv7 per decision (a later decision on the same lot is a new event).
+ */
+export const zLotDecisionV1 = z.object({
+  id: zUuid,
+  code: zCode,
+  version: z.number().int().positive(),
+  origin: zOrigin,
+  item: zRef,
+  lot_no: z.string().min(1).max(64),
+  goods_receipt: zRef.optional(),
+  supplier: zRef.optional(),
+  decision: z.enum(['accepted', 'rejected', 'partially_accepted', 'on_hold', 'released']),
+  accepted_qty: zDecimal,
+  rejected_qty: zDecimal,
+  uom: zCode,
+  inspection: z.object({ plan_code: zCode, aql: z.string().min(1).max(20), sample_size: z.number().int().min(0), defects: z.number().int().min(0) }).optional(),
+  defect_codes: z.array(zCode).max(50),
+  decided_at: zTime,
+  decided_by: zPerformedBy,
+});
+export type LotDecisionV1 = z.infer<typeof zLotDecisionV1>;
+
+// ------------------------------------------------------------------ people and pay (2026-09-29)
+
+/**
+ * The minutes a person worked in production on one production day, split by line and station. OWNER: manufacturing
+ * (what was booked where); HR compares it with attendance and uses it as overtime evidence and payroll input.
+ * Identity: UUIDv5(company, "gmes:labor:<employee code>:<production date>"). A snapshot: a recompute is a newer version.
+ */
+export const zLaborDayV1 = z.object({
+  id: zUuid,
+  version: z.number().int().positive(),
+  origin: zOrigin,
+  employee: zRef,
+  production_date: zDate,
+  shift: zCode.optional(),
+  entries: z.array(z.object({ line: zCode, station: zCode.optional(), minutes: z.number().int().min(0).max(1440) })).max(50),
+  total_minutes: z.number().int().min(0).max(1440),
+});
+export type LaborDayV1 = z.infer<typeof zLaborDayV1>;
+
+/**
+ * HR's approved payroll period as totals per cost centre and account key, never names and never per person.
+ * OWNER: HR (calculation). Accounting books ONE balanced journal per period and cost centre and maps each key to an
+ * account. Money is integer piastres. Manufacturing NEVER accepts this type (a test enforces it).
+ * Identity: UUIDv5(company, "hr:payroll_period:<period>:<run>").
+ */
+export const zPayrollPeriodV1 = z.object({
+  ...snapshot,
+  period: zPeriod,
+  run: z.number().int().min(1),
+  currency: z.literal('EGP'),
+  pay_date: zDate,
+  status: z.enum(['approved', 'reversed']),
+  lines: z.array(z.object({
+    cost_center: zCode,
+    account_key: z.enum([
+      'gross_earnings', 'overtime', 'night_allowance', 'employer_social_insurance', 'agency_labour',
+      'employee_social_insurance', 'salary_tax', 'other_deductions', 'net_payable',
+    ]),
+    amount_minor: z.number().int().min(0),
+  })).min(1).max(2000),
+  headcount: z.number().int().min(0),
+  hours: z.object({ regular: z.number().int().min(0), overtime_day: z.number().int().min(0), overtime_night: z.number().int().min(0) }),
+});
+export type PayrollPeriodV1 = z.infer<typeof zPayrollPeriodV1>;
+
+// ------------------------------------------------------------------ the plant and its layout (2026-09-29)
+
+/** A node of the plant model (plant, area, line, station, equipment). OWNER: manufacturing. Space Planner tags drawings with it. */
+export const zPlantNodeV1 = z.object({
+  ...snapshot,
+  name: zName,
+  type: z.enum(['plant', 'area', 'line', 'station', 'equipment']),
+  parent: zRef.optional(),
+  active: z.boolean(),
+  capacity_per_shift: z.number().int().min(0).optional(),
+  /** People the node needs per shift (a station: its operators; a line: its leader, handlers and repair). */
+  crew: z.number().int().min(0).max(1000).optional(),
+});
+export type PlantNodeV1 = z.infer<typeof zPlantNodeV1>;
+
+const zEcoRef = z.object({ type: z.enum(['plant_node', 'warehouse', 'storage_location']), id: zUuid, code: zCode });
+
+/**
+ * One revision of a Space Planner project: where the things are. OWNER: Space Planner (geometry). Lengths are integers
+ * in its own storage unit, 0.1 mm, and are never rounded; angles are millidegrees. Manufacturing keeps only the
+ * position of the plant nodes the drawing is tagged with. Identity: UUIDv5(company, "space:layout:<project id>").
+ */
+export const zLayoutSnapshotV1 = z.object({
+  ...snapshot,
+  name: z.string().min(1).max(200),
+  revision: z.number().int().min(0),
+  site: zRef.optional(),
+  length_unit: z.literal('0.1mm'),
+  items: z.array(z.object({
+    item_id: z.string().min(1).max(100),
+    name: z.string().min(1).max(200),
+    category: z.string().min(1).max(100),
+    x: z.number().int(), y: z.number().int(),
+    rotation_mdeg: z.number().int().min(0).max(359999),
+    w: z.number().int().min(0), d: z.number().int().min(0), h: z.number().int().min(0),
+    eco_ref: zEcoRef.optional(),
+  })).max(20000),
+  zones: z.array(z.object({
+    id: z.string().min(1).max(100),
+    kind: z.string().min(1).max(100),
+    polygon: z.array(z.tuple([z.number().int(), z.number().int()])).min(3).max(500),
+    eco_ref: zEcoRef.optional(),
+  })).max(2000),
+});
+export type LayoutSnapshotV1 = z.infer<typeof zLayoutSnapshotV1>;
