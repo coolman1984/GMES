@@ -3,6 +3,7 @@ import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { Caller, Ctx } from '../../kernel/modules.js';
 import { event, setUnit, today } from './store.js';
+import { USABLE } from './receiving.js';
 
 /**
  * The route of a serial unit, enforced on the server:
@@ -315,7 +316,8 @@ export async function load(ctx: Ctx, t: Db, caller: Caller, input: { commandId: 
   if (!/^[A-Z0-9][A-Z0-9._-]{1,63}$/.test(lot)) fail('lot.format', `${input.lotNo} is not a lot number`);
   const open = await t.get<{ id: string; lot_no: string }>('SELECT id, lot_no FROM trk_load WHERE station = ? AND item_id = ? AND unloaded_at IS NULL', [where.station.code, item.id]);
   if (open) conflict('material.already_loaded', `${item.code} lot ${open.lot_no} is still loaded on ${where.station.code}: unload it first`);
-  const known = await t.get('SELECT 1 FROM trk_material_lot WHERE item_id = ? AND lot_no = ?', [item.id, lot]);
+  const known = await t.get<{ status: string }>('SELECT status FROM trk_material_lot WHERE item_id = ? AND lot_no = ?', [item.id, lot]);
+  if (known && !USABLE.has(known.status)) conflict('lot.not_released', `lot ${lot} of ${item.code} is ${known.status.replace('_', ' ')}: it cannot be used`);
   const id = ctx.clock.newId();
   await t.run('INSERT INTO trk_load (id, station, line_code, item_id, lot_no, warehouse_id, verified, loaded_at, loaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [id, where.station.code, where.line.code, item.id, lot, input.warehouseId, known ? 1 : 0, ctx.clock.now().toISOString(), caller.name]);

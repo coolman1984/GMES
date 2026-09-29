@@ -1,4 +1,4 @@
-import type { AttendanceDayV1, DemandPlanV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, DemandPlanV1, GoodsReceiptV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
 import type { Db } from '../kernel/db.js';
 import type { Caller } from '../kernel/modules.js';
 
@@ -266,6 +266,8 @@ export interface UnitRow {
 export interface TrkService {
   unit(serial: string, t?: Db): Promise<UnitRow | undefined>;
   unitById(id: string, t?: Db): Promise<UnitRow | undefined>;
+  /** Accounting's goods receipt: its lots become material lots, waiting for incoming inspection when a plan says so. */
+  applyGoodsReceipt(t: Db, gr: GoodsReceiptV1): Promise<SnapshotResult>;
   /** Units of a work order (or of a lot / serial list) that a hold would stop; excludes scrapped and consumed units. */
   unitsOf(t: Db, target: { workOrderId?: string; serials?: string[] }): Promise<UnitRow[]>;
   hold(t: Db, caller: Caller, unitIds: string[], ref: { commandId: string; holdId: string; reason: string }): Promise<number>;

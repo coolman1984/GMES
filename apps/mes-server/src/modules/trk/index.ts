@@ -8,6 +8,7 @@ import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
 import { load, repair, scan, scrapUnit, stationOf, unitBySerial, unload } from './flow.js';
 import { EVENT_FIELDS, event, setUnit, today, trkMigration, trkMigration2 } from './store.js';
+import { applyGoodsReceipt, receivingMigration, receivingRoutes } from './receiving.js';
 
 /**
  * Tracking: serial units along their routing, key parts and material lots, the WIP, and traceability both ways
@@ -24,11 +25,12 @@ export const trkModule: AppModule = {
   id: 'trk',
   dependsOn: ['system', 'mdm', 'eng', 'exe'],
   scopes: ['trk.units.read', 'trk.units.write', 'trk.materials.write', 'trk.repair.write'],
-  migrations: [trkMigration, trkMigration2],
+  migrations: [trkMigration, trkMigration2, receivingMigration],
 
   setup(ctx) {
     const service: TrkService = {
       unit: (serial, t) => unitBySerial(t ?? ctx.db, serial),
+      applyGoodsReceipt: (t, gr) => applyGoodsReceipt(ctx, t, gr),
       unitById: (id, t) => (t ?? ctx.db).get<UnitRow>('SELECT * FROM trk_unit WHERE id = ?', [id]),
       async unitsOf(t, target) {
         if (target.workOrderId) return t.all<UnitRow>(`SELECT * FROM trk_unit WHERE work_order_id = ? AND status NOT IN ('scrapped', 'consumed') ORDER BY serial`, [target.workOrderId]);
@@ -90,7 +92,9 @@ export const trkModule: AppModule = {
     ctx.services.provide('trk', service);
   },
 
-  routes({ http, require }, ctx) {
+  routes(kit, ctx) {
+    const { http, require } = kit;
+    receivingRoutes(kit, ctx);
     const person = (t: Db, p: { id: string; code: string } | undefined, at: { station?: string; date: string }) => ctx.services.get('mdm').resolvePerson(t, p, at);
 
     // ------------------------------------------------------------------ the station (EXE2020, serial mode)
