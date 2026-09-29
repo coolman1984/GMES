@@ -69,6 +69,11 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "station": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
     "performed_by": {
       "type": "object",
       "properties": {

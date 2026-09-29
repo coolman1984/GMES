@@ -26,14 +26,22 @@ export interface TxnInput {
   person_id: string | null;
   production_date: string;
   shift_code: string | null;
+  /** The station where the work was booked (added later: absent from older lines, see lineHash). */
+  station_code: string | null;
   occurred_at: string;
 }
 
 const FIELDS = ['seq', 'id', 'txn_type', 'command_id', 'work_order_id', 'item_id', 'warehouse_id', 'qty', 'lot_no', 'reason_code',
   'user_name', 'person_id', 'production_date', 'shift_code', 'occurred_at'] as const;
 
+/** Fields added after lines were written join the hash only when set, so every older line keeps its hash. */
+const LATER_FIELDS = ['station_code'] as const;
+
 export const lineHash = (prev: string, row: Record<string, unknown>) =>
-  createHash('sha256').update(prev + '|' + stable(Object.fromEntries(FIELDS.map((f) => [f, row[f] ?? null])))).digest('hex');
+  createHash('sha256').update(prev + '|' + stable(Object.fromEntries([
+    ...FIELDS.map((f) => [f, row[f] ?? null]),
+    ...LATER_FIELDS.filter((f) => row[f] != null).map((f) => [f, row[f]]),
+  ]))).digest('hex');
 
 export async function append(t: Db, id: string, input: TxnInput): Promise<number> {
   const last = await t.get<{ seq: number; hash: string }>('SELECT seq, hash FROM exe_ledger ORDER BY seq DESC LIMIT 1');
@@ -42,9 +50,9 @@ export async function append(t: Db, id: string, input: TxnInput): Promise<number
   const row = { seq, id, ...input };
   await t.run(
     `INSERT INTO exe_ledger (seq, id, txn_type, command_id, work_order_id, item_id, warehouse_id, qty, lot_no, reason_code, user_name,
-       person_id, production_date, shift_code, occurred_at, prev_hash, hash)
+       person_id, production_date, shift_code, station_code, occurred_at, prev_hash, hash)
      VALUES (:seq, :id, :txn_type, :command_id, :work_order_id, :item_id, :warehouse_id, :qty, :lot_no, :reason_code, :user_name,
-       :person_id, :production_date, :shift_code, :occurred_at, :prev_hash, :hash)`,
+       :person_id, :production_date, :shift_code, :station_code, :occurred_at, :prev_hash, :hash)`,
     { ...row, prev_hash: prev, hash: lineHash(prev, row) },
   );
   return seq;

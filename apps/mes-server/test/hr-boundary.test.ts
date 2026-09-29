@@ -95,7 +95,12 @@ describe('people are owned by HR: manufacturing mirrors and checks, never edits'
     assert.equal((await book(6, 'E5', 'PACK-01')).status, 200, 'a station without requirements takes anybody HR says may work');
     assert.equal((await book(7, 'E5')).status, 200, 'without a station, nothing more is asked than before');
     const lines = (await s.call('GET', `/api/work-orders/${wo}`)).body.ledger;
-    assert.equal(lines.filter((l: any) => l.txn_type === 'COMPLETE').length, 3, 'refused bookings leave no trace');
+    const done = lines.filter((l: any) => l.txn_type === 'COMPLETE');
+    assert.equal(done.length, 3, 'refused bookings leave no trace');
+    assert.deepEqual(done.map((l: any) => l.station_code), ['ASM-02-ST20', 'PACK-01', null], 'the ledger keeps where the work was booked');
+    const feed = (await s.call('GET', '/eco/v1/feed', undefined, s.keys.link)).body.events.filter((e: any) => e.type === 'mes.production.completed.v1');
+    assert.deepEqual(feed.map((e: any) => e.data.station ?? null), ['ASM-02-ST20', 'PACK-01', null], 'so does the published fact');
+    assert.equal((await s.call('GET', '/api/ledger/verify')).body.ok, true);
     assert.equal((await s.call('PUT', '/api/stations/X/requirements', [{ skillCode: 'WELD', minLevel: 2 }], s.keys.operator)).status, 403, 'operators do not configure stations');
     await s.close();
   });

@@ -262,3 +262,20 @@
   single writer, so a backup does not stop the line.
 - **Discovery:** a test cannot `import` a `.js` browser module from a package without `"type": "module"` (Node reads it as
   CommonJS); the barcode test loads the screen file as the browser does, through a `data:` URL, so it tests the real file.
+
+## Follow-up — the station is kept, and a screen hears "activated" once (2026-09-28, review of PR #3)
+- **Symptom (review):** a booking checked the person's qualification at a station, then forgot the station: the ledger
+  line and the published fact did not carry it, so nobody could later see where the work was done or audit the check.
+  **Cause:** `station` was added to the command for the check only. **Fix:** ledger column `station_code` (migration
+  `004_ledger_station`, after B1's `003_routing_bom`) and an optional `station` in the four production facts (additive: same `v1`). **Lesson:** a value a
+  decision was based on is part of the fact; record it with the fact.
+- **Discovery:** the ledger's hash chain covers a fixed field list; adding a field to it would have changed the hash of
+  every line already written and made `verify()` call the whole history tampered. **Fix:** fields added later join the hash
+  only when set (`LATER_FIELDS` in `exe/ledger.ts`), so a line without a station hashes exactly as before, and a station,
+  once written, is sealed. A test pins the old formula. **Lesson:** a new field in a hash chain must not change old links.
+- **Symptom (review, confirmed in a real browser):** opening a screen called its `onActivate` twice (B: 2 on open, 3 after
+  one return). **Cause:** `activate()` called it right after the build, and so did the promise that shows the built screen.
+  **Fix:** an entry is `ready` only once shown; `activate()` calls `onActivate` only for a ready screen. Now 1, then 2.
+  **Lesson:** when two paths can finish one job, give the job to exactly one of them. HR-System must re-copy the kit.
+- 4 new planted bugs (station in ledger, station in fact, old hashes unchanged, one activation).
+

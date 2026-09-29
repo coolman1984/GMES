@@ -15,6 +15,8 @@ const zWorkOrderRef = z.object({
 const operational = {
   production_date: zDate,
   shift: zCode.optional(),
+  /** The station where the work was booked (added 2026-09-28, optional: older events have none). */
+  station: zCode.optional(),
   performed_by: zPerformedBy,
   /** Position of the fact in manufacturing's tamper-evident ledger. */
   ledger_seq: z.number().int().positive(),

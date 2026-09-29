@@ -138,6 +138,13 @@ export const exeModule: AppModule = {
         CREATE INDEX exe_ledger_day ON exe_ledger(production_date, txn_type);
       `,
     },
+    {
+      id: '004_ledger_station',
+      up: `
+        -- the station where the work was booked (its qualification was checked there); older lines have none
+        ALTER TABLE exe_ledger ADD COLUMN station_code TEXT;
+      `,
+    },
   ],
 
   setup(ctx) {
@@ -226,7 +233,7 @@ export const exeModule: AppModule = {
       const { id } = req.params as { id: string };
       const wo = await ctx.db.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id]);
       if (!wo) return notFound('work_order', id);
-      const lines = await ctx.db.all('SELECT seq, txn_type, item_id, warehouse_id, qty, lot_no, reason_code, user_name, person_id, production_date, shift_code, occurred_at FROM exe_ledger WHERE work_order_id = ? ORDER BY seq', [id]);
+      const lines = await ctx.db.all('SELECT seq, txn_type, item_id, warehouse_id, qty, lot_no, reason_code, user_name, person_id, production_date, shift_code, station_code, occurred_at FROM exe_ledger WHERE work_order_id = ? ORDER BY seq', [id]);
       return { ...present(wo), ledger: lines.map((l: any) => ({ ...l, qty: formatQty(l.qty) })) };
     });
 
@@ -434,13 +441,13 @@ async function bump(t: Db, wo: WorkOrderRow, set: Partial<Pick<WorkOrderRow, 'co
 }
 
 async function line(
-  ctx: Ctx, t: Db, caller: Caller, type: TxnType, input: { commandId: string; shift?: string; person?: { id: string } },
+  ctx: Ctx, t: Db, caller: Caller, type: TxnType, input: { commandId: string; shift?: string; station?: string; person?: { id: string } },
   f: { work_order_id: string; item_id: string | null; warehouse_id: string | null; qty: number; production_date: string; lot_no?: string | null; reason_code?: string | null },
 ) {
   return append(t, ctx.clock.newId(), {
     txn_type: type, command_id: input.commandId, work_order_id: f.work_order_id, item_id: f.item_id, warehouse_id: f.warehouse_id, qty: f.qty,
     lot_no: f.lot_no ?? null, reason_code: f.reason_code ?? null, user_name: caller.name, person_id: input.person?.id ?? null,
-    production_date: f.production_date, shift_code: input.shift ?? null, occurred_at: ctx.clock.now().toISOString(),
+    production_date: f.production_date, shift_code: input.shift ?? null, station_code: input.station ?? null, occurred_at: ctx.clock.now().toISOString(),
   });
 }
 
@@ -448,8 +455,8 @@ const woRef = (wo: WorkOrderRow, product: MirrorItem) => ({
   id: wo.id, code: wo.code, item: { id: product.id, code: product.code }, planned_qty: formatQty(wo.planned_qty),
 });
 
-const operational = (caller: Caller, input: { shift?: string; person?: { id: string; code: string } }, pdate: string, seq: number) => ({
-  production_date: pdate, ...(input.shift ? { shift: input.shift } : {}),
+const operational = (caller: Caller, input: { shift?: string; station?: string; person?: { id: string; code: string } }, pdate: string, seq: number) => ({
+  production_date: pdate, ...(input.shift ? { shift: input.shift } : {}), ...(input.station ? { station: input.station } : {}),
   performed_by: { user: caller.name, ...(input.person ? { person: input.person } : {}) }, ledger_seq: seq,
 });
 
