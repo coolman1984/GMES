@@ -56,7 +56,9 @@ if (Test-GmesRunning $cfg.port) {
 }
 if (Test-PortOpen $cfg.port) { Fail "Port $($cfg.port) is used by another program. Change 'port' in $($cfg.dataDir)\config.json." }
 
+$linkSettings = Get-LinkMizanSettings $cfg   # stops with a clear message when the link is configured but its secret files are missing
 Write-Host "Starting GMES (company $($cfg.companyId), data in $($cfg.dataDir)) ..."
+$link = $null
 $server = Start-Process -FilePath $nodeExe -WorkingDirectory (Join-Path $script:Root 'apps\mes-server') -NoNewWindow -PassThru `
   -ArgumentList @('--disable-warning=ExperimentalWarning', '--import', 'tsx', 'src/main.ts')
 $null = $server.Handle   # keeps the exit code readable after the process ends
@@ -71,10 +73,15 @@ try {
   if (-not $up) { Fail 'The server did not answer within 90 seconds.' }
   Write-Host ''
   Write-Host "GMES is running: $url" -ForegroundColor Green
+  if ($linkSettings) {
+    $link = Start-LinkMizan $linkSettings $nodeExe
+    Write-Host "The link to Mizan ($($cfg.mizan.url)) is running in its own window; the health page shows its pulse." -ForegroundColor Green
+  }
   Write-Host 'Close this window or press Ctrl+C to stop it.'
   if (-not $NoBrowser) { Start-Process $url }
   $server.WaitForExit()
   if ($server.ExitCode -ne 0) { Fail "The server stopped (exit code $($server.ExitCode))." }
 } finally {
+  if ($link -and -not $link.HasExited) { Stop-Process -Id $link.Id -Force -ErrorAction SilentlyContinue }
   if (-not $server.HasExited) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
 }

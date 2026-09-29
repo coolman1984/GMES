@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { sourceOf, validateEvent, zAckV1, type AttendanceDayV1, type EmployeeV1, type Envelope, type ItemV1, type QualificationV1, type ScheduleDayV1, type WarehouseV1, companyOfSource } from '@eco/contracts';
 import type { EcoService } from '../../contracts/services.js';
+import { existsSync, readFileSync } from 'node:fs';
 import { AppError } from '../../kernel/errors.js';
-import type { AppModule, Ctx } from '../../kernel/modules.js';
+import type { AppModule, Ctx, HealthCheck } from '../../kernel/modules.js';
+import { linkMizanCheck } from './link-health.js';
 
 /**
  * The integration layer on manufacturing's side (ADR-016).
@@ -183,10 +185,17 @@ export const ecoModule: AppModule = {
   async health(ctx) {
     const r = await ctx.db.get<{ n: number; mx: number | null }>('SELECT COUNT(*) n, MAX(seq) mx FROM eco_outbox');
     const parked = await ctx.db.get<{ n: number }>("SELECT COUNT(*) n FROM eco_ack WHERE status = 'parked'");
-    return [
+    const checks: HealthCheck[] = [
       { id: 'feed_gap_free', ok: r!.n === (r!.mx ?? 0), details: { events: r!.n, lastSeq: r!.mx ?? 0 } },
       { id: 'no_parked_events', ok: parked!.n === 0, details: { parked: parked!.n } },
     ];
+    // the link to Mizan is judged only where the plant runs it (start.ps1 sets the pulse file's path from data/config.json)
+    const pulse = process.env.GMES_LINK_MIZAN_HEARTBEAT;
+    if (pulse) {
+      const maxAgeMs = Number(process.env.GMES_LINK_MIZAN_MAX_AGE_SECONDS ?? '120') * 1000;
+      checks.push(linkMizanCheck(existsSync(pulse) ? readFileSync(pulse, 'utf8') : null, ctx.clock.now(), maxAgeMs));
+    }
+    return checks;
   },
 };
 

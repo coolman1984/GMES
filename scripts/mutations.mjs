@@ -76,6 +76,9 @@ const MUTATIONS = [
   { name: 'a backup is called good without its rehearsal', file: 'apps/mes-server/src/ops.ts', from: "return { ok: integrity === 'ok' && checks.every((c) => c.ok) && mismatches.length === 0,", to: 'return { ok: true,', suite: 'apps/mes-server' },
   { name: 'a revoked key still works', file: 'apps/mes-server/src/modules/system/index.ts', from: 'if (!row || !row.active ||', to: 'if (!row ||', suite: 'apps/mes-server' },
   { name: 'the Code 128 check character is wrong', file: 'apps/mes-web/barcode.js', from: 'vals.push(sum % 103);', to: 'vals.push(sum % 101);', suite: 'apps/mes-server' },
+  { name: 'a stale link pulse is reported healthy', file: 'apps/mes-server/src/modules/eco/link-health.ts', from: 'if (age <= maxAgeMs) return', to: 'if (true) return', suite: 'apps/mes-server' },
+  { name: 'a link cycle that stopped counts as healthy', file: 'apps/link-mizan/src/heartbeat.ts', from: 'ok: !problem,', to: 'ok: true,', suite: 'apps/link-mizan' },
+  { name: 'a configured link to Mizan is never started', file: 'scripts/common.ps1', from: 'if (-not $m) { return $null }', to: 'if ($true) { return $null }', suite: 'apps/mes-server' },
   { name: 'a handover note can be edited', file: 'apps/mes-server/src/modules/rpt/index.ts', from: "CREATE TRIGGER rpt_note_immutable BEFORE UPDATE ON rpt_note BEGIN SELECT RAISE(ABORT, 'rpt: handover notes are append-only'); END;", to: '', suite: 'apps/mes-server' },
 ];
 

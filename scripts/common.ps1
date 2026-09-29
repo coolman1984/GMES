@@ -53,6 +53,7 @@ function Get-GmesConfig([string]$DataDir = (Join-Path $script:Root 'data'), [has
     productionDayStart = '07:00'
     itemOwner          = 'gmes'           # gmes: items and warehouses are created here; mizan: they come from accounting
     personOwner        = 'none'           # hr: people come from HR-System; none: no people registry
+    mizan              = $null            # set to run the link to Mizan: { url, user, passwordFile, mesKeyFile, wipAccount, varianceAccount }
   }
   foreach ($k in $overrides.Keys) { $defaults[$k] = $overrides[$k] }
   if (-not (Test-Path -LiteralPath $file)) {
@@ -86,6 +87,49 @@ function Set-GmesEnvironment($Cfg) {
   $env:GMES_DAY_START = $Cfg.productionDayStart
   $env:GMES_OWNER = $Cfg.itemOwner
   $env:GMES_PERSON_OWNER = $Cfg.personOwner
+  # a plant that runs the link to Mizan has its pulse judged on the health page (missing or stale = not healthy)
+  if ($Cfg.mizan) { $env:GMES_LINK_MIZAN_HEARTBEAT = (Join-Path $Cfg.dataDir 'link-mizan.heartbeat.json') } else { Remove-Item Env:\GMES_LINK_MIZAN_HEARTBEAT -ErrorAction SilentlyContinue }
+}
+
+# The environment of the link to Mizan (apps\link-mizan), or $null when this plant does not run it.
+# Secrets are read from files named in the configuration (relative paths start in the data folder), never from config.json.
+function Get-LinkMizanSettings($Cfg) {
+  $m = $Cfg.mizan
+  if (-not $m) { return $null }
+  function Read-Secret([string]$Name, $Path) {
+    if (-not $Path) { Fail "mizan.$Name is missing in $($Cfg.dataDir)\config.json (the link to Mizan needs a file holding it)." }
+    $full = $(if ([System.IO.Path]::IsPathRooted([string]$Path)) { [string]$Path } else { Join-Path $Cfg.dataDir ([string]$Path) })
+    if (-not (Test-Path -LiteralPath $full)) { Fail "The file for mizan.$Name does not exist: $full" }
+    $text = (Get-Content -LiteralPath $full -Raw).Trim()
+    if (-not $text) { Fail "The file for mizan.$Name is empty: $full" }
+    return $text
+  }
+  if (-not $m.url) { Fail "mizan.url is missing in $($Cfg.dataDir)\config.json." }
+  if (-not $m.user) { Fail "mizan.user is missing in $($Cfg.dataDir)\config.json (the Mizan user made for the link)." }
+  return [ordered]@{
+    LINK_COMPANY_ID       = [string]$Cfg.companyId
+    LINK_MIZAN_URL        = [string]$m.url
+    LINK_MIZAN_USER       = [string]$m.user
+    LINK_MIZAN_PASSWORD   = (Read-Secret 'passwordFile' $m.passwordFile)
+    LINK_MES_URL          = "http://127.0.0.1:$($Cfg.port)"
+    LINK_MES_KEY          = (Read-Secret 'mesKeyFile' $m.mesKeyFile)
+    LINK_WIP_ACCOUNT      = $(if ($m.wipAccount) { [string]$m.wipAccount } else { '1145' })
+    LINK_VARIANCE_ACCOUNT = $(if ($m.varianceAccount) { [string]$m.varianceAccount } else { '5170' })
+    LINK_STATE            = (Join-Path $Cfg.dataDir 'link-mizan.db')
+    LINK_HEARTBEAT        = (Join-Path $Cfg.dataDir 'link-mizan.heartbeat.json')
+  }
+}
+
+# Starts the link in its own (minimised) window. The secrets are put in the environment only for this one start
+# and removed again at once, so the server (started earlier) and the shell never carry them.
+function Start-LinkMizan($Settings, [string]$NodeExe) {
+  foreach ($k in $Settings.Keys) { Set-Item -Path "Env:\$k" -Value $Settings[$k] }
+  try {
+    return Start-Process -FilePath $NodeExe -WorkingDirectory (Join-Path $script:Root 'apps\link-mizan') -WindowStyle Minimized -PassThru `
+      -ArgumentList '--disable-warning=ExperimentalWarning --import tsx src/main.ts'
+  } finally {
+    foreach ($k in $Settings.Keys) { Remove-Item -Path "Env:\$k" -ErrorAction SilentlyContinue }
+  }
 }
 
 function Test-GmesRunning([int]$Port) {

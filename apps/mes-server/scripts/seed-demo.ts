@@ -16,6 +16,7 @@ import { uuidv7 } from '@eco/contracts';
 import { buildApp } from '../src/app.js';
 import { productionDate } from '../src/kernel/clock.js';
 import { addKey } from '../src/modules/system/index.js';
+import { hashPassword } from '../src/modules/system/users.js';
 
 const DIR = resolve(process.argv[2] ?? '');
 if (!process.argv[2]) { console.error('usage: seed-demo.ts <data folder>'); process.exit(2); }
@@ -131,7 +132,8 @@ const addDays = (day: string, n: number) => { const d = new Date(`${day}T12:00:0
 // ------------------------------------------------------------------ 1. people
 const today = productionDate(REAL_NOW, TZ, '07:00');
 now = cairo(addDays(today, -DAYS - 3), 9);
-const adminPassword = 'Demo-' + randomBytes(4).toString('hex');
+const adminPassword = 'Demo-' + randomBytes(4).toString('hex');  // only for /api/setup; replaced by DEMO_ADMIN_PASSWORD below
+const DEMO_ADMIN_PASSWORD = '123';
 const peoplePassword = 'Plant-' + randomBytes(4).toString('hex');
 await app.http.inject({ method: 'POST', url: '/api/setup', payload: { login: 'admin', name: 'Demo administrator', password: adminPassword, language: 'ar' } });
 for (const [login, name, role, area] of PEOPLE) await call('POST', '/api/users', { login, name, role, area, language: 'ar', password: peoplePassword });
@@ -142,6 +144,8 @@ OPERATOR_NAMES.forEach((name, i) => {
 });
 for (let i = 0; i < OPERATOR_NAMES.length; i++) await call('POST', '/api/users', { login: operators[i], name: OPERATOR_NAMES[i], role: 'OPERATOR', area: AREAS[i % AREAS.length]!.code, language: 'ar', password: peoplePassword });
 await app.ctx.db.run('UPDATE sys_user SET must_change = 0');  // a demo: nobody is asked to change the shared password
+// Demo sign-in admin / 123 (shorter than the server allows, so it is written directly; demo data only).
+await app.ctx.db.run('UPDATE sys_user SET password_hash = ? WHERE login = ?', [await hashPassword(DEMO_ADMIN_PASSWORD), 'admin']);
 console.log(`people: ${PEOPLE.length + OPERATOR_NAMES.length + 1}`);
 
 // ------------------------------------------------------------------ 2. plant model
@@ -289,7 +293,7 @@ await app.close();
 writeFileSync(join(DIR, 'DEMO-LOGINS.txt'), [
   'GMES demonstration plant — logins (invented people; this file stays in the data folder, never in git)',
   '',
-  `Administrator:  admin / ${adminPassword}`,
+  `Administrator:  admin / ${DEMO_ADMIN_PASSWORD}`,
   `Everyone else:  <login> / ${peoplePassword}`,
   '',
   ...PEOPLE.map(([l, n, r, a]) => `  ${l.padEnd(20)} ${r.padEnd(11)} ${(a ?? '').padEnd(5)} ${n}`),
