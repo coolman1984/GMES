@@ -279,3 +279,13 @@
   **Lesson:** when two paths can finish one job, give the job to exactly one of them. HR-System must re-copy the kit.
 - 4 new planted bugs (station in ledger, station in fact, old hashes unchanged, one activation).
 
+## Phase E1 — Planning, receiving, shipping against orders, labour facts and the Space Planner link (2026-09-30)
+- **What:** modules `pln` (MPS/MRP/RCCP/crew, nightly loop, screens PLN1010–PLN2080), mirrors of accounting (parties, sales orders, demand plans, stock,
+  purchase orders, item planning), receiving with incoming lots and inspection decisions (QMS2040), shipping from sales order lines, the pusher to peers,
+  labour facts to HR, plant export, layout snapshots and the live station stream. ADR-038..041.
+- **Why:** the ecosystem plan (`complete-company/plan/20-GMES.md`). The whole chain Mizan ⇄ GMES ⇄ HR is proven by `complete-company/scripts/Test-Pairing.ps1 -Chain`.
+- **Discovery:** the chain scenario failed at the first consumption with "Not enough X in MAIN: 0 available". **Cause:** the scenario dated accounting documents by the UTC day, but the plant's
+  production day is Cairo time and starts at 07:00, so a receipt dated "today" was after the stock day used by production. **Fix:** the runner dates documents by the plant's production day.
+  **Lesson:** a document that feeds another system carries the other system's day, not the machine's.
+- **Discovery:** the planning run added requisitions for later months that the scenario's order did not ask for. **Cause:** the approved demand plan forecasts those months (correct).
+  **Fix:** the scenario counts only requisitions needed by the order's date. **Lesson:** an expectation written against a plan must say which demand it follows.
