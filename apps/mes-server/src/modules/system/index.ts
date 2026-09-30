@@ -3,6 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppError, conflict, notFound } from '../../kernel/errors.js';
 import type { AppModule, Caller, Ctx } from '../../kernel/modules.js';
+import { checkSignature } from '../../kernel/signing.js';
 import { audit, sessionCaller, signature, userRoutes, usersMigration } from './users.js';
 
 /**
@@ -34,6 +35,10 @@ export async function resolveCaller(ctx: Ctx, req: FastifyRequest): Promise<Call
     'SELECT name, key_hash, scopes, active FROM sys_key WHERE key_hash = ?', [h],
   );
   if (!row || !row.active || !timingSafeEqual(Buffer.from(row.key_hash), h)) return null;
+  // a signed request must match its method, path, body and time; an unsigned one is refused only when the installation requires signatures
+  const problem = checkSignature({ keyHash: h.toString('hex'), method: req.method, pathWithQuery: req.url, rawBody: (req as { rawBody?: string }).rawBody ?? '',
+    ts: req.headers['x-eco-ts'], sig: req.headers['x-eco-sig'], required: process.env.ECO_REQUIRE_SIGNATURE === '1' });
+  if (problem) throw new AppError(401, problem, 'The request signature is missing, expired or does not match the request');
   return { name: row.name, scopes: new Set(row.scopes.split(' ')) };
 }
 

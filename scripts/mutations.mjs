@@ -87,6 +87,9 @@ const MUTATIONS = [
   { name: 'a link cycle that stopped counts as healthy', file: 'apps/link-mizan/src/heartbeat.ts', from: 'ok: !problem,', to: 'ok: true,', suite: 'apps/link-mizan' },
   { name: 'a configured link to Mizan is never started', file: 'scripts/common.ps1', from: 'if (-not $m) { return $null }', to: 'if ($true) { return $null }', suite: 'apps/mes-server' },
   { name: 'serial parts fitted to a unit are never consumed', file: 'apps/mes-server/src/modules/trk/flow.ts', from: 'if (!from || booked.has(`${f.item_id}|${f.lot_no}`)) continue;', to: 'continue;', suite: 'apps/mes-server' },
+  { name: 'a signature is accepted whatever the body', file: 'apps/mes-server/src/kernel/signing.ts', from: 'const want = signRequest(input.keyHash, input.method, input.pathWithQuery, input.rawBody, Number(ts));', to: "const want = signRequest(input.keyHash, input.method, input.pathWithQuery, '', Number(ts));", suite: 'apps/mes-server' },
+  { name: 'a stale signature is accepted', file: 'apps/mes-server/src/kernel/signing.ts', from: 'if (Math.abs((input.now ?? Date.now()) - Number(ts)) > SIGNATURE_WINDOW_MS)', to: 'if (false)', suite: 'apps/mes-server' },
+  { name: 'an unsigned call is accepted although signatures are required', file: 'apps/mes-server/src/kernel/signing.ts', from: "return input.required ? 'auth.signature_required' : null;", to: 'return null;', suite: 'apps/mes-server' },
   { name: 'a handover note can be edited', file: 'apps/mes-server/src/modules/rpt/index.ts', from: "CREATE TRIGGER rpt_note_immutable BEFORE UPDATE ON rpt_note BEGIN SELECT RAISE(ABORT, 'rpt: handover notes are append-only'); END;", to: '', suite: 'apps/mes-server' },
 ];
 
