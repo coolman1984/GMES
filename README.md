@@ -2,7 +2,7 @@
 
 > **الحالة:** التصميم مكتمل + **أول شريحة تنفيذ** (نواة التصنيع + الربط الحقيقي مع ميزان) بـ35 اختبار آلي.
 > الهدف: نظام تنفيذ وإدارة تصنيع (MES) يدّي إحساس وقدرات أنظمة التصنيع الكبيرة
-> (زي G-MES4 / Nexplant في سامسونج) بحجم أخف وأرخص، يشتغل محليًا جوه المصنع
+> (بفلسفة أنظمة التصنيع المؤسسية الكبيرة) بحجم أخف وأرخص، يشتغل محليًا جوه المصنع
 > حتى من غير إنترنت، ويتباع لعشرات المصانع كوحدات (Modules) يشتري العميل منها اللي محتاجه.
 
 > **ملاحظة على الاسم:** "GMES" اسم عمل داخلي للمستودع بس. المنتج اللي هيتباع
@@ -17,7 +17,7 @@
 | 3 | [المعمارية والتقنيات](docs/design/03-architecture.md) | إزاي النظام متبني ولماذا اخترنا كل تقنية |
 | 4 | [نموذج البيانات](docs/design/04-data-model.md) | الجداول والعلاقات وقواعد النقل بين SQLite و PostgreSQL |
 | 5 | [الشاشات وتدفق العمل](docs/design/05-screens-and-flows.md) | كل شاشة، مين يستخدمها، وإزاي الشغل بيتحرك |
-| 6 | [نظام التصميم البصري](docs/design/06-ui-design-system.md) | فلسفة الشاشات القريبة من G-MES4 |
+| 6 | [نظام التصميم البصري](docs/design/06-ui-design-system.md) | فلسفة شاشات الأنظمة المؤسسية |
 | 7 | [النطاق: الإصدار الأول وما يؤجل](docs/design/07-scope-v1.md) | إيه اللي نبنيه دلوقتي وإيه اللي بعدين |
 | 8 | [خطة التنفيذ والاختبار](docs/design/08-delivery-and-test-plan.md) | المراحل، بوابات الخروج، وإزاي نتجنب قرارات نندم عليها |
 | — | [سجل القرارات المعمارية (ADR)](docs/adr/README.md) | كل قرار كبير، سببه، والبدائل اللي رفضناها |
@@ -25,7 +25,7 @@
 ## التصنيع داخل المنظومة (أضيف 2026-09-27)
 
 النظام قطعة التصنيع في منظومة أعمال واحدة: **ميزان** (المحاسبة)، **مخطط المساحات** (الثري دي)،
-**HR-System** (الموظفين والورديات والحضور)، ومكتبة خبرة **أتمتة G-MES**. كل قطعة تشتغل لوحدها، وتتكلم مع الباقي بعقود.
+**HR-System** (الموظفين والورديات والحضور)، ومكتبة خبرة **مشروع أتمتة سابق**. كل قطعة تشتغل لوحدها، وتتكلم مع الباقي بعقود.
 
 | # | الوثيقة | بتجاوب على إيه |
 |---|---|---|
@@ -47,7 +47,7 @@
 
 ## Start it (one click, Windows)
 
-Double-click **`Start-GMES.bat`**. It checks Node.js 22.13+, installs the dependencies on the first run, creates
+Double-click **`Start-Itqan.bat`**. It checks Node.js 22.13+, installs the dependencies on the first run, creates
 `data\config.json` (company id, port, plant name, time zone, who owns items), starts the server and opens
 `http://localhost:4700/`. Close the window (or press Ctrl+C) to stop it. Run it again while it is running and it just
 opens the browser. Everything is PowerShell (`scripts\start.ps1`); there are no `.sh` scripts.
@@ -71,5 +71,5 @@ Manual run: `apps/link-mizan` reads `LINK_*` variables (see `src/main.ts`). Rule
 
 ## الواجهة (مرحلة UX — 2026-09-28)
 هيكل التطبيق وقوالب الشاشات (EXE3010، MDM1010، SYS9010، EXE2020، DSH5010) على **بيانات تجريبية مُعلنة**، مبنية من مجموعة
-الواجهة الموحدة `packages/eco-ui` (ADR-029). التشغيل: `Start-GMES.bat` (يفتح `http://localhost:4700/`). الصور وقائمة القبول البصري: [docs/ux/visual-acceptance.md](docs/ux/visual-acceptance.md).
+الواجهة الموحدة `packages/eco-ui` (ADR-029). التشغيل: `Start-Itqan.bat` (يفتح `http://localhost:4700/`). الصور وقائمة القبول البصري: [docs/ux/visual-acceptance.md](docs/ux/visual-acceptance.md).
 تطوير الوحدات متوقف حتى يعتمد المالك الشكل.

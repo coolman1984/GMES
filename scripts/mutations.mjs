@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * "A green test proves nothing until it has been made to fail" (lesson carried over from the
- * G-MES automation project). Each mutation plants one realistic bug, runs the suite that must
+ * earlier automation project). Each mutation plants one realistic bug, runs the suite that must
  * catch it, expects it to FAIL, and restores the file in a finally block.
  *
  *   node scripts/mutations.mjs            (needs a Mizan checkout for the link mutations: MIZAN_DIR)

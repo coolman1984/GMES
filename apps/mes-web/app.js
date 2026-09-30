@@ -2,7 +2,7 @@
 // built yet are shown, greyed, with their code, so the map of the product is visible from the first day.
 // Before the shell: the server says whether the installation has accounts and who is signed in (auth.js).
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, can, loadLang, loadStopReasons, session, setSession, t, lang, today } from "./common.js";
+import { api, can, loadLang, loadStopReasons, session, setSession, t, lang, today, product } from "./common.js";
 import { changePasswordDialog, changePasswordPage, loginPage, setupPage } from "./auth.js";
 import home from "./screens/home.js";
 import exe3010 from "./screens/exe3010.js";
@@ -148,7 +148,7 @@ function start(plantName) {
     onChange: (m) => setMode(m) });
   modeSwitch.classList.add("mes-modes");
   const shell = ui.createShell({
-    product: { name: "GMES", short: "GM", edition: t("edition") },
+    product: { name: product(), short: "IQ", edition: t("edition") },
     company: { name: plantName, code: plant.companyId.slice(0, 8), note: plant.companyId },
     user: { name: me.name, role: t("role." + me.role), detail: me.login },
     menu, screens, home: "HOME", maxTabs: 10, searchExample: "EXE3010",
@@ -166,7 +166,7 @@ function start(plantName) {
   const conn = ui.statusItem("wifi", ui.kitText("connected"), "is-ok");
   const clock = ui.statusItem("clock", ui.fmtTime());
   shell.setStatus([conn, ui.statusItem("factory", plantName), ui.statusItem("calendar", t("st.prod_day") + " " + today()),
-    ui.statusItem("user", me.login), clock, ui.statusItem(null, "GMES " + VERSION + " · " + (lang() === "ar" ? "العربية" : "English"), "is-end")]);
+    ui.statusItem("user", me.login), clock, ui.statusItem(null, product() + " " + VERSION + " · " + (lang() === "ar" ? "العربية" : "English"), "is-end")]);
   setInterval(() => { clock.lastChild.textContent = ui.fmtTime(); }, 1000);
   // the connection is observed, never assumed
   async function ping() {

@@ -98,7 +98,7 @@
 ---
 
 ### ADR-014 — TypeScript على Node 22 بدل Python
-**السياق:** دراسة المنظومة (E1): ميزان والثري دي TypeScript/Node بـSQLite محلي وReact؛ BAMS وأتمتة G-MES Python.
+**السياق:** دراسة المنظومة (E1): ميزان والثري دي TypeScript/Node بـSQLite محلي وReact؛ BAMS ومشروع الأتمتة Python.
 التصنيع لازم "يحس" إنه نفس المنتج، ويستعمل نفس المكونات (DataGrid، Shell، ثنائية اللغة، عقد الموديول، Editions).
 **القرار:** Node 22 LTS + TypeScript + Fastify + zod + `node:sqlite` + `node:test` — نفس اختيارات ميزان.
 **مرفوض:** Python/FastAPI (يعزل التصنيع عن مكونات المنظومة ويضاعف الواجهات)؛ Go/.NET (نفس السبب + فريق).
@@ -195,7 +195,7 @@ HR ينشر لقطات بإصدارات عبر صندوق صادر؛ التصن�
 
 ### ADR-029 — مجموعة واجهة واحدة للمنظومة (eco-ui) وهيكل التطبيق قبل الوحدات
 **السياق:** الخلفية قوية لكن المنتجات لا تبدو برامج تجارية. المالك أوقف تطوير الوظائف حتى يُعتمد هيكل الواجهة (مرحلة UX)،
-وطلب نظام تصميم واحد لا صفحات مصممة واحدة واحدة، بفلسفة تشغيل G-MES (شروط ← استعلام ← جدول ← تفاصيل، أكواد شاشات، تابات MDI).
+وطلب نظام تصميم واحد لا صفحات مصممة واحدة واحدة، بفلسفة تشغيل الأنظمة المؤسسية (شروط ← استعلام ← جدول ← تفاصيل، أكواد شاشات، تابات MDI).
 **القرار:**
 - `packages/eco-ui/src` = **مصدر واحد** للتوكنز (`tokens.css`: فاتح/داكن، كثافة، لون مميز لكل منتج عبر `data-product`) والمكونات
   (`eco-ui.css`) ومكتبة JavaScript بلا أي مكتبة خارجية ولا خطوة بناء (`eco-ui.js`: الهيكل، القائمة الشجرية، بحث الشاشات Ctrl+K،
@@ -205,9 +205,9 @@ HR ينشر لقطات بإصدارات عبر صندوق صادر؛ التصن�
 - الشاشات تعرض **بيانات تجريبية مُعلَنة** (`data.js`، شارة "بيانات تجريبية" إلزامية باختبار) حتى تُوصل بالخادم بعد اعتماد الشكل.
 - HR-System ينسخ `packages/eco-ui/src` **بدون تعديل** إلى `hr_core/web/eco-ui/` مع بصمة SHA-256 يفحصها اختباره (نفس نمط `eco_schemas/`).
 **مرفوض:** AG Grid/ECharts (اعتماد ثقيل، ترخيص للمزايا المؤسسية، وخطوة بناء لا تناسب منتج HR المثبت بالمكتبة القياسية)؛
-React أو إطار واجهة (خطوة بناء في كل منتج)؛ تصميم كل شاشة بأسلوبها؛ نسخ شكل Nexacro أو أي أصل من G-MES (قانونيًا ممنوع — §6.1).
+React أو إطار واجهة (خطوة بناء في كل منتج)؛ تصميم كل شاشة بأسلوبها؛ نسخ شكل أو أي أصل من نظام تجاري آخر (قانونيًا ممنوع — §6.1).
 **أثر:** أي شاشة جديدة تُبنى من `screen()` و`grid()` و`conditionPanel()`؛ تغيير التوكنز يغير كل الشاشات في المنتجين.
-الألوان ما زالت مؤقتة حتى تصل صور G-MES الحقيقية (§6.6).
+الألوان ما زالت مؤقتة حتى تصل صور المرجع (§6.6).
 
 ### ADR-030 — الخطة والمؤهلات من HR، ومتطلبات المحطة للتصنيع
 **السياق:** بأمر المالك (2026-09-28) بُنيت الورديات (المرحلة 3) والمهارات (المرحلة 5) في HR-System.
@@ -222,7 +222,7 @@ React أو إطار واجهة (خطوة بناء في كل منتج)؛ تصمي
 ### ADR-031 — One-click start, PowerShell-only tooling, standalone by default
 **Context:** the owner works on Windows and wants to start the product with one click, and never wants bash. The repository
 shipped `.sh` helpers and its suite had only run on Linux.
-**Decision:** `Start-GMES.bat` is a two-line wrapper (Windows does not run `.ps1` on double-click); all logic is in
+**Decision:** `Start-Itqan.bat` is a two-line wrapper (Windows does not run `.ps1` on double-click); all logic is in
 `scripts/*.ps1` (Windows PowerShell 5.1 and PowerShell 7, ASCII only). Configuration lives in `data/config.json`
 (created on the first run, never committed): company id (generated UUID), port, host, plant name, time zone, production-day
 start, `itemOwner`, `personOwner`. Defaults are a **standalone plant**: `itemOwner: "gmes"` so items and warehouses can be
@@ -258,7 +258,7 @@ the screen search also runs actions (the product's `commands`, theme, look, lang
 **GMES keeps classic**; HR-System defaults to modern.
 **Rejected:** copying Mizan's React front end into HR (breaks ADR-029, adds a Node build to a Python installer, splits the
 ecosystem's look); styling HR alone in `hr.css` (HR and GMES would drift); making modern the default for everyone now (the
-owner approved the dense G-MES philosophy for the shop floor).
+owner approved the dense enterprise-MES philosophy for the shop floor).
 
 ### ADR-034 — Engineering revisions are frozen; serial units follow their routing with their own hash-chained history
 **Context:** the owner asked for the rest of the product with a realistic television plant: every TV has a serial, passes a

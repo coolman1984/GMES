@@ -1,6 +1,6 @@
 // SYS9060 General settings — what this installation is: its node, company id, time zone, start of the production
 // day, who owns items, warehouses and people, the database and the installed modules. Read-only here: these are set
-// in data/config.json by the start script (Start-GMES.bat), because changing them under a running plant changes
+// in data/config.json by the start script (Start-Itqan.bat), because changing them under a running plant changes
 // which day a fact belongs to.
 import * as ui from "/eco-ui/eco-ui.js";
 import { api, showError, t } from "../common.js";
