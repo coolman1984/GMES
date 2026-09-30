@@ -86,6 +86,7 @@ const MUTATIONS = [
   { name: 'a stale link pulse is reported healthy', file: 'apps/mes-server/src/modules/eco/link-health.ts', from: 'if (age <= maxAgeMs) return', to: 'if (true) return', suite: 'apps/mes-server' },
   { name: 'a link cycle that stopped counts as healthy', file: 'apps/link-mizan/src/heartbeat.ts', from: 'ok: !problem,', to: 'ok: true,', suite: 'apps/link-mizan' },
   { name: 'a configured link to Mizan is never started', file: 'scripts/common.ps1', from: 'if (-not $m) { return $null }', to: 'if ($true) { return $null }', suite: 'apps/mes-server' },
+  { name: 'serial parts fitted to a unit are never consumed', file: 'apps/mes-server/src/modules/trk/flow.ts', from: 'if (!from || booked.has(`${f.item_id}|${f.lot_no}`)) continue;', to: 'continue;', suite: 'apps/mes-server' },
   { name: 'a handover note can be edited', file: 'apps/mes-server/src/modules/rpt/index.ts', from: "CREATE TRIGGER rpt_note_immutable BEFORE UPDATE ON rpt_note BEGIN SELECT RAISE(ABORT, 'rpt: handover notes are append-only'); END;", to: '', suite: 'apps/mes-server' },
 ];
 

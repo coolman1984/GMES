@@ -2,6 +2,11 @@
 
 كل bug أو اكتشاف أو تغيير في قرار يتسجل هنا بالشكل: **Symptom / Cause / Fix / Lesson**.
 
+## 2026-09-30 - Serial parts fitted to a unit were never consumed
+- **Symptom:** planning a multi-level bill of materials (board fitted into a TV) showed semi-finished stock and its value growing forever in accounting.
+- **Cause:** `flushOrder` booked only lot loads and unscanned material; serial parts (a unit of another order, or a bought-in serial part) were recorded in the genealogy but never consumed in the ledger.
+- **Fix:** `flushOrder` consumes each fitted serial part once, by its serial, before the final unit (test in `serial.test.ts`, planted bug in `scripts/mutations.mjs`).
+- **Lesson:** a genealogy link is not a stock movement; every quantity that leaves stock needs its own ledger line.
 ## Phase 0 — Design (2026-09-27)
 - **What:** أول نسخة من وثائق التصميم (`docs/design/01..08`) وسجل القرارات (`docs/adr`).
 - **Why:** قرار المالك: لا كود قبل البحث والتصميم.
