@@ -15,6 +15,7 @@ import { isUuid } from '@eco/contracts';
 import { buildApp } from './app.js';
 import { addKey } from './modules/system/index.js';
 import { startPusher } from './modules/eco/index.js';
+import { startPlanner } from './modules/pln/index.js';
 
 const dataDir = resolve(process.env.GMES_DATA_DIR ?? 'data');
 const companyId = process.env.GMES_COMPANY_ID ?? '';
@@ -49,8 +50,11 @@ if (cmd === 'key' && sub === 'add' && name && scopes) {
   console.log(`gmes listening on ${port}`);
   // manufacturing's events go to the peers configured in /api/eco/peers (HR, accounting)
   const stopPusher = process.env.GMES_PUSH_LOOP === 'off' ? () => undefined : startPusher(app.ctx);
+  // planning runs by itself every night (02:00 plant time or the first check after it)
+  const stopPlanner = process.env.GMES_PLAN_LOOP === 'off' ? () => undefined : startPlanner(app.ctx);
   const stop = async () => {
     stopPusher();
+    stopPlanner();
     await app.close();
     process.exit(0);
   };

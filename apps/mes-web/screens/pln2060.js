@@ -17,7 +17,9 @@ export default function create({ shell }) {
       { key: "crew", label: t("pln.crew"), width: 220, value: (r) => r.crew },
     ],
     load: async () => {
-      const [cap, crew] = await Promise.all([api("GET", "/api/pln/capacity"), api("GET", "/api/pln/crew")]);
+      const cap = await api("GET", "/api/pln/capacity");
+      const days = cap.load.map((l) => l.date).sort();
+      const crew = days.length ? await api("GET", `/api/pln/crew?from=${days[0]}&to=${days[days.length - 1]}`) : [];
       ui.clear(proposals, ...cap.proposals.map((p) => ui.banner("warn", h("span", {}, t("pln.proposal", { shift: p.shift, line: p.line, from: p.from, to: p.to }), " ",
         ui.button({ label: t("pln.accept"), size: "sm", disabled: !can("pln.plan"), onClick: async () => {
           try { await api("POST", "/api/pln/line-shifts", { line: p.line, shift: p.shift, from: p.from, to: p.to }); await api("POST", "/api/pln/runs"); await v.run(); }

@@ -524,3 +524,23 @@ async function presentOutput(ctx: Ctx, o: PlanOutput) {
   };
 }
 
+/**
+ * The nightly run: a check every ten minutes; when it is 02:00 or later in the plant and the last run is older than 20 hours,
+ * planning runs by itself (trigger `nightly`). GMES_PLAN_LOOP=off stops it (the scenario engine runs planning explicitly).
+ */
+export function startPlanner(ctx: Ctx, everyMs = 600_000): () => void {
+  let busy = false;
+  const timer = setInterval(() => {
+    if (busy) return;
+    busy = true;
+    (async () => {
+      const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: ctx.config.timeZone, hour: '2-digit', hourCycle: 'h23' }).format(ctx.clock.now()));
+      if (hour < 2) return;
+      const last = await ctx.db.get<{ started_at: string }>('SELECT started_at FROM pln_run ORDER BY started_at DESC LIMIT 1');
+      if (last && ctx.clock.now().getTime() - new Date(last.started_at).getTime() < 20 * 3_600_000) return;
+      await runPlanning(ctx, 'nightly');
+    })().catch(() => undefined).finally(() => { busy = false; });
+  }, everyMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}
