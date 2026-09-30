@@ -32,7 +32,8 @@ export default function create({ shell }) {
     { key: "remaining", label: t("c.remaining"), type: "number", width: 90, total: "sum" },
     { key: "progress", label: t("c.progress"), type: "progress", width: 128, status: (r) => r.progress >= 100 ? "done" : "run" },
     { key: "priority", label: t("c.priority"), width: 76, align: "center", render: (r) => h("span", { class: "mes-prio mes-prio-" + r.priority, text: "P" + r.priority }) },
-    { key: "due", label: t("c.due"), type: "date", width: 104, render: (r) => (r.late ? h("span", { class: "mes-bad", text: r.due }) : r.due) },`n    { key: "start", label: t("c.start"), type: "date", width: 128 },
+    { key: "due", label: t("c.due"), type: "date", width: 104, render: (r) => (r.late ? h("span", { class: "mes-bad", text: r.due }) : r.due) },
+    { key: "start", label: t("c.start"), type: "date", width: 128 },
     { key: "end", label: t("c.end"), type: "date", width: 128 },
     { key: "uom", label: t("c.unit"), width: 64, hidden: true },
   ];
