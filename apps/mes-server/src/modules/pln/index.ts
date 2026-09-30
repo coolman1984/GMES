@@ -23,6 +23,8 @@ const DEFAULTS: Record<string, string> = {
   default_make_lead_days: '1',
   /** Shifts every line runs unless told otherwise (comma list); empty = the first active shift. */
   base_shifts: '',
+  /** Codes of the warehouses whose stock planning may use (comma list). Empty = every warehouse except the quality hold, whose goods are not usable. */
+  planning_warehouses: '',
 };
 
 const zDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -338,7 +340,13 @@ export async function loadInput(ctx: Ctx, today: string): Promise<{ input: PlanI
 
   // supply
   const onHand = new Map<string, number>();
-  for (const r of await db.all<{ item_id: string; q: number }>('SELECT item_id, SUM(on_hand - reserved) q FROM mdm_stock GROUP BY item_id')) onHand.set(r.item_id, Math.max(0, r.q));
+  const usable = s.planning_warehouses ? new Set(s.planning_warehouses.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean)) : null;
+  for (const r of await db.all<{ item_id: string; warehouse_code: string; free: number }>('SELECT item_id, warehouse_code, on_hand - reserved AS free FROM mdm_stock')) {
+    const code = r.warehouse_code.toUpperCase();
+    if (usable ? !usable.has(code) : code === 'QA-HOLD') continue;
+    onHand.set(r.item_id, (onHand.get(r.item_id) ?? 0) + r.free);
+  }
+  for (const [k, v] of onHand) if (v < 0) onHand.set(k, 0);
   const receipts = (await db.all<{ code: string; line_no: number; item_id: string; qty: number; received_qty: number; expected_date: string }>(
     `SELECT p.code, l.line_no, l.item_id, l.qty, l.received_qty, l.expected_date FROM mdm_purchase_order p JOIN mdm_purchase_order_line l ON l.po_id = p.id
      WHERE p.status = 'open' AND l.qty > l.received_qty ORDER BY p.code, l.line_no`))

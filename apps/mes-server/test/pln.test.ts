@@ -12,6 +12,24 @@ const so = (n: number, itemN: number, itemCode: string, qty: string, date: strin
   order_date: '2026-09-20', status, priority: 2, lines: [{ line_no: 1, item: ref('item', itemN, itemCode), qty, uom: 'PCS', requested_date: date, delivered_qty: '0' }],
 });
 
+test('stock in the quality-hold warehouse is not usable: planning still asks for the material', async () => {
+  const s = await server('mizan');
+  const stockPos = (n: number, wh: number, whCode: string, onHand: string) => ({
+    id: mizanId(COMPANY, 'stock_position', `1:${wh}`), version: n, origin: { app: 'mizan', type: 'stock_position', key: `1:${wh}` }, item: { id: mizanId(COMPANY, 'item', 1), code: 'PANEL' },
+    warehouse: { id: mizanId(COMPANY, 'warehouse', wh), code: whCode }, on_hand: onHand, reserved: '0', uom: 'PCS', as_of: '2026-09-27T08:00:00Z',
+  });
+  const r = await s.call('POST', '/eco/v1/inbox', { events: [
+    snapshot('eco.warehouse.v1', warehouse(1, 'MAIN')), snapshot('eco.item.v1', item(1, 'PANEL', { planning: planning('buy', 3) })),
+    snapshot('acc.sales_order.v1', so(1, 1, 'PANEL', '10', '2026-10-12')),
+    snapshot('acc.stock_position.v1', stockPos(1, 1, 'MAIN', '4')), snapshot('acc.stock_position.v1', stockPos(1, 2, 'QA-HOLD', '100')),
+  ] }, s.keys.link);
+  for (const x of r.body.results) assert.notEqual(x.result, 'rejected', JSON.stringify(x));
+  await s.call('POST', '/api/pln/runs');
+  const reqs = (await s.call('GET', '/api/pln/requisitions')).body;
+  assert.equal(reqs[0].qty, '6', '10 needed - 4 usable in MAIN; the 100 in quarantine do not count');
+  await s.close();
+});
+
 test('a run turns an open sales order into a requisition, is stable on a re-run, cancels when demand goes, and releases a planned order', async () => {
   const s = await server('mizan');
   const inbox = async (...events: unknown[]) => {
