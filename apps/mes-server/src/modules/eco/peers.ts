@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { conflict, notFound } from '../../kernel/errors.js';
+import { signatureHeaders } from '../../kernel/signing.js';
 import type { Ctx, RouteKit } from '../../kernel/modules.js';
 import { open, seal } from '../../kernel/secrets.js';
 
@@ -56,8 +57,9 @@ export async function pushPeer(ctx: Ctx, id: string, source: string, envelope: (
       const send = rows.filter((r) => !wanted || wanted.has(r.type));
       let results: { result: string; code?: string; message?: string }[] = [];
       if (send.length) {
+        const key = open(p.key_sealed), text = JSON.stringify({ events: send.map((r) => envelope(source, r)) });
         const res = await http.current(trim(p.url) + '/eco/v1/inbox', {
-          method: 'POST', headers: { 'content-type': 'application/json', 'x-eco-key': open(p.key_sealed) }, body: JSON.stringify({ events: send.map((r) => envelope(source, r)) }),
+          method: 'POST', headers: { 'content-type': 'application/json', 'x-eco-key': key, ...signatureHeaders(key, 'POST', '/eco/v1/inbox', text) }, body: text,
         });
         const body = (await res.json().catch(() => null)) as { results?: typeof results; error?: unknown } | null;
         if (res.status >= 400) throw new Error(`${p.name} answered ${res.status}: ${JSON.stringify(body?.error ?? body).slice(0, 200)}`);

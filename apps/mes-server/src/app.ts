@@ -39,6 +39,12 @@ export async function buildApp(opts: { dbFile: string; config: Config; clock?: C
   for (const m of modules) m.setup?.(ctx);
 
   const http = Fastify({ logger: opts.logger ?? false, bodyLimit: 5 * 1024 * 1024 });
+  // the raw text of a JSON body is kept beside the parsed one: request signatures are computed over the bytes that were sent
+  const parseJson = http.getDefaultJsonParser('error', 'error');
+  http.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    (req as { rawBody?: string }).rawBody = body as string;
+    parseJson(req, body as string, (err: Error | null, value: unknown) => { if (err) (err as { statusCode?: number }).statusCode = 400; done(err, value); });
+  });
   // Resolve the caller once per request; routes then require the scope they need.
   const callers = new WeakMap<object, Awaited<ReturnType<typeof resolveCaller>>>();
   http.addHook('preHandler', async (req) => {
