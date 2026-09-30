@@ -15,6 +15,8 @@
   ("a configured link to Mizan is never started") survived here (that test needs PowerShell, absent on this Linux box).
   **Fix:** restored. **Lesson:** a rename is for words people read; never bulk-replace identifiers, and read every line
   of a rename diff before committing.
+- **Merge with main:** the i18n conflict put a comma after `"st.completed": "Completed"`, so the planted bug's anchor
+  (which ended in a line break) was no longer found and CI stopped. The anchor now omits the line end.
 
 ## 2026-09-30 - Serial parts fitted to a unit were never consumed
 - **Symptom:** planning a multi-level bill of materials (board fitted into a TV) showed semi-finished stock and its value growing forever in accounting.
