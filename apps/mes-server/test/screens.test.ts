@@ -71,6 +71,11 @@ describe('the interface kit and the screens (UX phase, ADR-029)', () => {
     assert.ok(codes.length > 40);
     assert.deepEqual(codes.filter((c) => !(`scr.${c}` in en)), []);
     for (const s of ['planned', 'released', 'run', 'hold', 'done', 'closed', 'idle', 'setup', 'down']) assert.ok(`st.${s}` in en, s);
+    // the daily report names a work order's status as t("st." + status): every status the server stores needs a name
+    const exe = read(join(WEB_DIR, '..', '..', 'apps', 'mes-server', 'src', 'modules', 'exe', 'index.ts'));
+    const statuses = [...(exe.match(/status\s+TEXT NOT NULL[^)]*CHECK \(status IN \(([^)]*)\)/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!);
+    assert.ok(statuses.includes('completed'), 'the work order statuses are read from the server: ' + statuses);
+    assert.deepEqual(statuses.filter((x) => !(`st.${x}` in en)), []);
   });
 
   test('the operator station: every scrap reason has a name in both languages; unit-by-unit only for serialised items', () => {

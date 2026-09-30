@@ -31,6 +31,7 @@ const MUTATIONS = [
   { name: 'the screens allow scripts from anywhere', file: 'apps/mes-server/src/web.ts', from: "script-src 'self'; style-src", to: "script-src 'self' 'unsafe-inline'; style-src", suite: 'apps/mes-server' },
   { name: 'the operator station goes unit by unit for a lot item on a routing', file: 'apps/mes-web/screens/exe2020.js', from: 'S.wo.routing_id && S.wo.item.tracking === "serial"', to: 'S.wo.routing_id', suite: 'apps/mes-server' },
   { name: 'a ceramic scrap reason has no name', file: 'apps/mes-web/i18n/en.json', from: '"scrap.kiln_crack": "Kiln crack",\n', to: '', suite: 'apps/mes-server' },
+  { name: 'a work order status has no name on the daily report', file: 'apps/mes-web/i18n/en.json', from: '"st.completed": "Completed"\n', to: '"st.completed_x": "Completed"\n', suite: 'apps/mes-server' },
   { name: 'an Arabic text of the screens is missing', file: 'apps/mes-web/i18n/ar.json', from: '"cancel": "إلغاء",\n', to: '', suite: 'apps/mes-server' },
   { name: 'a screen goes back to invented data', file: 'apps/mes-web/screens/home.js', from: 'import * as ui from "/eco-ui/eco-ui.js";', to: 'import * as ui from "/eco-ui/eco-ui.js";\nimport { lines } from "../data.js";', suite: 'apps/mes-server' },
   { name: 'a locked account can still sign in', file: 'apps/mes-server/src/modules/system/users.ts', from: "if (u.status === 'locked') throw", to: "if (false) throw", suite: 'apps/mes-server' },

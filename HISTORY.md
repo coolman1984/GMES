@@ -296,3 +296,13 @@
 - **Lesson:** a screen that decides a mode must use the same rule as the server that enforces it; here the server was
   right and the screen had a simpler, wrong copy. Lists shown as `t("scrap." + code)` escape the static "every key
   exists" test: dynamic keys need their own test.
+
+## Follow-up — a finished work order showed "st.completed" on the daily report (2026-09-30)
+- **Symptom:** filming the ceramic scenes, the daily production report (RPT4010) showed the raw key `st.completed` in the
+  status column of a work order that had reached its quantity.
+- **Cause:** the report names a status as `t("st." + status)`; the server stores `released | completed | closed`, and
+  `completed` had no text in either language. The "every key exists" test reads only literal keys.
+- **Fix:** `st.completed` in both languages; a test reads the status list from the server's own table definition and
+  demands a name for each; a planted bug for it.
+- **Lesson:** the same as the scrap reasons the same day: a key built from data escapes a static check. Test the data's
+  whole domain against the dictionary, reading the domain from its source of truth.

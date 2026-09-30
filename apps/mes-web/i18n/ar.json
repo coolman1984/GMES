@@ -1071,5 +1071,6 @@
 "scrap.chipped": "حرف مكسور",
 "scrap.downgrade": "نزل فرز تاني",
 "st.lot_label": "اللوط (للبلاط: درجة اللون والمقاس)",
-"st.scrap_qty": "الكمية"
+"st.scrap_qty": "الكمية",
+"st.completed": "مكتمل"
 }

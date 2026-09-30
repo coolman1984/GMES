@@ -1071,5 +1071,6 @@
 "scrap.chipped": "Chipped edge",
 "scrap.downgrade": "Downgraded to second grade",
 "st.lot_label": "Lot (for tiles: shade and caliber)",
-"st.scrap_qty": "Quantity"
+"st.scrap_qty": "Quantity",
+"st.completed": "Completed"
 }
