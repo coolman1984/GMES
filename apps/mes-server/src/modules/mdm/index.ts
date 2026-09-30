@@ -6,7 +6,7 @@ import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
 import { plantMigration, plantNode, plantNodes, plantRoutes } from './plant.js';
-import { applyLayoutSnapshot, spatialMigration, spatialRoutes } from './spatial.js';
+import { applyLayoutSnapshot, attendanceMinutesMigration, spatialMigration, spatialRoutes } from './spatial.js';
 
 /**
  * Master data manufacturing READS: items and warehouses.
@@ -139,6 +139,7 @@ export const mdmModule: AppModule = {
     plantMigration,
     commercialMigration,
     spatialMigration,
+    attendanceMinutesMigration,
   ],
 
   setup(ctx) {
@@ -320,10 +321,10 @@ async function applyWorkforce(ctx: Ctx, t: Db, kind: 'employee' | 'attendance_da
   } else {
     const a = s as AttendanceDayV1;
     await t.run(
-      `INSERT INTO mdm_attendance_day (id, code, employee_id, work_date, status, shift_code, version, mirrored_at)
-       VALUES (:id, :code, :emp, :day, :status, :shift, :v, :now)
-       ON CONFLICT(id) DO UPDATE SET employee_id = :emp, work_date = :day, status = :status, shift_code = :shift, version = :v, mirrored_at = :now`,
-      { id: a.id, code: a.code, emp: a.employee.id, day: a.work_date, status: a.status, shift: a.scheduled_shift_code ?? a.roster?.shift_code ?? null, v: a.version, now },
+      `INSERT INTO mdm_attendance_day (id, code, employee_id, work_date, status, shift_code, worked_minutes, version, mirrored_at)
+       VALUES (:id, :code, :emp, :day, :status, :shift, :wm, :v, :now)
+       ON CONFLICT(id) DO UPDATE SET employee_id = :emp, work_date = :day, status = :status, shift_code = :shift, worked_minutes = :wm, version = :v, mirrored_at = :now`,
+      { id: a.id, code: a.code, emp: a.employee.id, day: a.work_date, status: a.status, shift: a.scheduled_shift_code ?? a.roster?.shift_code ?? null, wm: a.worked_minutes ?? null, v: a.version, now },
     );
   }
   return 'applied';

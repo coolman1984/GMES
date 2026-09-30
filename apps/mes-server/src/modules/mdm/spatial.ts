@@ -30,6 +30,12 @@ export const spatialMigration = {
   `,
 };
 
+/** Minutes HR says a person worked that day (attendance), used by the labour facts. */
+export const attendanceMinutesMigration = {
+  id: '007_attendance_minutes',
+  up: `ALTER TABLE mdm_attendance_day ADD COLUMN worked_minutes INTEGER;`,
+};
+
 /** The plant node as the contract carries it. `crew` is planning's figure and is read when the planning module is installed. */
 export async function plantNodeRecord(db: Db, company: string, id: string): Promise<PlantNodeV1 | null> {
   const n = await db.get<{ id: string; code: string; type: PlantNodeV1['type']; parent_id: string | null; name_en: string; name_ar: string; active: number; capacity_per_shift: number | null; version: number }>(
