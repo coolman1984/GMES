@@ -1063,5 +1063,13 @@
 "plan.proc.make": "تصنيع داخلي",
 "plan.lot.lot_for_lot": "المطلوب بالضبط",
 "plan.lot.fixed": "دفعة ثابتة",
-"plan.lot.multiple": "مضاعفات الدفعة"
+"plan.lot.multiple": "مضاعفات الدفعة",
+"scrap.kiln_crack": "شرخ في الفرن",
+"scrap.lamination": "تقشير في المكبس",
+"scrap.shade": "درجة لون مختلفة",
+"scrap.caliber": "مقاس خارج المواصفة",
+"scrap.chipped": "حرف مكسور",
+"scrap.downgrade": "نزل فرز تاني",
+"st.lot_label": "اللوط (للبلاط: درجة اللون والمقاس)",
+"st.scrap_qty": "الكمية"
 }

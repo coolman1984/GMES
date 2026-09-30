@@ -1063,5 +1063,13 @@
 "plan.proc.make": "Make in-house",
 "plan.lot.lot_for_lot": "Exactly what is needed",
 "plan.lot.fixed": "Fixed lot",
-"plan.lot.multiple": "Multiples of the lot"
+"plan.lot.multiple": "Multiples of the lot",
+"scrap.kiln_crack": "Kiln crack",
+"scrap.lamination": "Lamination",
+"scrap.shade": "Shade off standard",
+"scrap.caliber": "Caliber off standard",
+"scrap.chipped": "Chipped edge",
+"scrap.downgrade": "Downgraded to second grade",
+"st.lot_label": "Lot (for tiles: shade and caliber)",
+"st.scrap_qty": "Quantity"
 }

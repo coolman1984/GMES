@@ -279,3 +279,20 @@
   **Lesson:** when two paths can finish one job, give the job to exactly one of them. HR-System must re-copy the kit.
 - 4 new planted bugs (station in ledger, station in fact, old hashes unchanged, one activation).
 
+
+## Follow-up — the operator station fits a ceramic line (2026-09-30, the ceramic pitch)
+- **Symptom:** preparing a demo for a ceramic-tile factory, the operator station (EXE2020) could not record a tile
+  line's day. A tile work order with a routing opened in unit-by-unit (serial) mode although tiles are a lot item; the
+  "Good ×N" button refused a lot item ("scan the lot") with no way to give the lot, so the shade/caliber lot could only
+  be booked one piece per scan; scrap was one piece per press, with electronics and moulding reasons only.
+- **Cause:** the screen chose serial mode from `routing_id` alone, while the server refuses a quantity booking only for
+  a serialised item on a routing (`wo.unit_tracked`); the quantity dialog asked for the quantity only; scrap reasons
+  are lists per area code and there was no ceramic list.
+- **Fix:** serial mode only when the item is serialised (the server's own rule); "Good ×N" asks for the lot after the
+  quantity when the item is tracked; the scrap dialog carries a quantity (1 unless changed); a ceramic list for area
+  `CER` (kiln crack, lamination, shade, caliber, chipped edge, downgraded to second grade). Texts in both languages.
+  Test: every scrap reason of every list has a name in both languages, and the serial rule matches the server's.
+  Two planted bugs (the old serial rule; a missing reason name) are caught.
+- **Lesson:** a screen that decides a mode must use the same rule as the server that enforces it; here the server was
+  right and the screen had a simpler, wrong copy. Lists shown as `t("scrap." + code)` escape the static "every key
+  exists" test: dynamic keys need their own test.
