@@ -71,6 +71,23 @@ describe('the interface kit and the screens (UX phase, ADR-029)', () => {
     assert.ok(codes.length > 40);
     assert.deepEqual(codes.filter((c) => !(`scr.${c}` in en)), []);
     for (const s of ['planned', 'released', 'run', 'hold', 'done', 'closed', 'idle', 'setup', 'down']) assert.ok(`st.${s}` in en, s);
+    // the daily report names a work order's status as t("st." + status): every status the server stores needs a name
+    const exe = read(join(WEB_DIR, '..', '..', 'apps', 'mes-server', 'src', 'modules', 'exe', 'index.ts'));
+    const statuses = [...(exe.match(/status\s+TEXT NOT NULL[^)]*CHECK \(status IN \(([^)]*)\)/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!);
+    assert.ok(statuses.includes('completed'), 'the work order statuses are read from the server: ' + statuses);
+    assert.deepEqual(statuses.filter((x) => !(`st.${x}` in en)), []);
+  });
+
+  test('the operator station: every scrap reason has a name in both languages; unit-by-unit only for serialised items', () => {
+    // scrap reasons are shown as t("scrap." + code): a code without a name shows its raw key to the operator
+    const src = read(join(WEB_DIR, 'screens', 'exe2020.js'));
+    const en = JSON.parse(read(join(WEB_DIR, 'i18n', 'en.json'))), ar = JSON.parse(read(join(WEB_DIR, 'i18n', 'ar.json')));
+    const lists = src.slice(src.indexOf('const SCRAP ='), src.indexOf('const LOSS_ICON'));
+    const codes = [...lists.matchAll(/\["([a-z_]+)", "[a-z-]+"\]/g)].map((m) => m[1]!);
+    assert.ok(codes.includes('kiln_crack') && codes.includes('solder'), 'the ceramic and the electronics lists are both read');
+    assert.deepEqual(codes.filter((c) => !(`scrap.${c}` in en) || !(`scrap.${c}` in ar)), []);
+    // the server books a lot or bulk item on a routing by quantity (only serial + routing is refused): so does the screen
+    assert.match(src, /const serial = \(\) => !!\(S\.wo && S\.wo\.routing_id && S\.wo\.item\.tracking === "serial"\)/);
   });
 
   test('no screen shows invented data: there is no sample file, and every screen reads the server', () => {

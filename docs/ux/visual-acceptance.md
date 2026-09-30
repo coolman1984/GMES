@@ -1,13 +1,13 @@
 # Visual acceptance — the application shell (UX phase)
 
 The finish line is not "the page works". It is: **HR-System looks like a polished commercial HR product, and GMES
-immediately feels like a serious manufacturing execution system inspired by the real G-MES working environment.**
+immediately feels like a serious manufacturing execution system inspired by large enterprise manufacturing systems.**
 Business features stay frozen until the owner approves this shell (owner's instruction, 2026-09-28).
 
 How to review: open the screenshots in `docs/ux/screenshots/` (desktop 1600×900, taken from the running servers with a
 real browser), then the live screens. Every item below is checked on every screenshot set; a ✗ is fixed before the
-next set. Items marked **G-MES ref** are compared side by side with the owner's real G-MES screenshots once they arrive
-(sensitive data hidden) — until then they are checked against the documented G-MES experience
+next set. Items marked **ref** are compared side by side with the owner's reference screenshots once they arrive
+(sensitive data hidden) — until then they are checked against the documented experience
 (`opening-nerp-tcode`: GMES_SKILL.md, PROJECT_EXPERIENCE.md §5–9; GMES `docs/design/05`, `06`).
 
 ## 1. Shell and navigation
@@ -17,16 +17,16 @@ next set. Items marked **G-MES ref** are compared side by side with the owner's 
 | 1.2 | Collapsible left menu tree, groups with icons, active screen marked, filter box, collapses to an icon rail | ✓ | ✓ |
 | 1.3 | Screen search by **code or name** (Ctrl+K), recent screens first, keyboard only | ✓ | ✓ |
 | 1.4 | MDI tabs: several screens open, each keeps its state, close / close others / close all, Alt+1…9, a limit with a message | ✓ | ✓ |
-| 1.5 | Breadcrumb + screen code on every screen (**G-MES ref**: the code is the address, `[ P1112UM00 > P1112WM00 ]`) | ✓ | ✓ |
+| 1.5 | Breadcrumb + screen code on every screen (**ref**: the code is the address) | ✓ | ✓ |
 | 1.6 | Status bar: connection (observed, not assumed), company, user, clock, version, language | ✓ | ✓ |
 | 1.7 | Favourites (star on the screen) appear at the top of the menu | ✓ | ✓ |
-| 1.8 | No Samsung/G-MES logo, name, icon or asset anywhere; our own marks and accent colours | ✓ | ✓ |
+| 1.8 | No other vendor's logo, name, icon or asset anywhere; our own marks and accent colours | ✓ | ✓ |
 
 ## 2. The standard screen (conditions → Inquiry → grid → details)
 | # | Check | GMES | HR |
 |---|---|---|---|
 | 2.1 | One toolbar per screen: the screen's actions on the start side, standard ones (Inquiry F5, Reset, Export Ctrl+E, Columns, Print) on the end side | ✓ | ✓ |
-| 2.2 | Collapsible condition panel, required conditions marked * and a red edge; Inquiry refuses to run without them (never "0 rows" silently — **G-MES ref** gotcha #12) | ✓ | ✓ |
+| 2.2 | Collapsible condition panel, required conditions marked * and a red edge; Inquiry refuses to run without them (never "0 rows" silently) | ✓ | ✓ |
 | 2.3 | Collapsed conditions show their values as chips | ✓ | ✓ |
 | 2.4 | Saved filters: save, apply, default, delete (per person) | ✓ | ✓ |
 | 2.5 | Result bar: applied conditions, row count, query time and duration, quick filter, export | ✓ | ✓ |
@@ -36,13 +36,13 @@ next set. Items marked **G-MES ref** are compared side by side with the owner's 
 ## 3. Dense grid
 | # | Check | GMES | HR |
 |---|---|---|---|
-| 3.1 | Row 26 px, text 12.5 px, header 28 px; about 20 rows visible at 1600×900 with the conditions open, more when collapsed (**G-MES ref**: density — may need 22–24 px rows after the comparison) | ✓ | ✓ |
+| 3.1 | Row 26 px, text 12.5 px, header 28 px; about 20 rows visible at 1600×900 with the conditions open, more when collapsed (**ref**: density — may need 22–24 px rows after the comparison) | ✓ | ✓ |
 | 3.2 | Frozen key columns, sort (Shift for several), resize, hide, reorder, "Columns…" dialog, layout remembered per person | ✓ | ✓ |
-| 3.3 | Totals row (sums, count) that follows the filter (**G-MES ref**: LINE SUM rows are totals, not data — gotcha #28) | ✓ | ✓ |
+| 3.3 | Totals row (sums, count) that follows the filter (**ref**: LINE SUM rows are totals, not data) | ✓ | ✓ |
 | 3.4 | Codes and numbers in a monospace/tabular face, numbers right-aligned, codes stay left-to-right in Arabic | ✓ | ✓ |
 | 3.5 | Status = colour + icon + word (never colour alone); production colours fixed everywhere | ✓ | ✓ |
 | 3.6 | Keyboard: arrows, Page Up/Down, Enter opens, Space selects, Ctrl+A | ✓ | ✓ |
-| 3.7 | Virtual rows (only the visible rows are drawn; checked with 486 rows); export writes **all** filtered rows, not the visible ones (**G-MES ref** gotcha #9) | ✓ | ✓ |
+| 3.7 | Virtual rows (only the visible rows are drawn; checked with 486 rows); export writes **all** filtered rows, not the visible ones (**ref**) | ✓ | ✓ |
 | 3.8 | Multi-select with bulk actions enabled only when they apply | ✓ | ✓ |
 
 ## 4. Dialogs, notifications, forms
@@ -78,8 +78,8 @@ next set. Items marked **G-MES ref** are compared side by side with the owner's 
 | 7.3 | Strict Content-Security-Policy: scripts from the product's own server only (test, planted bug) | ✓ | ✓ |
 
 ## Known gaps (not hidden)
-- Colours, spacing and type sizes are ours, derived from the documented G-MES philosophy; the side-by-side comparison
-  with real G-MES screenshots (§ **G-MES ref** items) waits for the owner's redacted screenshots (design doc 06 §6.6).
+- Colours, spacing and type sizes are ours, derived from the documented enterprise-MES philosophy; the side-by-side comparison
+  with reference screenshots (§ **ref** items) waits for the owner's redacted screenshots (design doc 06 §6.6).
 - GMES screens run on sample data; wiring them to the server is the first task after approval.
 - HR's attendance screen shows the migrated attendance application inside the shell; its inner look is the locked
   engine's (`dashboard.html` may not be changed — HR-System CLAUDE.md), so it does not follow the tokens yet.

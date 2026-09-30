@@ -1,6 +1,6 @@
 // Before the shell: the first administrator (a new installation), signing in, and the forced password change.
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, showError, t, lang } from "./common.js";
+import { api, showError, t, lang, product } from "./common.js";
 
 const { h } = ui;
 
@@ -9,7 +9,7 @@ function page(title, sub, fields, submitLabel, onSubmit, foot) {
   const btn = ui.button({ label: submitLabel, kind: "primary", icon: "check" });
   btn.type = "submit";
   const form = h("form", { class: "mes-auth-card", novalidate: true },
-    h("div", { class: "mes-auth-brand" }, h("span", { class: "eco-brand-mark", text: "GM" }), h("div", {}, h("b", { text: "GMES" }), h("span", { class: "eco-muted", text: t("edition") }))),
+    h("div", { class: "mes-auth-brand" }, h("span", { class: "eco-brand-mark", text: "IQ" }), h("div", {}, h("b", { text: product() }), h("span", { class: "eco-muted", text: t("edition") }))),
     h("h1", { text: title }), sub ? h("p", { class: "eco-muted", text: sub }) : null,
     h("div", { class: "mes-auth-fields" }, fields), err, btn, foot || null);
   form.addEventListener("submit", async (ev) => {

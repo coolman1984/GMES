@@ -1,7 +1,7 @@
 // MDM1020 Items and warehouses. Their owner is accounting (Mizan) when it is connected: then this screen only shows the
 // mirror and says where to create them; when manufacturing runs alone it is the owner and creates them here.
 import * as ui from "/eco-ui/eco-ui.js";
-import { api, can, name, session, showError, t } from "../common.js";
+import { api, can, name, session, showError, t, product } from "../common.js";
 
 const { h } = ui;
 
@@ -17,14 +17,14 @@ export default function create({ shell }) {
     { key: "tracking", label: t("c.tracking"), width: 110, value: (r) => t("trk." + r.tracking) },
     { key: "base_uom", label: t("c.unit"), type: "code", width: 70 },
     { key: "active", label: t("c.record_status"), width: 100, render: (r) => ui.badge(t(r.active ? "rs.active" : "rs.inactive"), r.active ? "ok" : "neutral") },
-    { key: "owner", label: t("u.source"), width: 110, render: (r) => ui.badge(r.owner === "mizan" ? "Mizan" : "GMES", r.owner === "mizan" ? "accent" : "neutral") },
+    { key: "owner", label: t("u.source"), width: 110, render: (r) => ui.badge(r.owner === "mizan" ? "Mizan" : product(), r.owner === "mizan" ? "accent" : "neutral") },
   ], { rowKey: "id", selection: "single", totals: true, layoutKey: "MDM1020-items" });
   const whGrid = ui.grid([
     { key: "code", label: t("c.code"), type: "code", width: 130, frozen: true, total: "count" },
     { key: "name", label: t("c.name"), width: 240, value: (r) => name(r) },
     { key: "is_default", label: t("mdm.default_wh"), width: 100, align: "center", render: (r) => r.is_default ? ui.icon("check", 14, "mes-ok") : "" },
     { key: "active", label: t("c.record_status"), width: 100, render: (r) => ui.badge(t(r.active ? "rs.active" : "rs.inactive"), r.active ? "ok" : "neutral") },
-    { key: "owner", label: t("u.source"), width: 110, render: (r) => ui.badge(r.owner === "mizan" ? "Mizan" : "GMES", r.owner === "mizan" ? "accent" : "neutral") },
+    { key: "owner", label: t("u.source"), width: 110, render: (r) => ui.badge(r.owner === "mizan" ? "Mizan" : product(), r.owner === "mizan" ? "accent" : "neutral") },
   ], { rowKey: "id", selection: "single", totals: true, layoutKey: "MDM1020-wh" });
 
   const note = owner === "mizan" ? ui.banner("info", t("mdm.owned_by_mizan")) : null;

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  One-click start for GMES: checks Node.js, installs dependencies when needed, creates the local
+  One-click start for Itqan: checks Node.js, installs dependencies when needed, creates the local
   configuration on the first run, starts the server and opens the screens in the browser.
   Close the window (or press Ctrl+C) to stop the server.
 .PARAMETER NoBrowser
@@ -50,14 +50,14 @@ $browseHost = 'localhost'
 $url = "http://${browseHost}:$($cfg.port)/"
 
 if (Test-GmesRunning $cfg.port) {
-  Write-Host "GMES is already running: $url"
+  Write-Host "Itqan is already running: $url"
   if (-not $NoBrowser) { Start-Process $url }
   exit 0
 }
 if (Test-PortOpen $cfg.port) { Fail "Port $($cfg.port) is used by another program. Change 'port' in $($cfg.dataDir)\config.json." }
 
 $linkSettings = Get-LinkMizanSettings $cfg   # stops with a clear message when the link is configured but its secret files are missing
-Write-Host "Starting GMES (company $($cfg.companyId), data in $($cfg.dataDir)) ..."
+Write-Host "Starting Itqan (company $($cfg.companyId), data in $($cfg.dataDir)) ..."
 $link = $null
 $server = Start-Process -FilePath $nodeExe -WorkingDirectory (Join-Path $script:Root 'apps\mes-server') -NoNewWindow -PassThru `
   -ArgumentList @('--disable-warning=ExperimentalWarning', '--import', 'tsx', 'src/main.ts')
@@ -72,7 +72,7 @@ try {
   }
   if (-not $up) { Fail 'The server did not answer within 90 seconds.' }
   Write-Host ''
-  Write-Host "GMES is running: $url" -ForegroundColor Green
+  Write-Host "Itqan is running: $url" -ForegroundColor Green
   if ($linkSettings) {
     $link = Start-LinkMizan $linkSettings $nodeExe
     Write-Host "The link to Mizan ($($cfg.mizan.url)) is running in its own window; the health page shows its pulse." -ForegroundColor Green

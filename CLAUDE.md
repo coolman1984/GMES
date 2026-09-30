@@ -2,7 +2,7 @@
 
 This is the **manufacturing piece** of an ecosystem of products sold to small and mid-sized factories:
 Mizan (accounting, `coolman1984/Accounting-sys`), Space Planner (3D layout, `coolman1984/3D-Modeling`),
-HR-System (people, shifts, attendance, payroll data, `coolman1984/HR-System`), and the G-MES automation knowledge
+HR-System (people, shifts, attendance, payroll data, `coolman1984/HR-System`), and an earlier automation knowledge
 base (`coolman1984/opening-nerp-tcode`). BAMS (`coolman1984/Mr.Ayman-HR`) is a separate product, not HR.
 Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/README.md` before any structural change.
 
@@ -14,7 +14,7 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 - Round a quantity silently. Refuse what cannot be carried exactly (ADR-018).
 - UPDATE or DELETE a ledger line or a published event. Corrections are new facts.
 - Change a published contract in place. Additive change = same version; breaking change = new `vN`.
-- Import code from the G-MES automation project into the product.
+- Import code from the earlier automation project into the product.
 
 ## Structure
 | Path | What |
@@ -24,7 +24,7 @@ Read `README.md`, then `docs/ecosystem/02-truth-ownership.md` and `docs/adr/READ
 | `apps/mes-web` | The screens (`screens/<CODE>.js`, shared builders in `views.js`), served by `mes-server` (`src/web.ts`); every screen reads the server |
 | `packages/eco-ui` | The ecosystem's one interface kit (tokens, shell, grid, dialogs); HR-System copies it unchanged (ADR-029) |
 | `apps/link-mizan` | Mizan's agent: mirrors items/warehouses, applies manufacturing facts through Mizan's existing API |
-| `Start-GMES.bat` → `scripts/start.ps1` | One-click start: checks Node, installs, creates `data/config.json`, starts the server, opens the browser (ADR-031) |
+| `Start-Itqan.bat` → `scripts/start.ps1` | One-click start: checks Node, installs, creates `data/config.json`, starts the server, opens the browser (ADR-031) |
 | `scripts/new-key.ps1` | Creates an API key (printed once, stored as a hash) |
 | `scripts/test.ps1` | The definition of done in one command (typecheck, all tests against the pinned real apps, planted bugs) |
 | `scripts/fetch-mizan.ps1` | The pinned real Mizan the end-to-end tests run against |

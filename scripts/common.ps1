@@ -1,4 +1,4 @@
-# Shared helpers for the GMES PowerShell scripts (dot-source: . "$PSScriptRoot\common.ps1").
+# Shared helpers for the Itqan PowerShell scripts (dot-source: . "$PSScriptRoot\common.ps1").
 # Plain ASCII and Windows PowerShell 5.1 compatible, so it runs on any Windows machine.
 
 $script:Root = Split-Path -Parent $PSScriptRoot

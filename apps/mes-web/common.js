@@ -15,6 +15,8 @@ export function t(key, vars) {
   return s;
 }
 export const lang = () => S.lang;
+/** The product's name as people read it (the repository and the code keep their short technical name). */
+export const product = () => (S.lang === "ar" ? "إتقان" : "Itqan");
 export const statusLabel = (s) => t("st." + s);
 /** A server row with name_en / name_ar, or a node with en / ar. */
 export const name = (n) => (!n ? "" : S.lang === "ar" ? n.name_ar || n.ar || n.name_en || n.en || n.code : n.name_en || n.en || n.code);

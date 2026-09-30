@@ -13,7 +13,7 @@ export const systemClock: Clock = { now: () => new Date(), newId: newUuidv7 };
 
 /**
  * The production day a moment belongs to: a night shift that runs past midnight still belongs
- * to the day it started on (the "export of the wrong day" lesson from the G-MES automation).
+ * to the day it started on (the "export of the wrong day" lesson from an earlier automation project).
  */
 export function productionDate(now: Date, timeZone: string, dayStart: string): string {
   const parts = Object.fromEntries(

@@ -14,6 +14,8 @@ const SCRAP_BY_AREA = {
   INJ: [["short_shot", "minus"], ["surface", "eye"], ["dimension", "gauge"], ["contamination", "alert"], ["other", "more"]],
   LCM: [["panel", "monitor"], ["cosmetic", "eye"], ["function", "x-octagon"], ["contamination", "alert"], ["other", "more"]],
   MAIN: [["function", "x-octagon"], ["cosmetic", "eye"], ["assembly", "wrench"], ["panel", "monitor"], ["other", "more"]],
+  // ceramic tiles: what a kiln line loses, and the second grade the sorting sends down
+  CER: [["kiln_crack", "zap"], ["lamination", "minus"], ["shade", "eye"], ["caliber", "gauge"], ["chipped", "alert"], ["downgrade", "x"], ["other", "more"]],
 };
 // stop reasons come from the plant's own list (SYS9040); the icon follows the loss category of the reason
 const LOSS_ICON = { breakdown: "x-octagon", setup: "refresh", material: "box", quality: "shield", planned: "clock", other: "more" };
@@ -63,7 +65,8 @@ export default function create() {
     buttons);
 
   const blocked = () => !S.online || S.busy;
-  const serial = () => !!(S.wo && S.wo.routing_id);
+  // unit by unit only for serialised items, the server's own rule: a lot or bulk item on a routing is booked by quantity
+  const serial = () => !!(S.wo && S.wo.routing_id && S.wo.item.tracking === "serial");
   function draw() {
     const sm = serial();
     el.classList.toggle("is-serial", sm);
@@ -178,17 +181,28 @@ export default function create() {
     const v = await ui.promptValue({ title: t("st.good_qty"), label: t("st.qty_label", { open: ui.fmtNumber(num(S.wo.open_qty)) }), type: "number", okLabel: t("st.good") });
     if (v === null || v === "") return;
     if (!/^\d+(\.\d{1,3})?$/.test(v) || !(Number(v) > 0)) { feedback("bad", t("st.bad_qty"), t("hint.qty_exact"), "alert"); return; }
-    await book("good", v);
+    // a tracked item says which lot the quantity is (for tiles: its shade and caliber)
+    let lot = null;
+    if (S.wo.item.tracking !== "none") {
+      lot = await ui.promptValue({ title: t("st.good_qty"), label: t("st.lot_label"), okLabel: t("st.good") });
+      if (lot === null || !lot.trim()) return;
+      lot = lot.trim();
+    }
+    await book("good", v, lot);
   }
   function reasons(kind) {
     if (blocked() || (kind === "scrap" && !S.wo)) return;
     const list = kind === "scrap" ? SCRAP_BY_AREA[(S.areaOf || {})[S.line]] || SCRAP
       : (S.stopReasons || []).filter((r) => r.active).map((r) => [r.code, LOSS_ICON[r.loss] || "more"]);
+    // scrap: one press books the quantity above (1 unless changed: a whole kiln car is not pressed piece by piece)
+    const qtyIn = kind === "scrap" ? ui.input({ value: "1", type: "number", dir: "ltr", "aria-label": t("st.scrap_qty") }) : null;
     const d = ui.dialog({ title: kind === "scrap" ? t("st.scrap_why") : t("st.stop_why"), icon: kind === "scrap" ? "x-octagon" : "pause", width: 720,
-      body: h("div", { class: "st-reasons" }, list.map(([r, ic]) => h("button", { type: "button", class: "st-reason st-reason-" + kind, onclick: () => {
+      body: h("div", {}, qtyIn ? ui.field(t("st.scrap_qty"), qtyIn) : null, h("div", { class: "st-reasons" }, list.map(([r, ic]) => h("button", { type: "button", class: "st-reason st-reason-" + kind, onclick: () => {
+        const q = qtyIn ? qtyIn.value.trim() : "1";
+        if (kind === "scrap" && (!/^\d+(\.\d{1,3})?$/.test(q) || !(Number(q) > 0))) { feedback("bad", t("st.bad_qty"), t("hint.qty_exact"), "alert"); return; }
         d.close();
-        if (kind === "scrap") book("scrap", 1, null, r); else stop(r);
-      } }, ui.icon(ic, 34), h("span", { text: kind === "scrap" ? t("scrap." + r) : stopName(r) })))) });
+        if (kind === "scrap") book("scrap", Number(q) === 1 ? 1 : q, null, r); else stop(r);
+      } }, ui.icon(ic, 34), h("span", { text: kind === "scrap" ? t("scrap." + r) : stopName(r) }))))) });
     d.el.classList.add("st-dialog");
   }
   async function stop(reason) {

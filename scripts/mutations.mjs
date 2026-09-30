@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * "A green test proves nothing until it has been made to fail" (lesson carried over from the
- * G-MES automation project). Each mutation plants one realistic bug, runs the suite that must
+ * earlier automation project). Each mutation plants one realistic bug, runs the suite that must
  * catch it, expects it to FAIL, and restores the file in a finally block.
  *
  *   node scripts/mutations.mjs            (needs a Mizan checkout for the link mutations: MIZAN_DIR)
@@ -29,6 +29,9 @@ const MUTATIONS = [
   { name: 'a withdrawn qualification still admits a person', file: 'apps/mes-server/src/modules/mdm/index.ts', from: "const why = !q || !q.active ? 'has no qualification'", to: "const why = !q ? 'has no qualification'", suite: 'apps/mes-server' },
   { name: 'a screen parses text as HTML', file: 'apps/mes-web/screens/exe3010.js', from: 'ui.clear(detailBody, head,', to: 'detailBody.innerHTML = ""; ui.clear(detailBody, head,', suite: 'apps/mes-server' },
   { name: 'the screens allow scripts from anywhere', file: 'apps/mes-server/src/web.ts', from: "script-src 'self'; style-src", to: "script-src 'self' 'unsafe-inline'; style-src", suite: 'apps/mes-server' },
+  { name: 'the operator station goes unit by unit for a lot item on a routing', file: 'apps/mes-web/screens/exe2020.js', from: 'S.wo.routing_id && S.wo.item.tracking === "serial"', to: 'S.wo.routing_id', suite: 'apps/mes-server' },
+  { name: 'a ceramic scrap reason has no name', file: 'apps/mes-web/i18n/en.json', from: '"scrap.kiln_crack": "Kiln crack",\n', to: '', suite: 'apps/mes-server' },
+  { name: 'a work order status has no name on the daily report', file: 'apps/mes-web/i18n/en.json', from: '"st.completed": "Completed"\n', to: '"st.completed_x": "Completed"\n', suite: 'apps/mes-server' },
   { name: 'an Arabic text of the screens is missing', file: 'apps/mes-web/i18n/ar.json', from: '"cancel": "إلغاء",\n', to: '', suite: 'apps/mes-server' },
   { name: 'a screen goes back to invented data', file: 'apps/mes-web/screens/home.js', from: 'import * as ui from "/eco-ui/eco-ui.js";', to: 'import * as ui from "/eco-ui/eco-ui.js";\nimport { lines } from "../data.js";', suite: 'apps/mes-server' },
   { name: 'a locked account can still sign in', file: 'apps/mes-server/src/modules/system/users.ts', from: "if (u.status === 'locked') throw", to: "if (false) throw", suite: 'apps/mes-server' },

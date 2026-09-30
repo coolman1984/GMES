@@ -2,11 +2,26 @@
 
 كل bug أو اكتشاف أو تغيير في قرار يتسجل هنا بالشكل: **Symptom / Cause / Fix / Lesson**.
 
+## Phase N1 — Own product name: Itqan · إتقان; no other company's name in the product or docs (2026-09-30)
+- **What:** people now read **Itqan** (English) / **إتقان** (Arabic), mark "IQ": sign-in, top bar, status bar, page
+  title, owner badges, messages. Launchers renamed `Start-Itqan.bat` / `Start-Itqan-Demo.bat`. The design and
+  ecosystem documents no longer name a real company, its systems, screen codes or part numbers; the future plan import
+  is "an external plan" (`origin = external-plan`). The repository, packages, API and `GMES_*` settings keep their
+  technical names, so nothing installed breaks.
+- **Why:** the owner presents the product to other factories; a name close to another vendor's product, and documents
+  naming that company, are a legal and commercial risk (design doc 06 §6.1 asked for an own name from the start).
+- **Mistake:** the first bulk replacement also renamed the `GMES_*` environment variables in `scripts/common.ps1`, which
+  would have started the server with none of its settings. **Found** by reading the diff while a planted bug
+  ("a configured link to Mizan is never started") survived here (that test needs PowerShell, absent on this Linux box).
+  **Fix:** restored. **Lesson:** a rename is for words people read; never bulk-replace identifiers, and read every line
+  of a rename diff before committing.
+
 ## 2026-09-30 - Serial parts fitted to a unit were never consumed
 - **Symptom:** planning a multi-level bill of materials (board fitted into a TV) showed semi-finished stock and its value growing forever in accounting.
 - **Cause:** `flushOrder` booked only lot loads and unscanned material; serial parts (a unit of another order, or a bought-in serial part) were recorded in the genealogy but never consumed in the ledger.
 - **Fix:** `flushOrder` consumes each fitted serial part once, by its serial, before the final unit (test in `serial.test.ts`, planted bug in `scripts/mutations.mjs`).
 - **Lesson:** a genealogy link is not a stock movement; every quantity that leaves stock needs its own ledger line.
+
 ## Phase 0 — Design (2026-09-27)
 - **What:** أول نسخة من وثائق التصميم (`docs/design/01..08`) وسجل القرارات (`docs/adr`).
 - **Why:** قرار المالك: لا كود قبل البحث والتصميم.
@@ -14,7 +29,7 @@
 
 ## Phase E0 — The manufacturing core becomes part of an ecosystem (2026-09-27)
 - **Symptom (design gap):** the first design treated manufacturing as a standalone program. The owner's
-  other systems (Mizan accounting, Space Planner 3D, BAMS, G-MES automation) would each keep their own copy
+  other systems (Mizan accounting, Space Planner 3D, BAMS, the earlier automation project) would each keep their own copy
   of items, warehouses, people and stations.
 - **Discovery:** studied every branch of the four repositories. `Mr.Ayman-HR` is BAMS (break-area
   management), not HR: nobody owns people/shifts/attendance today. Mizan and Space Planner are TypeScript
@@ -115,7 +130,7 @@
   carries the same kit unchanged (ADR-029). 9 new tests, 4 new planted bugs, all caught.
 - **Symptom:** opening `/#EXE3010` showed only the start page. **Cause:** the home tab was opened first and rewrote the
   address to `#HOME` before the shell read it. **Fix:** `start()` reads the address before opening anything. **Lesson:** read
-  the input before the first step that can change it (the same shape as G-MES gotcha #32: options rebuild the panel).
+  the input before the first step that can change it (the same shape as a lesson from the earlier automation project: options rebuild the panel).
 - **Symptom:** saved theme and language were ignored after a reload. **Cause:** preferences were read before the store was
   given its product name, so reads went to `eco:*` while writes went to `gmes:*`. **Fix:** `configure({ prefix })` first.
   **Lesson:** a preference that "does not stick" is usually read and written under two different names.
@@ -129,9 +144,9 @@
 - **Symptom (found by a browser run, not by review):** the quick filter found nothing for a value in a hidden column.
   **Cause:** it searched only visible columns. **Fix:** it searches every column. **Lesson:** a person who hid a column
   still expects to find by it; verify interactions in a real browser, not only screenshots.
-- **Open:** the colours are still ours; the side-by-side comparison with real G-MES screenshots waits for the owner's
-  redacted screenshots (`docs/ux/visual-acceptance.md`). The product name "GMES" is close to Samsung's "G-MES" while
-  design doc 06 §6.1 asks for an own name — a decision for the owner.
+- **Open:** the colours are still ours; the side-by-side comparison with reference screenshots waits for the owner's
+  redacted screenshots (`docs/ux/visual-acceptance.md`). The own product name asked for by
+  design doc 06 §6.1 was chosen later: Itqan · إتقان.
 
 ## Phase W1 — HR's plan and qualifications reach the shop floor (2026-09-28)
 - **What:** `eco.schedule_day.v1` and `eco.qualification.v1` (contracts + generated schemas); mirrors `mdm_schedule_day`,
@@ -284,6 +299,33 @@
   **Lesson:** when two paths can finish one job, give the job to exactly one of them. HR-System must re-copy the kit.
 - 4 new planted bugs (station in ledger, station in fact, old hashes unchanged, one activation).
 
+
+## Follow-up — the operator station fits a ceramic line (2026-09-30, the ceramic pitch)
+- **Symptom:** preparing a demo for a ceramic-tile factory, the operator station (EXE2020) could not record a tile
+  line's day. A tile work order with a routing opened in unit-by-unit (serial) mode although tiles are a lot item; the
+  "Good ×N" button refused a lot item ("scan the lot") with no way to give the lot, so the shade/caliber lot could only
+  be booked one piece per scan; scrap was one piece per press, with electronics and moulding reasons only.
+- **Cause:** the screen chose serial mode from `routing_id` alone, while the server refuses a quantity booking only for
+  a serialised item on a routing (`wo.unit_tracked`); the quantity dialog asked for the quantity only; scrap reasons
+  are lists per area code and there was no ceramic list.
+- **Fix:** serial mode only when the item is serialised (the server's own rule); "Good ×N" asks for the lot after the
+  quantity when the item is tracked; the scrap dialog carries a quantity (1 unless changed); a ceramic list for area
+  `CER` (kiln crack, lamination, shade, caliber, chipped edge, downgraded to second grade). Texts in both languages.
+  Test: every scrap reason of every list has a name in both languages, and the serial rule matches the server's.
+  Two planted bugs (the old serial rule; a missing reason name) are caught.
+- **Lesson:** a screen that decides a mode must use the same rule as the server that enforces it; here the server was
+  right and the screen had a simpler, wrong copy. Lists shown as `t("scrap." + code)` escape the static "every key
+  exists" test: dynamic keys need their own test.
+
+## Follow-up — a finished work order showed "st.completed" on the daily report (2026-09-30)
+- **Symptom:** filming the ceramic scenes, the daily production report (RPT4010) showed the raw key `st.completed` in the
+  status column of a work order that had reached its quantity.
+- **Cause:** the report names a status as `t("st." + status)`; the server stores `released | completed | closed`, and
+  `completed` had no text in either language. The "every key exists" test reads only literal keys.
+- **Fix:** `st.completed` in both languages; a test reads the status list from the server's own table definition and
+  demands a name for each; a planted bug for it.
+- **Lesson:** the same as the scrap reasons the same day: a key built from data escapes a static check. Test the data's
+  whole domain against the dictionary, reading the domain from its source of truth.
 ## Phase E1 — Planning, receiving, shipping against orders, labour facts and the Space Planner link (2026-09-30)
 - **What:** modules `pln` (MPS/MRP/RCCP/crew, nightly loop, screens PLN1010–PLN2080), mirrors of accounting (parties, sales orders, demand plans, stock,
   purchase orders, item planning), receiving with incoming lots and inspection decisions (QMS2040), shipping from sales order lines, the pusher to peers,
