@@ -39,6 +39,7 @@ import qms1020 from "./screens/qms1020.js";
 import qms2010 from "./screens/qms2010.js";
 import qms2020 from "./screens/qms2020.js";
 import qms2030 from "./screens/qms2030.js";
+import qms2040 from "./screens/qms2040.js";
 import qms4010 from "./screens/qms4010.js";
 import shp1010 from "./screens/shp1010.js";
 import shp2010 from "./screens/shp2010.js";
@@ -74,7 +75,7 @@ const BUILT = { HOME: [home, "home", "exe.orders.read"], EXE3010: [exe3010, "cli
   PLN1030: [pln1030, "chart", "mdm.items.read"], PLN1040: [pln1040, "box", "mdm.items.read"], PLN1050: [pln1050, "archive", "mdm.items.read"],
   PLN2010: [pln2010, "play", "pln.read"], PLN2040: [pln2040, "clipboard-check", "pln.read"], PLN2050: [pln2050, "tag", "pln.read"], PLN2060: [pln2060, "chart", "pln.read"], PLN2080: [pln2080, "alert", "pln.read"],
   QMS1010: [qms1010, "clipboard-check", "qms.read"], QMS1020: [qms1020, "alert", "qms.read"], QMS2010: [qms2010, "clipboard-check", "qms.read"],
-  QMS2020: [qms2020, "lock", "qms.read"], QMS2030: [qms2030, "wrench", "qms.read"], QMS4010: [qms4010, "chart", "qms.read"],
+  QMS2020: [qms2020, "lock", "qms.read"], QMS2030: [qms2030, "wrench", "qms.read"], QMS2040: [qms2040, "box", "qms.read"], QMS4010: [qms4010, "chart", "qms.read"],
   SHP1010: [shp1010, "box", "shp.read"], SHP2010: [shp2010, "scan", "shp.pack"], SHP2020: [shp2020, "archive", "shp.read"], SHP2030: [shp2030, "archive", "shp.load"], SHP3010: [shp3010, "list", "shp.read"],
   OEE2010: [oee2010, "pause", "oee.stops.read"], OEE4010: [oee4010, "gauge", "oee.stops.read"], OEE4020: [oee4020, "chart", "oee.stops.read"],
   RPT4010: [rpt4010, "table", "rpt.read"], RPT4020: [rpt4020, "x-octagon", "rpt.read"], RPT4030: [rpt4030, "clipboard-check", "rpt.read"],
@@ -88,7 +89,7 @@ const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.producti
   MDM1070: ["m.master", "m.products"], MDM1080: ["m.master", "m.products"], PLN1020: ["g.planning", "m.demand"], PLN1030: ["g.planning", "m.demand"],
   PLN1040: ["g.planning", "m.supply"], PLN1050: ["g.planning", "m.supply"],
   PLN2010: ["g.planning", "m.mrp"], PLN2040: ["g.planning", "m.mrp"], PLN2050: ["g.planning", "m.mrp"], PLN2060: ["g.planning", "m.mrp"], PLN2080: ["g.planning", "m.mrp"],
-  QMS1010: ["g.quality", "m.inspection"], QMS1020: ["g.quality", "m.inspection"], QMS2010: ["g.quality", "m.inspection"], QMS2030: ["g.quality", "m.inspection"],
+  QMS1010: ["g.quality", "m.inspection"], QMS1020: ["g.quality", "m.inspection"], QMS2010: ["g.quality", "m.inspection"], QMS2030: ["g.quality", "m.inspection"], QMS2040: ["g.quality", "m.inspection"],
   QMS2020: ["g.quality", "m.holds"], QMS4010: ["g.quality", "m.holds"],
   SHP1010: ["g.shipping", "m.shipping"], SHP2010: ["g.shipping", "m.shipping"], SHP2020: ["g.shipping", "m.shipping"], SHP2030: ["g.shipping", "m.shipping"], SHP3010: ["g.shipping", "m.shipping"],
   OEE2010: ["g.efficiency", "m.downtime"], OEE4010: ["g.efficiency", "m.downtime"], OEE4020: ["g.efficiency", "m.downtime"],
@@ -100,7 +101,7 @@ const PATH = { EXE3010: ["m.production", "m.work_orders"], EXE2020: ["m.producti
 const MENU = [
   ["production", "clipboard", [["m.work_orders", ["EXE2010", "EXE3010", "EXE2030", "EXE2040"]], ["m.shop_floor", ["EXE2020", "EXE3020", "EXE3030"]], ["m.wip", ["WIP3010", "WIP3020"]]]],
   ["planning", "calendar-check", [["m.demand", ["PLN1020", "PLN1030"]], ["m.supply", ["PLN1040", "PLN1050"]], ["m.mrp", ["PLN2010", "PLN2040", "PLN2050", "PLN2060", "PLN2080"]]]],
-  ["quality", "shield", [["m.inspection", ["QMS1010", "QMS1020", "QMS2010", "QMS2030"]], ["m.holds", ["QMS2020", "QMS4010"]]]],
+  ["quality", "shield", [["m.inspection", ["QMS1010", "QMS1020", "QMS2010", "QMS2030", "QMS2040"]], ["m.holds", ["QMS2020", "QMS4010"]]]],
   ["efficiency", "gauge", [["m.downtime", ["OEE2010", "OEE4010", "OEE4020"]]]],
   ["trace", "link", [["m.genealogy", ["TRC2010", "TRC3010", "TRC3020"]]]],
   ["shipping", "archive", [["m.shipping", ["SHP2020", "SHP2010", "SHP2030", "SHP3010", "SHP1010"]]]],
