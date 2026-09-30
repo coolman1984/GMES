@@ -56,5 +56,12 @@ test('a run turns an open sales order into a requisition, is stable on a re-run,
   // the released order is now supply: a new run plans nothing more for the TV
   await s.call('POST', '/api/pln/runs');
   assert.equal((await s.call('GET', '/api/pln/planned-orders?status=planned')).body.length, 0);
+
+  // cancelling a released order that produced nothing frees the demand again
+  const cancel = await s.call('POST', `/api/work-orders/${rel.body.workOrder.id}/cancel`, { commandId: 'cancel-tv-0001', reason: 'customer moved the date' });
+  assert.equal(cancel.status, 200, JSON.stringify(cancel.body));
+  assert.equal((await s.call('GET', `/api/work-orders/${rel.body.workOrder.id}`)).body.status, 'closed');
+  await s.call('POST', '/api/pln/runs');
+  assert.equal((await s.call('GET', '/api/pln/planned-orders?status=planned')).body.length, 1, 'the closed order is no longer supply');
   await s.close();
 });

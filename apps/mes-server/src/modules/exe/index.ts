@@ -48,6 +48,26 @@ const zCreate = z.object({
 });
 type CreateInput = z.infer<typeof zCreate> & { plannedOrderId?: string; pegging?: unknown };
 
+/** Closes a work order: the ledger line and the closed event (cancel uses it too). */
+async function closeWorkOrder(ctx: Ctx, t: Db, caller: Caller, id: string, input: z.infer<typeof zClose>) {
+  input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
+  const wo = await t.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id]);
+  if (!wo) return notFound('work_order', id);
+  if (wo.status === 'closed') conflict('wo.closed', `work order ${wo.code} is already closed`);
+  const product = await ctx.services.get('mdm').item(wo.item_id, t);
+  await bump(t, wo, { status: 'closed' });
+  const pdate = input.productionDate ?? today(ctx);
+  const seq = await line(ctx, t, caller, 'CLOSE', input, { work_order_id: wo.id, item_id: product.id, warehouse_id: null, qty: 0, production_date: pdate });
+  const ev = await ctx.services.get('eco').publish(t, {
+    type: 'mes.work_order.closed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
+    data: {
+      work_order: { ...woRef(wo, product), completed_qty: formatQty(wo.completed_qty), scrapped_qty: formatQty(wo.scrapped_qty) },
+      ...operational(caller, input, pdate, seq),
+    },
+  });
+  return { ledgerSeq: seq, eventId: ev.id, status: 'closed' };
+}
+
 /** Releases a work order (the route and planning both come here), inside the caller's transaction. */
 async function createWorkOrder(ctx: Ctx, t: Db, caller: Caller, input: CreateInput): Promise<{ id: string; code: string }> {
   input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
@@ -187,6 +207,7 @@ export const exeModule: AppModule = {
         ALTER TABLE exe_work_order ADD COLUMN due_date TEXT;
         ALTER TABLE exe_work_order ADD COLUMN planned_order_id TEXT;
         ALTER TABLE exe_work_order ADD COLUMN pegging TEXT;
+        ALTER TABLE exe_work_order ADD COLUMN cancel_reason TEXT;
       `,
     },
   ],
@@ -293,25 +314,25 @@ export const exeModule: AppModule = {
       const caller = require(req, 'exe.orders.write');
       const { id } = req.params as { id: string };
       const input = zClose.parse(req.body);
-      const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'CloseWorkOrder', request: { id, ...(req.body as object) } }, async (t) => {
-        input.person = await ctx.services.get('mdm').resolvePerson(t, input.person, { station: input.station, date: input.productionDate ?? today(ctx) });
-        const wo = await t.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id]);
-        if (!wo) return notFound('work_order', id);
-        if (wo.status === 'closed') conflict('wo.closed', `work order ${wo.code} is already closed`);
-        const product = await ctx.services.get('mdm').item(wo.item_id, t);
-        await bump(t, wo, { status: 'closed' });
-        const pdate = input.productionDate ?? today(ctx);
-        const seq = await line(ctx, t, caller, 'CLOSE', input, { work_order_id: wo.id, item_id: product.id, warehouse_id: null, qty: 0, production_date: pdate });
-        const ev = await ctx.services.get('eco').publish(t, {
-          type: 'mes.work_order.closed.v1', subject: `work_order/${wo.id}`, correlation: `work_order/${wo.id}`, causation: input.commandId,
-          data: {
-            work_order: { ...woRef(wo, product), completed_qty: formatQty(wo.completed_qty), scrapped_qty: formatQty(wo.scrapped_qty) },
-            ...operational(caller, input, pdate, seq),
-          },
-        });
-        return { ledgerSeq: seq, eventId: ev.id, status: 'closed' };
-      });
+      const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'CloseWorkOrder', request: { id, ...(req.body as object) } }, (t) => closeWorkOrder(ctx, t, caller, id, input));
       return { ...result, replayed };
+    });
+
+    // Cancelling is closing an order that never produced anything, with the reason kept (no fact of consumption, output or scrap, no unit started).
+    http.post('/api/work-orders/:id/cancel', async (req) => {
+      const caller = require(req, 'exe.orders.write');
+      const { id } = req.params as { id: string };
+      const input = z.object({ ...zOperational, reason: z.string().trim().min(3).max(200) }).parse(req.body);
+      const { result, replayed } = await runCommand(ctx, caller, { id: input.commandId, type: 'CancelWorkOrder', request: { id, ...(req.body as object) } }, async (t) => {
+        const wo = (await t.get<WorkOrderRow>('SELECT * FROM exe_work_order WHERE id = ?', [id])) ?? notFound('work_order', id);
+        if (wo.status !== 'released') conflict('wo.not_released', `work order ${wo.code} is ${wo.status}`);
+        const facts = await t.get<{ n: number }>("SELECT COUNT(*) n FROM exe_ledger WHERE work_order_id = ? AND txn_type IN ('CONSUME', 'COMPLETE', 'SCRAP')", [id]);
+        const units = ctx.services.has('trk') ? await ctx.services.get('trk').unitsOf(t, { workOrderId: id }) : [];
+        if (facts!.n > 0 || units.length > 0) conflict('wo.has_facts', `work order ${wo.code} already produced something: close it instead of cancelling`);
+        await t.run('UPDATE exe_work_order SET cancel_reason = ? WHERE id = ?', [input.reason, id]);
+        return closeWorkOrder(ctx, t, caller, id, input);
+      });
+      return { ...result, replayed, status: 'cancelled' };
     });
 
     // The production ledger itself, filtered (EXE3030): what was consumed, produced, scrapped, released and closed.
