@@ -3,6 +3,7 @@ import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { Caller, Ctx } from '../../kernel/modules.js';
 import { event, setUnit, today } from './store.js';
+import { USABLE } from './receiving.js';
 
 /**
  * The route of a serial unit, enforced on the server:
@@ -207,8 +208,9 @@ async function consumeAt(ctx: Ctx, t: Db, caller: Caller, u: UnitRow, wo: WorkOr
 }
 
 /**
- * Books the material of a work order before its FINAL unit: what its units took from lots loaded on stations, and the
- * material no station scans (screws, labels, tape) from the BOM, for every unit that finished (completed or fitted).
+ * Books the material of a work order before its FINAL unit: what its units took from lots loaded on stations, the serial
+ * parts fitted to them, and the material no station scans (screws, labels, tape) from the BOM, for every unit that finished
+ * (completed or fitted).
  * Consumption therefore always comes before the final completion in the production ledger (accounting relies on it).
  */
 export async function flushOrder(ctx: Ctx, t: Db, caller: Caller, woId: string, base: { commandId: string; productionDate?: string; shift?: string }) {
@@ -222,8 +224,23 @@ export async function flushOrder(ctx: Ctx, t: Db, caller: Caller, woId: string, 
     await exe.consume(t, caller, woId, { ...base, itemId: u.item_id, qty: u.qty, warehouseId: u.warehouse_id, lotNo: u.lot_no });
     n++;
   }
-  const lines = (await bomLines(ctx, t, wo.bom_id)).filter((l) => l.scan === 'none');
   const wh = await t.get<{ id: string }>('SELECT id FROM mdm_warehouse WHERE active = 1 ORDER BY is_default DESC, code LIMIT 1');
+  // Serial parts (a unit of another order fitted here, or a bought-in serial part): each leaves stock once, by its own serial, so accounting
+  // relieves the part and puts its value into this order. Until 2026-09-30 they were only recorded in the genealogy: the semi-finished stock
+  // (and its value) of a plant that fits its own boards would have grown for ever. A unit that is scrapped or still in production is not counted,
+  // like the material of the other lines.
+  const fitted = await t.all<{ item_id: string; lot_no: string; child_wh: string | null }>(
+    `SELECT g.item_id, g.lot_no, w.warehouse_id child_wh FROM trk_genealogy g JOIN trk_unit p ON p.id = g.parent_id
+       LEFT JOIN trk_unit c ON c.id = g.child_id LEFT JOIN exe_work_order w ON w.id = c.work_order_id
+      WHERE p.work_order_id = ? AND g.kind IN ('unit', 'part') AND g.removed_seq IS NULL AND p.status NOT IN ('wip', 'repair', 'scrapped') ORDER BY g.event_seq`, [woId]);
+  const booked = new Set((await t.all<{ item_id: string; lot_no: string }>(`SELECT item_id, lot_no FROM exe_ledger WHERE work_order_id = ? AND txn_type = 'CONSUME' AND lot_no IS NOT NULL`, [woId])).map((r) => `${r.item_id}|${r.lot_no}`));
+  for (const f of fitted) {
+    const from = f.child_wh ?? wh?.id;
+    if (!from || booked.has(`${f.item_id}|${f.lot_no}`)) continue;
+    await exe.consume(t, caller, woId, { ...base, itemId: f.item_id, qty: 1000, warehouseId: from, lotNo: f.lot_no });
+    n++;
+  }
+  const lines = (await bomLines(ctx, t, wo.bom_id)).filter((l) => l.scan === 'none');
   if (!lines.length || !wh) return n;
   const units = (await t.get<{ n: number }>(`SELECT COUNT(*) n FROM trk_unit WHERE work_order_id = ? AND status NOT IN ('wip', 'repair', 'scrapped')`, [woId]))!.n;
   for (const l of lines) {
@@ -315,7 +332,8 @@ export async function load(ctx: Ctx, t: Db, caller: Caller, input: { commandId: 
   if (!/^[A-Z0-9][A-Z0-9._-]{1,63}$/.test(lot)) fail('lot.format', `${input.lotNo} is not a lot number`);
   const open = await t.get<{ id: string; lot_no: string }>('SELECT id, lot_no FROM trk_load WHERE station = ? AND item_id = ? AND unloaded_at IS NULL', [where.station.code, item.id]);
   if (open) conflict('material.already_loaded', `${item.code} lot ${open.lot_no} is still loaded on ${where.station.code}: unload it first`);
-  const known = await t.get('SELECT 1 FROM trk_material_lot WHERE item_id = ? AND lot_no = ?', [item.id, lot]);
+  const known = await t.get<{ status: string }>('SELECT status FROM trk_material_lot WHERE item_id = ? AND lot_no = ?', [item.id, lot]);
+  if (known && !USABLE.has(known.status)) conflict('lot.not_released', `lot ${lot} of ${item.code} is ${known.status.replace('_', ' ')}: it cannot be used`);
   const id = ctx.clock.newId();
   await t.run('INSERT INTO trk_load (id, station, line_code, item_id, lot_no, warehouse_id, verified, loaded_at, loaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [id, where.station.code, where.line.code, item.id, lot, input.warehouseId, known ? 1 : 0, ctx.clock.now().toISOString(), caller.name]);

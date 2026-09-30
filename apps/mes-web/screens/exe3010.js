@@ -32,6 +32,7 @@ export default function create({ shell }) {
     { key: "remaining", label: t("c.remaining"), type: "number", width: 90, total: "sum" },
     { key: "progress", label: t("c.progress"), type: "progress", width: 128, status: (r) => r.progress >= 100 ? "done" : "run" },
     { key: "priority", label: t("c.priority"), width: 76, align: "center", render: (r) => h("span", { class: "mes-prio mes-prio-" + r.priority, text: "P" + r.priority }) },
+    { key: "due", label: t("c.due"), type: "date", width: 104, render: (r) => (r.late ? h("span", { class: "mes-bad", text: r.due }) : r.due) },
     { key: "start", label: t("c.start"), type: "date", width: 128 },
     { key: "end", label: t("c.end"), type: "date", width: 128 },
     { key: "uom", label: t("c.unit"), width: 64, hidden: true },
@@ -87,7 +88,7 @@ export default function create({ shell }) {
     const planned = num(w.planned_qty), good = num(w.completed_qty), scrap = num(w.scrapped_qty);
     return { id: w.id, code: w.code, state: woState(w), status: w.status, itemCode: w.item.code, itemName: name(w.item), uom: w.item.uom, tracking: w.item.tracking,
       line: w.line_code || "", shift: w.shift_code || "", day: w.production_date, planned, good, scrap, remaining: num(w.open_qty),
-      progress: planned ? Math.round((good / planned) * 1000) / 10 : 0, priority: w.priority || 2, start: stamp(w.first_at),
+      progress: planned ? Math.round((good / planned) * 1000) / 10 : 0, priority: w.priority || 2, due: w.due_date || "", late: !!(w.due_date && w.status === "released" && w.due_date < today()), start: stamp(w.first_at),
       end: w.status === "released" ? "" : stamp(w.last_at), raw: w };
   }
 

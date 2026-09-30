@@ -16,6 +16,12 @@
   **Fix:** restored. **Lesson:** a rename is for words people read; never bulk-replace identifiers, and read every line
   of a rename diff before committing.
 
+## 2026-09-30 - Serial parts fitted to a unit were never consumed
+- **Symptom:** planning a multi-level bill of materials (board fitted into a TV) showed semi-finished stock and its value growing forever in accounting.
+- **Cause:** `flushOrder` booked only lot loads and unscanned material; serial parts (a unit of another order, or a bought-in serial part) were recorded in the genealogy but never consumed in the ledger.
+- **Fix:** `flushOrder` consumes each fitted serial part once, by its serial, before the final unit (test in `serial.test.ts`, planted bug in `scripts/mutations.mjs`).
+- **Lesson:** a genealogy link is not a stock movement; every quantity that leaves stock needs its own ledger line.
+
 ## Phase 0 — Design (2026-09-27)
 - **What:** أول نسخة من وثائق التصميم (`docs/design/01..08`) وسجل القرارات (`docs/adr`).
 - **Why:** قرار المالك: لا كود قبل البحث والتصميم.
@@ -320,3 +326,13 @@
   demands a name for each; a planted bug for it.
 - **Lesson:** the same as the scrap reasons the same day: a key built from data escapes a static check. Test the data's
   whole domain against the dictionary, reading the domain from its source of truth.
+## Phase E1 — Planning, receiving, shipping against orders, labour facts and the Space Planner link (2026-09-30)
+- **What:** modules `pln` (MPS/MRP/RCCP/crew, nightly loop, screens PLN1010–PLN2080), mirrors of accounting (parties, sales orders, demand plans, stock,
+  purchase orders, item planning), receiving with incoming lots and inspection decisions (QMS2040), shipping from sales order lines, the pusher to peers,
+  labour facts to HR, plant export, layout snapshots and the live station stream. ADR-038..041.
+- **Why:** the ecosystem plan (`complete-company/plan/20-GMES.md`). The whole chain Mizan ⇄ GMES ⇄ HR is proven by `complete-company/scripts/Test-Pairing.ps1 -Chain`.
+- **Discovery:** the chain scenario failed at the first consumption with "Not enough X in MAIN: 0 available". **Cause:** the scenario dated accounting documents by the UTC day, but the plant's
+  production day is Cairo time and starts at 07:00, so a receipt dated "today" was after the stock day used by production. **Fix:** the runner dates documents by the plant's production day.
+  **Lesson:** a document that feeds another system carries the other system's day, not the machine's.
+- **Discovery:** the planning run added requisitions for later months that the scenario's order did not ask for. **Cause:** the approved demand plan forecasts those months (correct).
+  **Fix:** the scenario counts only requisitions needed by the order's date. **Lesson:** an expectation written against a plan must say which demand it follows.

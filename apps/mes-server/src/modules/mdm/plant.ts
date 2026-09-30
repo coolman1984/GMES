@@ -3,6 +3,7 @@ import type { PlantNode } from '../../contracts/services.js';
 import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { Ctx, RouteKit } from '../../kernel/modules.js';
+import { publishPlantNode } from './spatial.js';
 
 /**
  * The plant model: plant -> area -> line -> station -> equipment. Manufacturing owns it (docs/ecosystem/02).
@@ -75,6 +76,7 @@ export function plantRoutes({ http, require }: RouteKit, ctx: Ctx) {
         [id, input.code, input.type, input.parentId ?? null, input.nameEn, input.nameAr || input.nameEn, input.capacityPerShift ?? null,
           input.serial ?? null, input.vendor ?? null, input.installedOn ?? null, now, now],
       );
+      await publishPlantNode(ctx, t, id);
       return { id, code: input.code };
     });
   });
@@ -102,6 +104,7 @@ export function plantRoutes({ http, require }: RouteKit, ctx: Ctx) {
           pick('serial', n.serial) as string | null, pick('vendor', n.vendor) as string | null, pick('installedOn', n.installed_on) as string | null,
           ctx.clock.now().toISOString(), id],
       );
+      await publishPlantNode(ctx, t, id);
       return { id, version: n.version + 1 };
     });
   });

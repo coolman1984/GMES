@@ -2,13 +2,15 @@ import { z } from 'zod';
 import {
   sourceOf, validateEvent, zAckV1, companyOfSource,
   type AttendanceDayV1, type DemandPlanV1, type EmployeeV1, type Envelope, type ItemV1, type PartyV1, type PurchaseOrderV1, type QualificationV1,
-  type SalesOrderV1, type ScheduleDayV1, type StockPositionV1, type WarehouseV1,
+  type GoodsReceiptV1, type LayoutSnapshotV1, type SalesOrderV1, type ScheduleDayV1, type StockPositionV1, type WarehouseV1,
 } from '@eco/contracts';
 import type { EcoService } from '../../contracts/services.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { AppError } from '../../kernel/errors.js';
 import type { AppModule, Ctx, HealthCheck } from '../../kernel/modules.js';
 import { linkMizanCheck } from './link-health.js';
+import { liveRoutes } from './live.js';
+import { peerRoutes, peersMigration, pushAll } from './peers.js';
 
 /**
  * The integration layer on manufacturing's side (ADR-016).
@@ -29,12 +31,13 @@ const APP = 'gmes';
 export const ACCEPTED_TYPES = [
   'eco.item.v1', 'eco.warehouse.v1', 'eco.employee.v1', 'eco.attendance_day.v1', 'eco.schedule_day.v1', 'eco.qualification.v1',
   'eco.party.v1', 'acc.sales_order.v1', 'acc.demand_plan.v1', 'acc.stock_position.v1', 'acc.purchase_order.v1',
+  'acc.goods_receipt.v1', 'eco.layout.snapshot.v1',
 ] as const;
 
 export const ecoModule: AppModule = {
   id: 'eco',
   dependsOn: ['system', 'mdm'],
-  scopes: ['eco.feed.read', 'eco.inbox.write', 'eco.acks.write', 'eco.events.read'],
+  scopes: ['eco.feed.read', 'eco.inbox.write', 'eco.acks.write', 'eco.events.read', 'eco.peers.manage', 'eco.live.read'],
   migrations: [
     {
       id: '001_outbox_inbox_acks',
@@ -77,6 +80,7 @@ export const ecoModule: AppModule = {
         );
       `,
     },
+    peersMigration,
   ],
 
   setup(ctx) {
@@ -101,8 +105,11 @@ export const ecoModule: AppModule = {
     ctx.services.provide('eco', service);
   },
 
-  routes({ http, require }, ctx) {
+  routes(kit, ctx) {
+    const { http, require } = kit;
     const source = sourceOf(ctx.config.companyId, APP, ctx.config.node);
+    peerRoutes(kit, ctx, source, toEnvelope);
+    liveRoutes(kit, ctx);
 
     http.get('/eco/v1/feed', async (req) => {
       require(req, 'eco.feed.read');
@@ -172,6 +179,8 @@ export const ecoModule: AppModule = {
             else if (env.type === 'acc.demand_plan.v1') r = await mdm.applyDemandPlan(t, env.data as DemandPlanV1);
             else if (env.type === 'acc.stock_position.v1') r = await mdm.applyStockPosition(t, env.data as StockPositionV1);
             else if (env.type === 'acc.purchase_order.v1') r = await mdm.applyPurchaseOrder(t, env.data as PurchaseOrderV1);
+            else if (env.type === 'acc.goods_receipt.v1' && ctx.services.has('trk')) r = await ctx.services.get('trk').applyGoodsReceipt(t, env.data as GoodsReceiptV1);
+            else if (env.type === 'eco.layout.snapshot.v1') r = await mdm.applyLayoutSnapshot(t, env.data as LayoutSnapshotV1);
             else throw new AppError(400, 'eco.not_accepted', `manufacturing does not consume ${env.type}`);
             await t.run('INSERT INTO eco_inbox (source, event_id, type, result, received_at) VALUES (?, ?, ?, ?, ?)', [
               env.source, env.id, env.type, r, ctx.clock.now().toISOString(),
@@ -240,3 +249,16 @@ function toEnvelope(source: string, r: Row) {
 }
 
 export type { Ctx };
+
+/** The push loop of the running server (every 10 s by default; GMES_PUSH_LOOP=off stops it, e.g. for the scenario engine). */
+export function startPusher(ctx: Ctx, everyMs = 10_000): () => void {
+  const source = sourceOf(ctx.config.companyId, APP, ctx.config.node);
+  let busy = false;
+  const timer = setInterval(() => {
+    if (busy) return;
+    busy = true;
+    pushAll(ctx, source, toEnvelope).catch(() => undefined).finally(() => { busy = false; });
+  }, everyMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}

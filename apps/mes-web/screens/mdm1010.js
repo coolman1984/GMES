@@ -10,7 +10,7 @@ const CHILD = { plant: "area", area: "line", line: "station", station: "equipmen
 export default function create({ shell }) {
   const plant = session().plant;
   const canEdit = can("mdm.plant.write");
-  let byId = new Map(), nodes = [], current = null, tr = null;
+  let byId = new Map(), nodes = [], current = null, tr = null, spatial = new Map();
   const kids = (id) => [...byId.values()].filter((n) => n.parent_id === id).sort((a, b) => a.code.localeCompare(b.code));
   const count = (id) => kids(id).reduce((a, c) => a + 1 + count(c.id), 0);
   const toNode = (n) => ({ id: n.id, label: n.code + "  " + name(n) + (n.active ? "" : "  (" + t("rs.inactive") + ")"), icon: TYPE_ICON[n.type],
@@ -70,9 +70,30 @@ export default function create({ shell }) {
           [t("c.code"), ui.ltr(n.code)], [t("c.name") + " (EN)", n.name_en], [t("c.name") + " (AR)", h("span", { dir: "rtl", text: n.name_ar })], [t("c.type"), t("type." + n.type)],
           [t("mdm.parent"), parent ? h("a", { href: "#", text: parent.code + " · " + name(parent), onclick: (ev) => { ev.preventDefault(); current = parent; drawTree(); drawRecord(); } }) : null],
         ])),
-        ui.section(t("mdm.operation"), ui.props(ops))),
+        ui.section(t("mdm.operation"), ui.props(ops)),
+        spatial.has(n.code) ? ui.section(t("mdm.on_drawing"), drawingOf(n)) : null),
       h("div", { class: "mes-record-children" }, h("div", { class: "mes-subhead" }, h("strong", { text: t("mdm.children_of", { type: CHILD[n.type] ? t("type_pl." + CHILD[n.type]) : "—" }) }), h("span", { class: "eco-count", text: String(rows.length) }), h("span", { class: "eco-grow" }),
         CHILD[n.type] && canEdit && n.active ? ui.button({ label: t("mdm.add", { type: t("type." + CHILD[n.type]) }), icon: "plus", size: "sm", onClick: () => edit(null, CHILD[n.type], n) }) : null), childGrid.el));
+  }
+
+  // where Space Planner drew this node (lengths arrive in 0.1 mm): position, size and a small map of the whole drawing
+  function drawingOf(n) {
+    const me = spatial.get(n.code), same = [...spatial.values()].filter((s) => s.layout === me.layout);
+    const m = (v) => ui.fmtNumber(Math.round(v / 10) / 100);   // 0.1 mm -> metres, two decimals
+    const minX = Math.min(...same.map((s) => s.x)), minY = Math.min(...same.map((s) => s.y));
+    const maxX = Math.max(...same.map((s) => s.x + s.w)), maxY = Math.max(...same.map((s) => s.y + s.d));
+    const W = 260, H = 150, k = Math.min(W / Math.max(1, maxX - minX), H / Math.max(1, maxY - minY));
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", String(W)); svg.setAttribute("height", String(H)); svg.setAttribute("class", "mes-minimap");
+    for (const s of same.sort((a, b) => (a.kind === "zone" ? -1 : 1))) {
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", String((s.x - minX) * k)); r.setAttribute("y", String((s.y - minY) * k));
+      r.setAttribute("width", String(Math.max(2, s.w * k))); r.setAttribute("height", String(Math.max(2, s.d * k)));
+      r.setAttribute("fill", s === me ? "#1f5eff" : s.kind === "zone" ? "#eef2f9" : "#c9d3e6"); r.setAttribute("stroke", "#8a97b0");
+      svg.appendChild(r);
+    }
+    return h("div", {}, ui.props([[t("mdm.layout"), me.layout], [t("mdm.position"), ui.ltr(`${m(me.x)} , ${m(me.y)} m`)], [t("mdm.size"), ui.ltr(`${m(me.w)} × ${m(me.d)} m`)],
+      [t("mdm.rotation"), ui.ltr(`${Math.round(me.rotation_mdeg / 1000)}°`)], [t("mdm.revision"), ui.ltr(String(me.revision))]]), svg);
   }
 
   function edit(n, type, parent) {
@@ -117,6 +138,7 @@ export default function create({ shell }) {
   async function load(selectId) {
     let list;
     try { list = await api("GET", "/api/plant"); } catch (e) { showError(e); return; }
+    try { spatial = new Map((await api("GET", "/api/plant/spatial")).map((s) => [s.code, s])); } catch { spatial = new Map(); }
     byId = new Map(list.map((n) => [n.id, n]));
     nodes = list.filter((n) => !n.parent_id).map(toNode);
     current = (selectId && byId.get(selectId)) || current && byId.get(current.id) || list.find((n) => n.type === "line") || list[0] || null;

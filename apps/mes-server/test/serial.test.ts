@@ -131,7 +131,9 @@ describe('serial units along their routing (EXE2020 serial mode, EXE3020, WIP301
     const lastConsume = ledger.map((l: any) => l[0]).lastIndexOf('CONSUME');
     const finalFact = ledger.map((l: any) => l[0]).lastIndexOf('SCRAP');
     assert.ok(lastConsume >= 0 && lastConsume < finalFact, JSON.stringify(ledger));
-    assert.deepEqual(ledger.filter((l: any) => l[0] === 'CONSUME').map((l: any) => [l[1], l[2]]).sort(), [['1', 'CTN-2609'], ['4', null]], 'one carton, four screws (one TV finished)');
+    // one carton, four screws (one TV finished) and the two serial parts fitted to it: the board made here and the panel bought in.
+    // Serial parts used to be left out, so accounting never relieved them (2026-09-30: the semi-finished stock grew for ever).
+    assert.deepEqual(ledger.filter((l: any) => l[0] === 'CONSUME').map((l: any) => [l[1], l[2]]).sort(), [['1', 'CTN-2609'], ['1', 'PBA-0001'], ['1', 'PNL-A1'], ['4', null]]);
     assert.deepEqual(ledger.find((l: any) => l[0] === 'COMPLETE').slice(1), ['1', 'TV-0001']);
   });
 

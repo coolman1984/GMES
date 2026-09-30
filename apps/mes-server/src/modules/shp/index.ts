@@ -133,6 +133,17 @@ export const shpModule: AppModule = {
         CREATE TRIGGER shp_event_no_delete BEFORE DELETE ON shp_event BEGIN SELECT RAISE(ABORT, 'shp: the shipping history is append-only'); END;
       `,
     },
+    {
+      id: '002_sales_order_link',
+      up: `
+        -- a shipping order made from accounting's sales order (plan 20-GMES WP-G5): the customer and each line's order line
+        ALTER TABLE shp_order ADD COLUMN customer_party_id TEXT;
+        ALTER TABLE shp_order ADD COLUMN customer_party_code TEXT;
+        ALTER TABLE shp_order_line ADD COLUMN so_id TEXT;
+        ALTER TABLE shp_order_line ADD COLUMN so_code TEXT;
+        ALTER TABLE shp_order_line ADD COLUMN so_line_no INTEGER;
+      `,
+    },
   ],
 
   setup(ctx) {
@@ -285,6 +296,36 @@ export const shpModule: AppModule = {
           [id, code, input.customer, input.destination ?? null, input.shipDate, input.containerType, input.note ?? null, ctx.clock.now().toISOString(), caller.name]);
         await writeLines(ctx, t, id, input.lines);
         await ctx.services.get('sys').audit(t, caller.name, 'shipping_order.create', code, { customer: input.customer, lines: input.lines.length });
+        return { id, code };
+      });
+    });
+    // a shipping order for lines of a mirrored sales order: never more than what is still open on the order line
+    http.post('/api/shipping-orders/from-sales-order', async (req) => {
+      const caller = require(req, 'shp.orders.write');
+      const input = z.object({ salesOrderId: z.string(), shipDate: zDate, containerType: z.enum(CONTAINER_TYPES), destination: z.string().trim().max(200).optional(),
+        note: z.string().trim().max(500).optional(), lines: z.array(z.object({ lineNo: z.number().int().positive(), qty: z.number().int().min(1).max(10_000_000) })).min(1).max(50) }).parse(req.body);
+      return ctx.db.tx(async (t) => {
+        const so = (await t.get<{ id: string; code: string; customer_id: string; customer_code: string; status: string; ship_to: string | null }>(
+          'SELECT id, code, customer_id, customer_code, status, ship_to FROM mdm_sales_order WHERE id = ? OR code = ?', [input.salesOrderId, input.salesOrderId])) ?? notFound('sales_order', input.salesOrderId);
+        if (so.status !== 'open') conflict('sales.order_closed', `sales order ${so.code} is ${so.status}`);
+        const soLines = await t.all<{ line_no: number; item_id: string; qty: number; delivered_qty: number }>('SELECT line_no, item_id, qty, delivered_qty FROM mdm_sales_order_line WHERE so_id = ?', [so.id]);
+        const lines: { itemId: string; qty: number; lineNo: number }[] = [];
+        for (const l of input.lines) {
+          const sl = soLines.find((x) => x.line_no === l.lineNo) ?? fail('shp.no_order_line', `${so.code} has no line ${l.lineNo}`);
+          const onOther = (await t.get<{ n: number | null }>(
+            `SELECT SUM(l.qty) n FROM shp_order_line l JOIN shp_order o ON o.id = l.order_id WHERE l.so_id = ? AND l.so_line_no = ? AND o.status IN ('open', 'loading')`, [so.id, l.lineNo]))!.n ?? 0;
+          const open = Math.floor((sl.qty - sl.delivered_qty) / 1000) - onOther;
+          if (l.qty > open) conflict('shp.over_order', `${so.code} line ${l.lineNo}: only ${Math.max(0, open)} units are still open`, { open: Math.max(0, open) });
+          lines.push({ itemId: sl.item_id, qty: l.qty, lineNo: l.lineNo });
+        }
+        const n = (await t.get<{ n: number }>('SELECT COUNT(*) n FROM shp_order'))!.n + 1;
+        const id = ctx.clock.newId(), code = 'SO-' + String(n).padStart(6, '0');
+        await t.run(`INSERT INTO shp_order (id, code, customer, destination, ship_date, container_type, status, note, created_at, created_by, customer_party_id, customer_party_code)
+          VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
+          [id, code, so.customer_code, input.destination ?? so.ship_to ?? null, input.shipDate, input.containerType, input.note ?? `from ${so.code}`, ctx.clock.now().toISOString(), caller.name, so.customer_id, so.customer_code]);
+        await writeLines(ctx, t, id, lines);
+        for (const l of lines) await t.run('UPDATE shp_order_line SET so_id = ?, so_code = ?, so_line_no = ? WHERE order_id = ? AND item_id = ?', [so.id, so.code, l.lineNo, id, l.itemId]);
+        await ctx.services.get('sys').audit(t, caller.name, 'shipping_order.create', code, { salesOrder: so.code, lines: lines.length });
         return { id, code };
       });
     });
@@ -523,13 +564,17 @@ async function dispatch(ctx: Ctx, t: Db, caller: Caller, id: string, seal: strin
   const seq = await history(ctx, t, caller, { kind: 'DISPATCH', container: c.number, order_code: o.code, detail: { seal, pallets: pallets.length, units: [...lines.values()].reduce((a, l) => a + l.units, 0) } }, commandId, day);
   const mdm = ctx.services.get('mdm');
   const payloadLines = [];
+  const soOf = new Map((await t.all<{ item_id: string; so_id: string | null; so_code: string | null; so_line_no: number | null }>('SELECT item_id, so_id, so_code, so_line_no FROM shp_order_line WHERE order_id = ?', [o.id])).map((r) => [r.item_id, r]));
   for (const l of lines.values()) {
     const i = await mdm.item(l.item_id, t), w = await mdm.warehouse(l.warehouse_id, t);
-    payloadLines.push({ item: { id: i.id, code: i.code }, qty: formatQty(l.units * 1000), uom: i.base_uom, warehouse: { id: w.id, code: w.code }, pallets: l.pallets.size, ...(i.tracking === 'serial' ? { serials: l.serials } : {}) });
+    const so = soOf.get(l.item_id);
+    payloadLines.push({ item: { id: i.id, code: i.code }, qty: formatQty(l.units * 1000), uom: i.base_uom, warehouse: { id: w.id, code: w.code }, pallets: l.pallets.size, ...(i.tracking === 'serial' ? { serials: l.serials } : {}),
+      ...(so?.so_id && so.so_code && so.so_line_no ? { sales_order: { id: so.so_id, code: so.so_code, line_no: so.so_line_no } } : {}) });
   }
+  const party = (o as Order & { customer_party_id?: string | null; customer_party_code?: string | null });
   const ev = await ctx.services.get('eco').publish(t, {
     type: 'mes.shipment.dispatched.v1', subject: `shipment/${o.id}`, correlation: `shipment/${o.id}`, causation: commandId,
-    data: { shipment: { id: o.id, code: o.code, customer: o.customer, ...(o.destination ? { destination: o.destination } : {}) }, container: { id: c.id, number: c.number, seal, type: c.type },
+    data: { shipment: { id: o.id, code: o.code, customer: o.customer, ...(o.destination ? { destination: o.destination } : {}), ...(party.customer_party_id && party.customer_party_code ? { customer_party: { id: party.customer_party_id, code: party.customer_party_code } } : {}) }, container: { id: c.id, number: c.number, seal, type: c.type },
       lines: payloadLines, dispatched_at: at, production_date: day, performed_by: { user: caller.name }, shipping_seq: seq },
   });
   // the order is shipped when every line is fully loaded in dispatched containers

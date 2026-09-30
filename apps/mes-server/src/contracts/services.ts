@@ -1,4 +1,4 @@
-import type { AttendanceDayV1, DemandPlanV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, DemandPlanV1, GoodsReceiptV1, LayoutSnapshotV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
 import type { Db } from '../kernel/db.js';
 import type { Caller } from '../kernel/modules.js';
 
@@ -72,6 +72,8 @@ export interface MdmService {
   applyDemandPlan(t: Db, snapshot: DemandPlanV1): Promise<SnapshotResult>;
   applyStockPosition(t: Db, snapshot: StockPositionV1): Promise<SnapshotResult>;
   applyPurchaseOrder(t: Db, snapshot: PurchaseOrderV1): Promise<SnapshotResult>;
+  /** Where Space Planner drew the plant nodes (geometry stays Space Planner's; only the position of tagged nodes is kept). */
+  applyLayoutSnapshot(t: Db, snapshot: LayoutSnapshotV1): Promise<SnapshotResult>;
   /**
    * The person a production command names, checked against the HR mirror when HR owns people
    * (ownership.person = 'hr'). With 'none' (manufacturing alone, or rollback) the reference is
@@ -237,6 +239,8 @@ export interface ExeService {
   complete(t: Db, caller: Caller, woId: string, input: Booking & { qty: number; lotNo?: string }): Promise<{ ledgerSeq: number; status: string }>;
   scrap(t: Db, caller: Caller, woId: string, input: Booking & { qty: number; reasonCode: string }): Promise<{ ledgerSeq: number; status: string }>;
   consume(t: Db, caller: Caller, woId: string, input: Booking & { itemId: string; qty: number; warehouseId: string; lotNo?: string }): Promise<{ ledgerSeq: number }>;
+  /** Release a work order (planning releases its firmed orders through this). */
+  create(t: Db, caller: Caller, input: { commandId: string; itemId: string; qty: number; warehouseId: string; line?: string; productionDate?: string; dueDate?: string; priority?: number; plannedOrderId?: string; pegging?: unknown }): Promise<{ id: string; code: string }>;
 }
 
 /** A serial unit as the tracking module holds it (a projection of its unit events). */
@@ -264,6 +268,8 @@ export interface UnitRow {
 export interface TrkService {
   unit(serial: string, t?: Db): Promise<UnitRow | undefined>;
   unitById(id: string, t?: Db): Promise<UnitRow | undefined>;
+  /** Accounting's goods receipt: its lots become material lots, waiting for incoming inspection when a plan says so. */
+  applyGoodsReceipt(t: Db, gr: GoodsReceiptV1): Promise<SnapshotResult>;
   /** Units of a work order (or of a lot / serial list) that a hold would stop; excludes scrapped and consumed units. */
   unitsOf(t: Db, target: { workOrderId?: string; serials?: string[] }): Promise<UnitRow[]>;
   hold(t: Db, caller: Caller, unitIds: string[], ref: { commandId: string; holdId: string; reason: string }): Promise<number>;

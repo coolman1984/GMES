@@ -356,3 +356,38 @@ not an operation to leave one confirmation away); scheduled backups inside the s
 API; the server stays one process that serves).
 **Still planned (menu entries left greyed, honestly):** EXE2030 split/merge/move, EXE2040 reversals (both need a
 correction model agreed with accounting first), SYS9050 numbering, SYS9120 import from Excel.
+
+### ADR-038 — Planning lives in manufacturing and is a pure function over mirrors; its outputs are stable, versioned facts
+**Context:** the ecosystem plan (`complete-company/plan`) needs a sales order and an approved demand plan from accounting to become planned
+orders, purchase requisitions and crew needs without retyping, and manufacturing may hold no money.
+**Decision:** module `pln` reads only the mirrors of accounting's commercial truth (parties, sales orders, demand plans, stock, purchase
+orders, item planning fields) and the engineering data it owns (BOM, routing, plant, shifts). `engine.ts` is a pure function (`today` is an
+input, no clock, no database): forecast consumption by firm orders, netting with lot rules and safety stock, explosion by low-level code with
+exact decimals (nothing is rounded), pegging, backward capacity loading with shift proposals, crew per line × shift × day. Requisitions and
+crew rows have stable ids (`uuidv5(company, "gmes:pr:<item>:<week>")`), so a later run updates instead of duplicating, and what disappears is
+published as cancelled. Inside the frozen fence the engine creates nothing new and changes no firmed order: it raises an exception. Stock held
+in quality quarantine is not counted (setting `planning_warehouses`). A nightly loop runs the plan; tests call it explicitly.
+**Rejected:** MRP in accounting (it would need a second BOM truth); recalculating pegging on read (the answer to "why was this ordered?" must
+be the one recorded at the run); an engine that reads the database (untestable with hand-calculated cases).
+
+### ADR-039 — The pusher: manufacturing's outbox goes to each peer's inbox; keys are sealed; one bad event never blocks the feed
+**Decision:** for every configured peer (`eco_peer`: url, sealed key, types, cursor) the pusher posts batches read after the cursor, filtered by
+type; `applied | unchanged | stale | duplicate` move the cursor, `rejected` is recorded as parked (visible in `/api/integration/events`) and the
+cursor still moves; a network error or 5xx stops the pass without moving it. Keys are sealed with DPAPI on Windows (`kernel/secrets.ts`),
+encoded elsewhere and with `GMES_SECRETS=plain` in tests. **Rejected:** pull only (the consumer would need to reach us and poll); webhooks
+without an outbox (a lost call is a lost fact).
+
+### ADR-040 — Receiving from accounting, inspection decisions, shipping from sales order lines
+**Decision:** a goods receipt becomes material lots (`pending_iqc` when an inspection plan exists for the item, else `accepted`); a lot that is
+not released cannot be loaded on a station (`lot.not_released`); the decision (accepted, rejected, partly accepted, hold, release) is published
+as `mes.lot_decision.v1` and accounting moves rejected stock to its quarantine warehouse. Shipping orders are made from mirrored sales order
+lines, the open quantity is the limit, and the dispatch event names the customer and each sales order line. **Rejected:** letting a shipment exist
+without an order (accounting could not deliver or bill it).
+
+### ADR-041 — Labour facts, plant export, layout snapshots and the live station stream
+**Decision:** `mes.labor_day.v1` splits a person's day minutes by their bookings with the largest-remainder method (no minute is lost or
+invented) and is published as a versioned snapshot, closed once the day is over; HR compares it with the plan, GMES never reads pay. The plant tree
+is exported as `eco.plant_node.v1` and a layout snapshot from Space Planner gives tagged nodes a position. `GET /eco/v1/live` is a server-sent-events
+stream for the BROWSER page of Space Planner: read-only key in the address (an EventSource cannot send headers), origin allow-list
+(`GMES_LIVE_ORIGINS`), states running / stopped with the reason / starved, and the day's output per line. **Rejected:** WebSockets and UI polling;
+a write scope on the key that travels in an address.

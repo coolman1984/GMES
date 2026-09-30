@@ -15,12 +15,14 @@ import { shpModule } from './modules/shp/index.js';
 import { requireScope, resolveCaller, systemModule } from './modules/system/index.js';
 import { lblModule } from './modules/lbl/index.js';
 import { rptModule } from './modules/rpt/index.js';
+import { plnModule } from './modules/pln/index.js';
+import { labModule } from './modules/lab/index.js';
 import { opsRoutes } from './ops.js';
 import { serveScreens } from './web.js';
 import { dirname, join } from 'node:path';
 
 /** Installed modules. Removing one (and what depends on it) must leave a working app. */
-export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule, qmsModule, shpModule, rptModule, lblModule];
+export const MODULES: AppModule[] = [systemModule, mdmModule, engModule, ecoModule, oeeModule, exeModule, trkModule, qmsModule, shpModule, rptModule, lblModule, plnModule, labModule];
 export const VERSION = '0.5.0';
 
 export interface App {
