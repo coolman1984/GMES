@@ -1153,5 +1153,11 @@
 "lot.dec.partially_accepted": "Accept part, reject part",
 "lot.dec.on_hold": "Hold",
 "lot.dec.released": "Release from hold",
-"c.due": "Due"
+"c.due": "Due",
+"mdm.on_drawing": "On the drawing",
+"mdm.layout": "Drawing",
+"mdm.position": "Position",
+"mdm.size": "Size",
+"mdm.rotation": "Rotation",
+"mdm.revision": "Revision"
 }

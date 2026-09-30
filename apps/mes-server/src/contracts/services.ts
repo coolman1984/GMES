@@ -1,4 +1,4 @@
-import type { AttendanceDayV1, DemandPlanV1, GoodsReceiptV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
+import type { AttendanceDayV1, DemandPlanV1, GoodsReceiptV1, LayoutSnapshotV1, EmployeeV1, ItemV1, PartyV1, PurchaseOrderV1, QualificationV1, SalesOrderV1, ScheduleDayV1, StockPositionV1, WarehouseV1 } from '@eco/contracts';
 import type { Db } from '../kernel/db.js';
 import type { Caller } from '../kernel/modules.js';
 
@@ -72,6 +72,8 @@ export interface MdmService {
   applyDemandPlan(t: Db, snapshot: DemandPlanV1): Promise<SnapshotResult>;
   applyStockPosition(t: Db, snapshot: StockPositionV1): Promise<SnapshotResult>;
   applyPurchaseOrder(t: Db, snapshot: PurchaseOrderV1): Promise<SnapshotResult>;
+  /** Where Space Planner drew the plant nodes (geometry stays Space Planner's; only the position of tagged nodes is kept). */
+  applyLayoutSnapshot(t: Db, snapshot: LayoutSnapshotV1): Promise<SnapshotResult>;
   /**
    * The person a production command names, checked against the HR mirror when HR owns people
    * (ownership.person = 'hr'). With 'none' (manufacturing alone, or rollback) the reference is

@@ -25,7 +25,8 @@ export async function addKey(ctx: Ctx, name: string, scopes: string[], key = new
 
 /** An API key (x-eco-key) when one is sent, else the session of a person signed in through the screens. */
 export async function resolveCaller(ctx: Ctx, req: FastifyRequest): Promise<Caller | null> {
-  const header = req.headers['x-eco-key'];
+  // a page's EventSource cannot send headers: the live view alone accepts its read key in the query (k)
+  const header = req.headers['x-eco-key'] ?? (req.url.startsWith('/eco/v1/live') ? (req.query as { k?: string } | undefined)?.k : undefined);
   if (header === undefined) return sessionCaller(ctx, req);
   if (typeof header !== 'string' || !header.startsWith('gk_')) return null;
   const h = hash(header);

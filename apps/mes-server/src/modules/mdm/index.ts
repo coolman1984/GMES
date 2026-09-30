@@ -6,6 +6,7 @@ import type { Db } from '../../kernel/db.js';
 import { conflict, fail, notFound } from '../../kernel/errors.js';
 import type { AppModule, Ctx } from '../../kernel/modules.js';
 import { plantMigration, plantNode, plantNodes, plantRoutes } from './plant.js';
+import { applyLayoutSnapshot, spatialMigration, spatialRoutes } from './spatial.js';
 
 /**
  * Master data manufacturing READS: items and warehouses.
@@ -137,6 +138,7 @@ export const mdmModule: AppModule = {
     },
     plantMigration,
     commercialMigration,
+    spatialMigration,
   ],
 
   setup(ctx) {
@@ -162,6 +164,7 @@ export const mdmModule: AppModule = {
       applyDemandPlan: (t, s) => applyCommercial(ctx, t, 'demand_plan', s),
       applyStockPosition: (t, s) => applyCommercial(ctx, t, 'stock_position', s),
       applyPurchaseOrder: (t, s) => applyCommercial(ctx, t, 'purchase_order', s),
+      applyLayoutSnapshot: (t, s) => applyLayoutSnapshot(ctx, t, s),
       async resolvePerson(t, ref, at) {
         if ((ctx.config.ownership.person ?? 'none') !== 'hr' || !ref) return ref;
         const e = await t.get<MirrorEmployee>('SELECT * FROM mdm_employee WHERE id = ?', [ref.id]);
@@ -188,6 +191,7 @@ export const mdmModule: AppModule = {
   routes(kit, ctx) {
     const { http, require } = kit;
     plantRoutes(kit, ctx);
+    spatialRoutes(kit, ctx);
     commercialRoutes(kit, ctx);
     http.get('/api/items', async (req) => {
       require(req, 'mdm.items.read');

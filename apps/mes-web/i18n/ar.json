@@ -1153,5 +1153,11 @@
 "lot.dec.partially_accepted": "قبول جزء ورفض جزء",
 "lot.dec.on_hold": "حجز",
 "lot.dec.released": "الإفراج عن الحجز",
-"c.due": "الاستحقاق"
+"c.due": "الاستحقاق",
+"mdm.on_drawing": "على الرسم",
+"mdm.layout": "الرسم",
+"mdm.position": "الموقع",
+"mdm.size": "الحجم",
+"mdm.rotation": "الدوران",
+"mdm.revision": "المراجعة"
 }
