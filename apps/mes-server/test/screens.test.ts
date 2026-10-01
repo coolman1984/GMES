@@ -88,6 +88,8 @@ describe('the interface kit and the screens (UX phase, ADR-029)', () => {
     assert.deepEqual(codes.filter((c) => !(`scrap.${c}` in en) || !(`scrap.${c}` in ar)), []);
     // the server books a lot or bulk item on a routing by quantity (only serial + routing is refused): so does the screen
     assert.match(src, /const serial = \(\) => !!\(S\.wo && S\.wo\.routing_id && S\.wo\.item\.tracking === "serial"\)/);
+    // the release plan says "serial flow" only for a serial item: a lot of tiles on a routing is booked by quantity
+    assert.match(read(join(WEB_DIR, 'screens', 'exe2010.js')), /o\.routing_id && o\.item\.tracking === "serial" \? ui\.badge\(t\("plan\.serial_flow"\)/);
   });
 
   test('no screen shows invented data: there is no sample file, and every screen reads the server', () => {

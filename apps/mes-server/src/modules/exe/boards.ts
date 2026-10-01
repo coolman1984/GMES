@@ -22,6 +22,11 @@ export function boardRoutes({ http, require }: RouteKit, ctx: Ctx) {
   const current = async (line: string) => ctx.db.get<{ id: string; code: string; item_id: string; planned_qty: number; completed_qty: number; scrapped_qty: number }>(
     `SELECT w.id, w.code, w.item_id, w.planned_qty, w.completed_qty, w.scrapped_qty FROM exe_work_order w WHERE w.line_code = ? AND w.status = 'released'
      ORDER BY COALESCE((SELECT MAX(seq) FROM exe_ledger l WHERE l.work_order_id = w.id), 0) DESC, w.priority, w.production_date, w.code LIMIT 1`, [line]);
+  // the order of the day that finished last on a line: the board keeps showing it (and its unit) once nothing runs
+  const lastDone = async (line: string, date: string) => ctx.db.get<{ id: string; code: string; item_id: string; planned_qty: number; completed_qty: number; scrapped_qty: number }>(
+    `SELECT w.id, w.code, w.item_id, w.planned_qty, w.completed_qty, w.scrapped_qty FROM exe_work_order w
+     WHERE w.line_code = ? AND w.status = 'completed' AND EXISTS (SELECT 1 FROM exe_ledger l WHERE l.work_order_id = w.id AND l.production_date = ?)
+     ORDER BY (SELECT MAX(seq) FROM exe_ledger l WHERE l.work_order_id = w.id) DESC LIMIT 1`, [line, date]);
   const woView = async (w: Awaited<ReturnType<typeof current>>) => {
     if (!w) return null;
     const i = await ctx.services.get('mdm').item(w.item_id);
@@ -84,6 +89,7 @@ export function boardRoutes({ http, require }: RouteKit, ctx: Ctx) {
       hours: hours.map((h) => ({ hour: h.hour, good: qty(h.good), scrap: qty(h.scrap) })),
       good: qty(good), scrap: qty(scrap), planned: qty(planned!.q ?? 0),
       state: openStop ? 'down' : 'run', openStop, stoppages: dayStops, workOrder: await woView(await current(code)),
+      lastOrder: await woView(await lastDone(code, date)),
       oee: ctx.services.has('oee') ? await ctx.services.get('oee').oee({ line: code, date }) : null,
     };
   });

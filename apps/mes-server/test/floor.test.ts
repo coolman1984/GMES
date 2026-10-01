@@ -110,6 +110,18 @@ describe('work orders on lines, stoppages and the boards (EXE3010, EXE2020, DSH5
     assert.deepEqual(board.oee.shiftsWorked, ['A']);
   });
 
+  test('once the order is finished the line board keeps showing it, as the last order of the day, with its unit', async () => {
+    const [wo] = (await s.call('GET', '/api/work-orders')).body.filter((w: any) => w.line_code === 'ASM-01');
+    const left = Number(wo.planned_qty) - Number(wo.completed_qty) - Number(wo.scrapped_qty);
+    assert.equal((await s.call('POST', `/api/work-orders/${wo.id}/complete`, { commandId: cmd(), qty: String(left), station: 'ASM-01-ST10' })).status, 200);
+    const board = (await s.call('GET', '/api/boards/line/ASM-01?date=2026-09-27')).body;
+    assert.equal(board.workOrder, null, 'nothing runs on the line any more');
+    assert.equal(board.lastOrder.code, wo.code);
+    assert.equal(board.lastOrder.completed, 4 + left);
+    assert.ok(board.lastOrder.item.uom, 'the unit the board shows its figures in');
+    assert.equal((await s.call('GET', '/api/boards/line/ASM-01?date=2026-09-26')).body.lastOrder, null, 'another day: nothing finished there');
+  });
+
   test('reading needs a session or a key, like every API', async () => {
     const r = await s.call('GET', '/api/boards/plant', undefined, null as unknown as string);
     assert.equal(r.status, 401);

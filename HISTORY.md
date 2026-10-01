@@ -2,6 +2,19 @@
 
 كل bug أو اكتشاف أو تغيير في قرار يتسجل هنا بالشكل: **Symptom / Cause / Fix / Lesson**.
 
+## 2026-10-01 - The line board spoke in pieces about tiles, and forgot the order the moment it finished
+- **Symptom:** filming a day of a tile line, the line board (DSH5010) showed "1,300 pcs" for square metres of tiles, and
+  when the order completed at 14:50 the side panel went blank ("no running order") and the unit fell back to pieces.
+  The release plan (EXE2010) labelled the tile order "serial flow" although tiles are tracked by lot.
+- **Cause:** the board's unit was the fixed word `unit.pcs`; it only knew the RUNNING order (status released), so a
+  finished one disappeared; the plan's badge looked only at `routing_id`, the same mistake fixed on the station on 2026-09-30.
+- **Fix:** `GET /api/boards/line/:code` adds `lastOrder` (the order of the day that finished last on the line, additive);
+  the board shows its figures in the unit of the order on the line (running, else finished today, named from `/api/uoms`)
+  and keeps the finished order with a "completed" chip; the plan's badge needs `item.tracking === "serial"`. Tests in
+  `floor.test.ts` and `screens.test.ts`; two planted bugs.
+- **Lesson:** a board is read across the hall by people who know what they make: the unit is part of the number, and the
+  moment an order finishes is when they look at it most, not least.
+
 ## Phase N1 — Own product name: Itqan · إتقان; no other company's name in the product or docs (2026-09-30)
 - **What:** people now read **Itqan** (English) / **إتقان** (Arabic), mark "IQ": sign-in, top bar, status bar, page
   title, owner badges, messages. Launchers renamed `Start-Itqan.bat` / `Start-Itqan-Demo.bat`. The design and

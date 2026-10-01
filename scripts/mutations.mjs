@@ -94,6 +94,8 @@ const MUTATIONS = [
   { name: 'a stale signature is accepted', file: 'apps/mes-server/src/kernel/signing.ts', from: 'if (Math.abs((input.now ?? Date.now()) - Number(ts)) > SIGNATURE_WINDOW_MS)', to: 'if (false)', suite: 'apps/mes-server' },
   { name: 'an unsigned call is accepted although signatures are required', file: 'apps/mes-server/src/kernel/signing.ts', from: "return input.required ? 'auth.signature_required' : null;", to: 'return null;', suite: 'apps/mes-server' },
   { name: 'a handover note can be edited', file: 'apps/mes-server/src/modules/rpt/index.ts', from: "CREATE TRIGGER rpt_note_immutable BEFORE UPDATE ON rpt_note BEGIN SELECT RAISE(ABORT, 'rpt: handover notes are append-only'); END;", to: '', suite: 'apps/mes-server' },
+  { name: 'the line board forgets the order that finished today', file: 'apps/mes-server/src/modules/exe/boards.ts', from: 'lastOrder: await woView(await lastDone(code, date)),', to: 'lastOrder: null,', suite: 'apps/mes-server' },
+  { name: 'the release plan calls a lot item on a routing a serial flow', file: 'apps/mes-web/screens/exe2010.js', from: 'o.routing_id && o.item.tracking === "serial" ?', to: 'o.routing_id ?', suite: 'apps/mes-server' },
 ];
 
 let survived = 0;

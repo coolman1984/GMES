@@ -21,10 +21,16 @@ export default function create() {
   const kpi = (label, value, unit, cls, sub) => h("div", { class: "bd-kpi " + (cls || "") }, h("span", { class: "bd-kpi-label", text: label }),
     h("b", {}, ui.ltr(value), unit ? h("small", { text: unit }) : null), sub ? h("span", { class: "bd-kpi-sub", text: sub }) : null);
 
+  let uoms = new Map();
   async function refresh() {
     if (!line) return;
     let b;
     try { b = await api("GET", "/api/boards/line/" + encodeURIComponent(line)); } catch (e) { showError(e); return; }
+    // the figures are in the unit of the order on the line (m² of tiles, kg of powder): the running one, else the one
+    // that finished last today; "pcs" only when the line made nothing today
+    const shown = b.workOrder || b.lastOrder;
+    const u = shown ? uoms.get(shown.item.uom) : null;
+    const unit = shown ? (u ? name(u) || u.code : shown.item.uom) : t("unit.pcs");
     // hours from the start of the production day up to the current hour (in the PLANT's time zone) or the last hour with output
     const nowHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: session().plant.timeZone, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
     const current = b.date === today() ? b.hours.findIndex((x) => x.hour === nowHour) : -1;
@@ -37,21 +43,21 @@ export default function create() {
     const scrapPct = b.good + b.scrap ? (b.scrap / (b.good + b.scrap)) * 100 : 0;
     shiftEl.textContent = t("st.prod_day") + " " + b.date;
     ui.clear(kpis,
-      kpi(t("bd.plan"), planSoFar === null ? "—" : ui.fmtNumber(planSoFar), planSoFar === null ? null : t("unit.pcs"), null, planSoFar === null ? t("bd.no_capacity") : t("bd.plan_sofar")),
-      kpi(t("bd.actual"), ui.fmtNumber(b.good), t("unit.pcs"), "is-accent", t("bd.of_orders", { n: ui.fmtNumber(b.planned) })),
-      kpi(t("bd.gap"), gap === null ? "—" : (gap > 0 ? "+" : "") + ui.fmtNumber(gap), gap === null ? null : t("unit.pcs"), gap === null ? null : gap < 0 ? "is-bad" : "is-ok"),
+      kpi(t("bd.plan"), planSoFar === null ? "—" : ui.fmtNumber(planSoFar), planSoFar === null ? null : unit, null, planSoFar === null ? t("bd.no_capacity") : t("bd.plan_sofar")),
+      kpi(t("bd.actual"), ui.fmtNumber(b.good), unit, "is-accent", t("bd.of_orders", { n: ui.fmtNumber(b.planned) })),
+      kpi(t("bd.gap"), gap === null ? "—" : (gap > 0 ? "+" : "") + ui.fmtNumber(gap), gap === null ? null : unit, gap === null ? null : gap < 0 ? "is-bad" : "is-ok"),
       kpi(t("bd.oee"), b.oee && b.oee.oee !== null ? b.oee.oee.toFixed(1) : "—", b.oee && b.oee.oee !== null ? "%" : null,
         b.oee && b.oee.oee !== null ? (b.oee.oee >= 85 ? "is-ok" : b.oee.oee < 60 ? "is-bad" : null) : null,
         b.oee && b.oee.oee !== null ? "A " + b.oee.availability + " · P " + b.oee.performance + " · Q " + b.oee.quality : t("bd.oee_unknown")),
-      kpi(t("bd.scrap"), scrapPct.toFixed(1), "%", scrapPct > 3 ? "is-bad" : "is-ok", ui.fmtNumber(b.scrap) + " " + t("unit.pcs")));
+      kpi(t("bd.scrap"), scrapPct.toFixed(1), "%", scrapPct > 3 ? "is-bad" : "is-ok", ui.fmtNumber(b.scrap) + " " + unit));
     const series = [{ label: t("bd.actual"), values: hrs.map((x) => x.good), cls: "eco-chart-good" }];
     if (b.planPerHour) series.unshift({ label: t("bd.plan"), values: hrs.map(() => b.planPerHour), cls: "eco-chart-plan" });
     ui.clear(chart, h("h3", { text: t("bd.hourly") }), ui.barChart({ labels: hrs.map((x) => String(x.hour).padStart(2, "0") + ":00"), series, height: 330, width: 900 }));
-    const open = b.openStop, wo = b.workOrder;
+    const open = b.openStop, wo = shown;
     ui.clear(side,
       h("div", { class: "bd-state " + (open ? "is-down" : "is-run") }, ui.icon(open ? "pause" : "play", 34), h("div", {}, h("b", { text: open ? t("bd.stopped") : t("bd.running") }),
         h("span", { text: open ? stopName(open.reason) + " · " + open.minutes + " " + t("bd.min") + (open.station ? " · " + open.station : "") : "" }))),
-      wo ? h("div", { class: "bd-wo" }, h("small", { text: t("c.wo") }), h("b", {}, ui.ltr(wo.code)), h("span", { text: name(wo.item) }), ui.progress(wo.completed, wo.planned, { label: ui.fmtNumber(wo.completed) + " / " + ui.fmtNumber(wo.planned) }))
+      wo ? h("div", { class: "bd-wo" }, h("small", {}, t("c.wo"), b.workOrder ? null : [" ", ui.statusChip("done", t("st.completed"))]), h("b", {}, ui.ltr(wo.code)), h("span", { text: name(wo.item) }), ui.progress(wo.completed, wo.planned, { label: ui.fmtNumber(wo.completed) + " / " + ui.fmtNumber(wo.planned) }))
         : h("div", { class: "bd-wo" }, h("span", { class: "eco-muted", text: t("hm.no_wo") })),
       h("div", { class: "bd-stops" }, h("h3", { text: t("bd.stops") }), b.stoppages.length ? b.stoppages.slice(0, 6).map((s) => h("div", { class: "bd-stop" + (s.endedAt ? "" : " is-open") },
         h("span", {}, ui.ltr(hhmm(s.startedAt))), h("b", { text: stopName(s.reason) }), h("span", {}, ui.ltr(s.station || s.line)), h("span", { class: "bd-stop-min" }, ui.ltr(s.minutes + " " + t("bd.min")))))
@@ -60,6 +66,7 @@ export default function create() {
   async function start() {
     try {
       const lines = (await api("GET", "/api/plant")).filter((n) => n.type === "line" && n.active);
+      uoms = new Map(((await api("GET", "/api/uoms").catch(() => ({ units: [] }))).units || []).map((x) => [x.code, x]));
       if (!lines.length) { ui.clear(kpis, ui.empty({ icon: "sitemap", title: t("st.no_lines"), text: t("hint.no_lines") })); return; }
       if (!lines.some((l) => l.code === line)) line = lines[0].code;
       ui.clear(lineSel, lines.map((l) => h("option", { value: l.code, text: l.code + " · " + name(l) })));
