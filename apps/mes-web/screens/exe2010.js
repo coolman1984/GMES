@@ -47,7 +47,7 @@ export default function create({ shell }) {
               return h("div", { class: "mes-plan-cell" + (pct !== null && pct > 100 ? " is-over" : "") },
                 here.map((o) => h("div", { class: "mes-plan-wo", title: o.item.code + " · " + name(o.item) },
                   ui.statusChip(woState(o), statusLabel(woState(o))), h("b", {}, ui.ltr(o.item.code)), h("span", {}, ui.ltr(ui.fmtNumber(num(o.completed_qty)) + " / " + ui.fmtNumber(num(o.planned_qty)))),
-                  o.routing_id ? ui.badge(t("plan.serial_flow"), "accent") : null)),
+                  o.routing_id && o.item.tracking === "serial" ? ui.badge(t("plan.serial_flow"), "accent") : null)),
                 pct !== null && q ? h("div", { class: "mes-plan-load" }, ui.progress(q, l.capacity_per_shift, { label: pct + "%", status: pct > 100 ? "down" : "run" })) : null,
                 can("exe.orders.write") ? ui.button({ icon: "plus", kind: "ghost", size: "sm", title: t("act.new_wo"), onClick: () => release(l.code, s) }) : null);
             }));
