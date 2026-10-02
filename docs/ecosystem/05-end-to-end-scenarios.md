@@ -115,3 +115,6 @@ HR-System: استيراد حضور + موظف + وردية + إجازة → eco_
 ### س12 — أمر إنتاج قادم من نظام تخطيط خارجي (مستورد، قراءة فقط) 📐
 ملف خطة إنتاج (Excel) موثّق التاريخ والقسم → مستورد في التصنيع ينشئ أوامر عمل بأصل
 `origin = external-plan`. **لا كتابة في النظام الخارجي أبدًا.**
+
+### Ordered exception recovery (2026-10-02)
+A parked material issue holds completion and close for the same work order. Managers call `POST /api/eco/peers/:id/retry-parked` with selected original `eventIds` and a `reason`; replay follows original sequence, records request/result audit entries, and preserves both envelopes and cursor. Fix the inventory prerequisite first. Sales-linked shipping order edits retain sales-order ID and line number in both the order view and subsequent dispatch facts.

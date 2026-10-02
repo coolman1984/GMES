@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MUTATIONS = [
+  { name: 'recovery sends a close ahead of parked consumption', file: 'apps/mes-server/src/modules/eco/peers.ts', from: 'const held = wo && await ctx.db.get(', to: 'const held = false && await ctx.db.get(', suite: 'apps/mes-server' },
+  { name: 'shipping edits discard commercial allocation', file: 'apps/mes-server/src/modules/shp/index.ts', from: 'if (k?.so_id) await t.run', to: 'if (false) await t.run', suite: 'apps/mes-server' },
+  { name: 'backup names collide at a frozen clock', file: 'apps/mes-server/src/ops.ts', from: '-${randomUUID()}.db', to: '.db', suite: 'apps/mes-server' },
+  { name: 'peer answers acknowledge a different event', file: 'apps/mes-server/src/modules/eco/peers.ts', from: 'if (received[0]?.id !== ev.id)', to: 'if (false)', suite: 'apps/mes-server' },
   { name: 'commands are no longer idempotent', file: 'apps/mes-server/src/kernel/commands.ts', from: 'if (prev) {', to: 'if (prev && false) {', suite: 'apps/mes-server' },
   { name: 'completion may exceed the open quantity', file: 'apps/mes-server/src/modules/exe/index.ts', from: 'if (qty > room) {', to: 'if (qty > room && false) {', suite: 'apps/mes-server' },
   { name: 'ledger hash ignores the quantity', file: 'apps/mes-server/src/modules/exe/ledger.ts', from: "'warehouse_id', 'qty',", to: "'warehouse_id',", suite: 'apps/mes-server' },
@@ -47,6 +51,7 @@ const MUTATIONS = [
   { name: 'a unit may skip a required operation', file: 'apps/mes-server/src/modules/trk/flow.ts', from: "if (must) conflict('unit.wrong_step'", to: "if (false) conflict('unit.wrong_step'", suite: 'apps/mes-server' },
   { name: 'a held unit still moves', file: 'apps/mes-server/src/modules/trk/flow.ts', from: "if (u.held > 0) conflict('unit.held', `${u.serial} is on quality hold: it moves nowhere", to: "if (false) conflict('unit.held', `${u.serial} is on quality hold: it moves nowhere", suite: 'apps/mes-server' },
   { name: 'a unit in repair skips its repair', file: 'apps/mes-server/src/modules/trk/flow.ts', from: "if (u.status === 'repair') conflict('unit.in_repair'", to: "if (false) conflict('unit.in_repair'", suite: 'apps/mes-server' },
+  { name: 'saving a sales-linked shipping order erases its sales-order links', file: 'apps/mes-server/src/modules/shp/index.ts', from: "if (k?.so_id) await t.run('UPDATE shp_order_line SET so_id", to: "if (false) await t.run('UPDATE shp_order_line SET so_id", suite: 'apps/mes-server' },
   { name: 'the unit/ledger health check also judges lot-tracked products that have no units', file: 'apps/mes-server/src/modules/trk/index.ts', from: "= 'serial' AND (", to: "IS NOT NULL AND (", suite: 'apps/mes-server' },
   { name: 'more units are started than the order plans', file: 'apps/mes-server/src/modules/trk/flow.ts', from: 'if ((n + 1) * 1000 > wo.planned_qty)', to: 'if (false)', suite: 'apps/mes-server' },
   { name: 'a key part still in production can be fitted', file: 'apps/mes-server/src/modules/trk/flow.ts', from: "if (child.status !== 'completed') conflict('part.not_available'", to: "if (false) conflict('part.not_available'", suite: 'apps/mes-server' },

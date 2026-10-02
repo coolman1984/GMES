@@ -1,5 +1,17 @@
 # HISTORY
 
+## 2026-10-02 - Backup names collide when the simulation clock stands still
+- **Symptom:** making a second backup in the same second returned backup.exists.
+- **Cause:** the filename used only node and time, while scenarios deliberately freeze the clock.
+- **Fix:** append an independent unique ID; create two rehearsed backups at the same frozen time and verify both.
+- **Lesson:** timestamps describe a copy but cannot identify it uniquely.
+
+## 2026-10-02 - Edited commercial shipping links and immutable ECO exception recovery
+- **Symptom:** saving a sales-linked shipping order erased its commercial allocation; parked consumption could be followed by completion and close with no recovery action.
+- **Cause:** replacing planning lines omitted their sales references; batched pushes applied later facts before the earlier rejection was available.
+- **Fix:** preserve and expose commercial references, refuse excess quantities or missing mirrored lines, test linked create/edit/dispatch. Push work-order facts in sequence, persist every answer before sending the next fact, hold later same-order facts and add audited targeted replay of parked original envelopes. Concurrent recovery/sync for a peer is refused.
+- **Lesson:** immutable facts need explicit ordered recovery, while editable planning lines must retain the commercial allocation that explains their origin. A refresh of master snapshots cannot recover consumption. Reply IDs must match before an acknowledgement is saved; missing or different IDs leave the cursor unchanged.
+
 كل bug أو اكتشاف أو تغيير في قرار يتسجل هنا بالشكل: **Symptom / Cause / Fix / Lesson**.
 
 ## 2026-10-02 - The backup rehearsal failed for a tile plant: the unit/ledger check judged products that have no units

@@ -177,6 +177,11 @@ describe('OEE, reports, handover, labels and operations of a TV plant (OEE*, RPT
     assert.equal(b.rehearsal.tables.trk_unit, (await s.app.ctx.db.get<{ n: number }>('SELECT COUNT(*) n FROM trk_unit'))!.n);
     const list = await s.ok('GET', '/api/system/backups');
     assert.equal(list.backups[0].name, b.name);
+    const second = await s.ok('POST', '/api/system/backups', {});
+    assert.notEqual(second.name, b.name, 'two backups at the same frozen time both survive');
+    assert.equal(second.rehearsal.ok, true);
+    assert.equal((await s.ok('GET', '/api/system/backups')).backups.length, 2);
+    assert.equal((await s.ok('POST', `/api/system/backups/${second.name}/verify`, {})).rehearsal.ok, true);
     assert.equal((await s.ok('POST', `/api/system/backups/${b.name}/verify`, {})).rehearsal.ok, true);
     // the copy loses a unit on disk: verify finds it
     const { DatabaseSync } = await import('node:sqlite');

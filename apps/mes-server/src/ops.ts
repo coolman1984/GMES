@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import { openReadOnly, type Database } from './kernel/db.js';
 import { conflict, fail, notFound } from './kernel/errors.js';
 import type { AppModule, Ctx, RouteKit } from './kernel/modules.js';
@@ -58,7 +59,7 @@ export function opsRoutes({ http, require }: RouteKit, ctx: Ctx, modules: AppMod
     const caller = require(req, 'system.backup');
     mkdirSync(dir, { recursive: true });
     const now = ctx.clock.now();
-    const name = `gmes-${ctx.config.node}-${now.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)}.db`.replace(/[^A-Za-z0-9._-]/g, '_');
+    const name = `gmes-${ctx.config.node}-${now.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)}-${randomUUID()}.db`.replace(/[^A-Za-z0-9._-]/g, '_');
     const file = join(dir, name);
     if (existsSync(file)) conflict('backup.exists', `${name} exists: wait a second and try again`);
     await db.snapshot(file);

@@ -45,26 +45,47 @@ const PAGE = 200;
 const trim = (u: string) => u.replace(/\/+$/, '');
 const view = (p: PeerRow) => ({ id: p.id, name: p.name, url: p.url, consumer: p.consumer, types: p.types ? p.types.split(' ') : null, cursor: p.cursor, active: !!p.active, last_ok_at: p.last_ok_at, last_error: p.last_error });
 
-export async function pushPeer(ctx: Ctx, id: string, source: string, envelope: (source: string, r: OutboxRow) => unknown) {
+const running = new WeakMap<Ctx, Set<string>>();
+export async function pushPeer(ctx: Ctx, id: string, source: string, envelope: (source: string, r: OutboxRow) => unknown, eventIds?: string[]) {
+  const busy = running.get(ctx) ?? new Set<string>();
+  running.set(ctx, busy);
+  if (busy.has(id)) conflict('eco.peer_busy', 'This peer already has a sync or recovery in progress');
+  busy.add(id);
+  try { return await pushPeerOnce(ctx, id, source, envelope, eventIds); }
+  finally { busy.delete(id); }
+}
+async function pushPeerOnce(ctx: Ctx, id: string, source: string, envelope: (source: string, r: OutboxRow) => unknown, eventIds?: string[]) {
   const p = (await ctx.db.get<PeerRow>('SELECT * FROM eco_peer WHERE id = ?', [id])) ?? notFound('eco_peer', id);
   const report = { peer: p.name, pushed: 0, skipped: 0, parked: 0, error: undefined as string | undefined };
   if (!p.active) return { ...report, error: 'inactive' };
+  const retryRows = eventIds ? await ctx.db.all<OutboxRow>(`SELECT o.* FROM eco_outbox o JOIN eco_ack a ON a.event_id = o.id WHERE a.consumer = ? AND a.status = 'parked' AND o.id IN (${eventIds.map(() => '?').join(',')}) ORDER BY o.seq`, [p.consumer, ...eventIds]) : null;
+  if (retryRows && retryRows.length !== eventIds!.length) conflict('eco.retry_not_parked', 'Every requested event must be parked for this peer');
   const wanted = p.types ? new Set(p.types.split(' ')) : null;
   try {
     for (;;) {
-      const rows = await ctx.db.all<OutboxRow>('SELECT * FROM eco_outbox WHERE seq > ? ORDER BY seq LIMIT ?', [p.cursor, PAGE]);
+      const rows = retryRows ?? await ctx.db.all<OutboxRow>('SELECT * FROM eco_outbox WHERE seq > ? ORDER BY seq LIMIT ?', [p.cursor, PAGE]);
       if (!rows.length) break;
       const send = rows.filter((r) => !wanted || wanted.has(r.type));
-      let results: { result: string; code?: string; message?: string }[] = [];
+      let results: { id?: string; result: string; code?: string; message?: string }[] = [];
       if (send.length) {
-        const key = open(p.key_sealed), text = JSON.stringify({ events: send.map((r) => envelope(source, r)) });
+        for (const ev of send) {
+        const wo = JSON.parse(ev.data).work_order?.id;
+        const held = wo && await ctx.db.get(`SELECT 1 FROM eco_outbox o JOIN eco_ack a ON a.event_id = o.id WHERE a.consumer = ? AND a.status = 'parked' AND o.seq < ? AND json_extract(o.data, '$.work_order.id') = ? LIMIT 1`, [p.consumer, ev.seq, wo]);
+        if (held) { results.push({ result: 'rejected', code: 'eco.prerequisite_parked', message: 'Recover the earlier work-order fact first' }); continue; }
+        const key = open(p.key_sealed), text = JSON.stringify({ events: [envelope(source, ev)] });
         const res = await http.current(trim(p.url) + '/eco/v1/inbox', {
           method: 'POST', headers: { 'content-type': 'application/json', 'x-eco-key': key, ...signatureHeaders(key, 'POST', '/eco/v1/inbox', text) }, body: text,
         });
         const body = (await res.json().catch(() => null)) as { results?: typeof results; error?: unknown } | null;
         if (res.status >= 400) throw new Error(`${p.name} answered ${res.status}: ${JSON.stringify(body?.error ?? body).slice(0, 200)}`);
-        results = body?.results ?? [];
-        if (results.length !== send.length) throw new Error(`${p.name} answered ${results.length} results for ${send.length} events`);
+        const received = body?.results ?? [];
+        if (received.length !== 1) throw new Error(`${p.name} answered ${received.length} results for one event`);
+        if (received[0]?.id !== ev.id) throw new Error(`${p.name} answered for a different event`);
+        results.push(received[0]!);
+        const r = received[0]!;
+        const status = OK.has(r.result) ? 'applied' : r.code === 'eco.not_accepted' ? 'skipped' : 'parked';
+        await ctx.db.run(`INSERT INTO eco_ack (event_id, consumer, status, code, message, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(event_id, consumer) DO UPDATE SET status=excluded.status, code=excluded.code, message=excluded.message, updated_at=excluded.updated_at`, [ev.id, p.consumer, status, r.code ?? null, r.message ?? null, ctx.clock.now().toISOString()]);
+        }
       }
       const now = ctx.clock.now().toISOString();
       await ctx.db.tx(async (t) => {
@@ -77,10 +98,11 @@ export async function pushPeer(ctx: Ctx, id: string, source: string, envelope: (
             ON CONFLICT (event_id, consumer) DO UPDATE SET status = excluded.status, code = excluded.code, message = excluded.message, updated_at = excluded.updated_at`,
             [send[i]!.id, p.consumer, status, r.code ?? 'rejected', (r.message ?? 'refused').slice(0, 1000), now]);
         }
+        if (retryRows) return;
         p.cursor = rows[rows.length - 1]!.seq;
         await t.run('UPDATE eco_peer SET cursor = ? WHERE id = ?', [p.cursor, p.id]);
       });
-      if (rows.length < PAGE) break;
+      if (retryRows || rows.length < PAGE) break;
     }
     await ctx.db.run('UPDATE eco_peer SET last_ok_at = ?, last_error = NULL WHERE id = ?', [ctx.clock.now().toISOString(), p.id]);
   } catch (e) {
@@ -132,6 +154,16 @@ export function peerRoutes({ http: h, require }: RouteKit, ctx: Ctx, source: str
   h.post('/api/eco/peers/:id/push', async (req) => {
     require(req, 'eco.peers.manage');
     return pushPeer(ctx, (req.params as { id: string }).id, source, envelope);
+  });
+  h.post('/api/eco/peers/:id/retry-parked', async (req) => {
+    const actor = require(req, 'eco.peers.manage');
+    const { id } = req.params as { id: string };
+    const input = z.object({ eventIds: z.array(z.string().min(1).max(100)).min(1).max(200), reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    if (new Set(input.eventIds).size !== input.eventIds.length) conflict('eco.retry_duplicates', 'Choose each event once');
+    await ctx.db.tx((t) => ctx.services.get('sys').audit(t, actor.name, 'eco.retry_parked.request', id, input));
+    const result = await pushPeer(ctx, id, source, envelope, input.eventIds);
+    await ctx.db.tx((t) => ctx.services.get('sys').audit(t, actor.name, 'eco.retry_parked.result', id, result));
+    return result;
   });
   h.post('/api/eco/push', async (req) => {
     require(req, 'eco.peers.manage');

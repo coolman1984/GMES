@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { validateEvent } from '@eco/contracts';
+import { validateEvent, mizanId } from '@eco/contracts';
+import { COMPANY, snapshot } from './helpers.js';
 import { containerCheck } from '../src/modules/shp/index.js';
 import { tvPlant } from './plants.js';
 
@@ -30,7 +31,7 @@ describe('palletizing, shipping orders, container loading and dispatch (SHP1010-
     }
   }
   before(async () => {
-    s = await tvPlant();
+    s = await tvPlant('mizan');
     await s.ok('POST', '/api/work-orders', { commandId: cmd(), itemId: s.ids.pba, warehouseId: s.wh, plannedQty: '20', line: 'SMD-01' });
     await s.ok('POST', '/api/work-orders', { commandId: cmd(), itemId: s.ids.tv, warehouseId: s.wh, plannedQty: '20', line: 'MA-01' });
     await s.ok('POST', '/api/stations/MA-01-PK/loads', { commandId: cmd(), itemId: s.ids.carton, lotNo: 'CTN-S1', warehouseId: s.wh });
@@ -60,7 +61,14 @@ describe('palletizing, shipping orders, container loading and dispatch (SHP1010-
   });
 
   test('a shipping order is loaded pallet by pallet: only closed, inspected, not held, ordered, and while the container has room', async () => {
-    const o = await s.ok('POST', '/api/shipping-orders', { customer: 'Nile Retail (demo)', destination: 'Alexandria port', shipDate: '2026-09-30', containerType: '40HC', lines: [{ itemId: s.ids.tv, qty: 6 }] });
+    const salesId = mizanId(COMPANY, 'sales_order', 101);
+    const mirror = await s.ok('POST', '/eco/v1/inbox', { events: [snapshot('acc.sales_order.v1', {
+      id: salesId, code: 'SALES-SHP-101', version: 1, origin: { app: 'mizan', type: 'sales_order', key: '101' },
+      customer: { id: mizanId(COMPANY, 'party', 101), code: 'C-SHP-101' }, order_date: '2026-09-27', status: 'open', priority: 2,
+      lines: [{ line_no: 1, item: { id: s.ids.tv, code: 'TV-55' }, qty: '20', uom: 'PCS', requested_date: '2026-09-30', delivered_qty: '0' }],
+    })] });
+    assert.equal(mirror.results[0].result, 'applied');
+    const o = await s.ok('POST', '/api/shipping-orders/from-sales-order', { salesOrderId: salesId, destination: 'Alexandria port', shipDate: '2026-09-30', containerType: '40HC', lines: [{ lineNo: 1, qty: 6 }] });
     orderId = o.id;
     assert.equal((await s.call('POST', `/api/shipping-orders/${o.id}/containers`, { commandId: cmd(), number: 'CSQU3054384' })).body.error.code, 'container.number');
     const c1 = await s.ok('POST', `/api/shipping-orders/${o.id}/containers`, { commandId: cmd(), number: 'CSQU3054383', truck: 'ق ر ص 123', driver: 'Driver A' });
@@ -122,6 +130,7 @@ describe('palletizing, shipping orders, container loading and dispatch (SHP1010-
     const dispatched = feed.events.filter((e: any) => e.type === 'mes.shipment.dispatched.v1');
     assert.equal(dispatched.length, 2);
     for (const e of dispatched) assert.ok(validateEvent(e).ok, JSON.stringify(validateEvent(e)));
+    for (const e of dispatched) assert.deepEqual(e.data.lines[0].sales_order, { id: mizanId(COMPANY, 'sales_order', 101), code: 'SALES-SHP-101', line_no: 1 }, 'commercial allocation survives the edit and both dispatches');
     assert.equal(dispatched[0].data.lines[0].qty, '8');
     assert.equal(dispatched[0].data.lines[0].serials.length, 8);
     // a hold on something already shipped is a recall list, not a hold

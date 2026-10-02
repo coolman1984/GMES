@@ -23,5 +23,15 @@ test('shipping from a sales order: the open quantity is the limit, across shippi
   assert.equal((await make(2)).status, 200);
   const view = (await s.call('GET', `/api/shipping-orders/${ok.body.id}`)).body;
   assert.equal(view.customer, 'C-1');
+
+  // saving the order again keeps its link to the sales order (an edit used to erase it, and dispatch then had nothing to book against)
+  const links = async () => (await s.call('GET', `/api/shipping-orders/${ok.body.id}`)).body.lines.map((l: any) => [l.so_code, l.so_line_no]);
+  assert.deepEqual(await links(), [['SO-1', 1]]);
+  const put = (qty: number, extra: Record<string, unknown> = {}) => s.call('PUT', `/api/shipping-orders/${ok.body.id}`, { version: view.version, customer: 'C-1', shipDate: '2026-10-14', containerType: '40HC', lines: [{ itemId: view.lines[0].item_id, qty }], ...extra });
+  const saved = await put(5);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.deepEqual(await links(), [['SO-1', 1]], 'the sales-order link survives a save');
+  const more = await s.call('PUT', `/api/shipping-orders/${ok.body.id}`, { version: saved.body.version, customer: 'C-1', shipDate: '2026-10-14', containerType: '40HC', lines: [{ itemId: view.lines[0].item_id, qty: 6 }] });
+  assert.equal(more.body.error.code, 'shp.over_order', '10 - 3 delivered - 2 on the other open order = 5 for this one');
   await s.close();
 });

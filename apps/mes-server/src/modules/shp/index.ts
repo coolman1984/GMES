@@ -346,8 +346,28 @@ export const shpModule: AppModule = {
           for (const [item, q] of loaded) if (q > 0 && (input.lines.find((l) => l.itemId === item)?.qty ?? 0) < q) conflict('order.below_loaded', `the order cannot ask for less than what is already loaded (${q} units)`);
           await t.run('UPDATE shp_order SET customer = ?, destination = ?, ship_date = ?, container_type = ?, note = ?, version = version + 1 WHERE id = ?',
             [input.customer, input.destination ?? null, input.shipDate, input.containerType, input.note ?? null, id]);
+          // The lines are a plan and are rewritten, but the commercial link of a line (the sales order and its line) is a fact about where the goods are
+          // going: it is kept for every item that stays, and a sales-linked order takes no item that has no link (accounting refuses a dispatch line without one).
+          const links = new Map((await t.all<{ item_id: string; so_id: string | null; so_code: string | null; so_line_no: number | null }>(
+            'SELECT item_id, so_id, so_code, so_line_no FROM shp_order_line WHERE order_id = ?', [id])).map((r) => [r.item_id, r]));
+          const linked = [...links.values()].some((r) => r.so_id);
+          if (linked) for (const l of input.lines) if (!links.get(l.itemId)?.so_id) fail('order.linked_lines', `${o.code} ships a sales order: an item with no sales-order line cannot be added (make a new shipping order from the sales order)`);
+          for (const l of input.lines) {        // a linked line still never asks for more than what is open on its sales-order line (other open shipping orders counted)
+            const k = links.get(l.itemId);
+            if (!k?.so_id) continue;
+            const sl = await t.get<{ qty: number; delivered_qty: number }>('SELECT qty, delivered_qty FROM mdm_sales_order_line WHERE so_id = ? AND line_no = ?', [k.so_id, k.so_line_no]);
+            if (!sl) return conflict('order.linked_line_missing', 'Refresh the sales-order mirror before changing this linked shipping line');
+            const onOther = (await t.get<{ n: number | null }>(
+              `SELECT SUM(l.qty) n FROM shp_order_line l JOIN shp_order x ON x.id = l.order_id WHERE l.so_id = ? AND l.so_line_no = ? AND x.status IN ('open', 'loading') AND x.id <> ?`, [k.so_id, k.so_line_no, id]))!.n ?? 0;
+            const open = Math.floor((sl.qty - sl.delivered_qty) / 1000) - onOther;
+            if (l.qty > open) conflict('shp.over_order', `${k.so_code} line ${k.so_line_no}: only ${Math.max(0, open)} units are still open`, { open: Math.max(0, open) });
+          }
           await t.run('DELETE FROM shp_order_line WHERE order_id = ?', [id]);   // the order's current lines (a plan, not a fact)
           await writeLines(ctx, t, id, input.lines);
+          for (const l of input.lines) {
+            const k = links.get(l.itemId);
+            if (k?.so_id) await t.run('UPDATE shp_order_line SET so_id = ?, so_code = ?, so_line_no = ? WHERE order_id = ? AND item_id = ?', [k.so_id, k.so_code, k.so_line_no, id, l.itemId]);
+          }
         }
         await ctx.services.get('sys').audit(t, caller.name, input.cancel ? 'shipping_order.cancel' : 'shipping_order.change', o.code, input);
         return { id, version: o.version + 1 };
@@ -589,7 +609,7 @@ async function orderView(ctx: Ctx, db: Db, id: string) {
   const o = (await db.get<Order & Record<string, unknown>>('SELECT * FROM shp_order WHERE id = ? OR code = ?', [id, id])) ?? notFound('shipping_order', id);
   const loaded = await loadedByItem(db, o.id);
   const shipped = new Map((await db.all<{ item_id: string; n: number }>(`SELECT p.item_id, SUM(p.units) n FROM shp_pallet p JOIN shp_container k ON k.id = p.container_id WHERE k.order_id = ? AND k.status = 'dispatched' GROUP BY p.item_id`, [o.id])).map((r) => [r.item_id, r.n]));
-  const lines = await db.all<{ item_id: string; qty: number; code: string; name_en: string; name_ar: string }>(`SELECT l.item_id, l.qty, i.code, i.name_en, i.name_ar FROM shp_order_line l JOIN mdm_item i ON i.id = l.item_id WHERE l.order_id = ? ORDER BY i.code`, [o.id]);
+  const lines = await db.all<{ item_id: string; qty: number; so_id: string | null; so_code: string | null; so_line_no: number | null; code: string; name_en: string; name_ar: string }>(`SELECT l.item_id, l.qty, l.so_id, l.so_code, l.so_line_no, i.code, i.name_en, i.name_ar FROM shp_order_line l JOIN mdm_item i ON i.id = l.item_id WHERE l.order_id = ? ORDER BY i.code`, [o.id]);
   const containers = await db.all<any>(`SELECT c.*, (SELECT COUNT(*) FROM shp_pallet p WHERE p.container_id = c.id) pallets, (SELECT COALESCE(SUM(units), 0) FROM shp_pallet p WHERE p.container_id = c.id) units
     FROM shp_container c WHERE c.order_id = ? ORDER BY c.opened_at`, [o.id]);
   return { ...o, lines: lines.map((l) => ({ ...l, loaded: loaded.get(l.item_id) ?? 0, shipped: shipped.get(l.item_id) ?? 0 })), containers };

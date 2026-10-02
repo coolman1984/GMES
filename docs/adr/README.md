@@ -391,3 +391,9 @@ is exported as `eco.plant_node.v1` and a layout snapshot from Space Planner give
 stream for the BROWSER page of Space Planner: read-only key in the address (an EventSource cannot send headers), origin allow-list
 (`GMES_LIVE_ORIGINS`), states running / stopped with the reason / starved, and the day's output per line. **Rejected:** WebSockets and UI polling;
 a write scope on the key that travels in an address.
+
+## ADR-042 · Targeted recovery retains immutable fact sequence
+**Status:** Accepted · 2026-10-02
+**Decision:** Managers replay selected parked original envelopes with an audited reason, in original outbox order, without moving the feed cursor. Earlier parked facts hold subsequent facts of the same work order; only one push or recovery can run for a peer. Responses must identify the corresponding event.
+**Rejected:** blanket replay (changes unrelated exceptions), rewriting event data (loses published evidence), and allowing close to pass failed consumption (settles incomplete accounting).
+**Consequences:** fix the underlying prerequisite before replay. Shipping plan edits preserve their original sales-order allocation.
