@@ -77,6 +77,17 @@ describe('serial units along their routing (EXE2020 serial mode, EXE3020, WIP301
     assert.equal(direct.body.error.code, 'wo.unit_tracked');
   });
 
+  test('a product made and reported by lot (tiles) has no units: the unit/ledger health check covers only serial products', async () => {
+    const tile = (await s.ok('POST', '/api/items', { code: 'TILE-6060', nameEn: 'Tile 60x60', nameAr: 'بلاط', tracking: 'lot' })).id as string;
+    const route = await s.ok('POST', '/api/routings', { itemId: tile, operations: [{ seq: 10, code: 'PR', nameEn: 'Press' }, { seq: 20, code: 'SP', nameEn: 'Sort and pack', kind: 'pack' }] });
+    await s.ok('POST', `/api/routings/${route.id}/approve`, { version: (await s.ok('GET', `/api/routings/${route.id}`)).version });
+    const wo = (await s.ok('POST', '/api/work-orders', { commandId: cmd(), itemId: tile, warehouseId: s.wh, plannedQty: '10', line: 'MA-01' })).id as string;
+    await s.ok('POST', `/api/work-orders/${wo}/complete`, { commandId: cmd(), qty: '9.5', lotNo: 'T-0001' });
+    await s.ok('POST', `/api/work-orders/${wo}/scrap`, { commandId: cmd(), qty: '0.5', reasonCode: 'kiln-crack' });
+    const health = await s.ok('GET', '/api/system/health');
+    assert.ok(health.trk.every((c: any) => c.ok), JSON.stringify(health.trk));
+  });
+
   test('the main board is made on the SMD line: created at the first operation, completed at the last', async () => {
     assert.equal((await scan('SMD-01-AOI', 'PBA-0001')).body.error.code, 'unit.not_first_op');
     const a = await scan('SMD-01-LD', 'PBA-0001');

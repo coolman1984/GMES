@@ -343,8 +343,10 @@ export const trkModule: AppModule = {
 
   async health(ctx) {
     const v = await verifyChain(ctx.db, 'trk_event', EVENT_FIELDS);
-    // projection check: every completed or scrapped unit is exactly one line of the production ledger
-    const drift = await ctx.db.get<{ n: number }>(`SELECT COUNT(*) n FROM exe_work_order w WHERE w.routing_id IS NOT NULL AND (
+    // projection check: every completed or scrapped unit is exactly one line of the production ledger. Only for products that are made as
+    // units (serial tracking): a product made and reported by lot or quantity (tiles, powders) has no units, and its ledger is checked by exe.
+    const drift = await ctx.db.get<{ n: number }>(`SELECT COUNT(*) n FROM exe_work_order w WHERE w.routing_id IS NOT NULL
+      AND (SELECT i.tracking FROM mdm_item i WHERE i.id = w.item_id) = 'serial' AND (
         (SELECT COUNT(*) FROM trk_unit u WHERE u.work_order_id = w.id AND u.status IN ('completed', 'consumed', 'packed', 'shipped')) * 1000
           <> (SELECT COALESCE(SUM(qty), 0) FROM exe_ledger l WHERE l.work_order_id = w.id AND l.txn_type = 'COMPLETE')
      OR (SELECT COUNT(*) FROM trk_unit u WHERE u.work_order_id = w.id AND u.status = 'scrapped') * 1000

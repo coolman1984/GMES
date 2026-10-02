@@ -2,6 +2,18 @@
 
 كل bug أو اكتشاف أو تغيير في قرار يتسجل هنا بالشكل: **Symptom / Cause / Fix / Lesson**.
 
+## 2026-10-02 - The backup rehearsal failed for a tile plant: the unit/ledger check judged products that have no units
+- **Symptom:** the scenario engine ran a ceramic plant (tiles reported by lot) and every Itqan backup was refused by its own
+  rehearsal: `trk units_match_ledger` false. Nothing was wrong with the data.
+- **Cause:** the health check counted units against ledger lines for every routed work order; a lot-tracked product is
+  completed by quantity and never has a unit, so every such order looked "out of step". The one-order ceramic demo never
+  made a backup, so nothing had shown it.
+- **Fix:** the check covers only work orders of serial-tracked products (a serial routed order cannot be completed
+  directly, `wo.unit_tracked`, so nothing escapes); a test makes a tile order by quantity with scrap and requires a healthy plant
+  (`serial.test.ts`), one planted bug.
+- **Lesson:** a health check states which products it is about; a second kind of plant (lot instead of serial) is a test of every
+  check that was written with the first one in mind.
+
 ## 2026-10-01 - The line board spoke in pieces about tiles, and forgot the order the moment it finished
 - **Symptom:** filming a day of a tile line, the line board (DSH5010) showed "1,300 pcs" for square metres of tiles, and
   when the order completed at 14:50 the side panel went blank ("no running order") and the unit fell back to pieces.
